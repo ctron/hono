@@ -222,7 +222,8 @@ public abstract class ConnectionBase {
     if (exceptionHandler != null) {
       exceptionHandler.handle(t);
     } else {
-      log.error("Unhandled exception for connection: {}/{} ({}) {} -> {}", t, localName(), remoteName(), this.chctx.channel(), chctx.name(), chctx);
+      log.error("Unhandled exception for connection: {}", t, this.chctx.channel());
+      System.out.println("Unhandled exception for connection: " + this.chctx.channel());
     }
   }
 
