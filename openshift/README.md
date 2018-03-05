@@ -76,7 +76,7 @@ oc new-project hono --display-name='Eclipse Hono™'
 Create the InfluxDB ConfigMap from a local file:
 
 ~~~sh
-oc -n hono create configmap influxdb-config --from-file="../example/target/config/influxdb.conf"
+oc -n hono create configmap influxdb-config --from-file="../example/src/main/config/influxdb.conf"
 ~~~
 
 The Hono template is located at: [hono.yml](hono.yml). It needs to be processed and executed.
