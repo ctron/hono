@@ -1,0 +1,53 @@
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: iotprojects.hono.eclipse.org
+spec:
+  group: iot.enmasse.io
+  version: v1alpha1
+  names:
+    kind: IoTProject
+    plural: iotprojects
+    singular: iotproject
+    shortNames:
+    - itp
+  scope: Namespaced
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  name: hono-operator
+rules:
+- apiGroups:
+  - iot.enmasse.io
+  resources:
+  - iotprojects
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+---
+apiVersion: authorization.openshift.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: hono-operator-admin-operator
+roleRef:
+  kind: ClusterRole
+  name: hono-operator
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+- kind: ServiceAccount
+  namespace: hono
+  name: default

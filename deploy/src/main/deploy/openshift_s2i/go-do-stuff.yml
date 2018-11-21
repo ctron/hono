@@ -1,0 +1,29 @@
+---
+apiVersion: v1
+kind: ImageStream
+metadata:
+  name: hono-qdrouter-proxy
+---
+kind: BuildConfig
+apiVersion: v1
+metadata:
+  name: hono-qdrouter-proxy
+spec:
+  triggers: 
+    - type: ImageChange
+    - type: ConfigChange
+  source: 
+    type: Git
+    git:
+      uri: https://github.com/ctron/hono-qdrouter-proxy
+      ref: master
+  strategy:
+    type: Docker
+    dockerStrategy:
+      from:
+        kind: ImageStreamTag
+        name: qdrouterd-base:latest
+  output:
+    to:
+      kind: ImageStreamTag
+      name: hono-qdrouter-proxy:latest

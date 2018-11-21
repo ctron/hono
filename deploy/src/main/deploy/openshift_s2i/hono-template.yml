@@ -207,6 +207,23 @@ objects:
       referencePolicy:
         type: Source
 
+- kind: ImageStream
+  apiVersion: v1
+  metadata:
+    name: qdrouterd-base
+  spec:
+    lookupPolicy:
+      local: false
+    tags:
+    - name: latest
+      from:
+        kind: DockerImage
+        name: enmasseproject/qdrouterd-base:1.4.1
+      importPolicy:
+        scheduled: true
+      referencePolicy:
+        type: Source
+
 # Custom S2I base image
 
 - kind: ImageStream
@@ -1173,10 +1190,8 @@ objects:
           nativeTlsRequired: true
         messaging:
           name: 'Hono HTTP Adapter'
-          credentialsPath: /etc/secrets/downstream.properties
         command:
           name: 'Hono HTTP Adapter'
-          credentialsPath: /etc/secrets/downstream.properties
         registration:
           name: 'Hono HTTP Adapter'
           port: 5671
@@ -1243,6 +1258,25 @@ objects:
         
         </configuration>
 
+- kind: ConfigMap
+  apiVersion: v1
+  metadata:
+    name: hono-adapter-proxy-map
+    labels:
+      app: hono-adapter
+  data:
+    qdrouterd.conf: |-
+      router {
+        mode: standalone
+        id: Router.A
+      }
+      
+      listener {
+        host: localhost
+        port: 5672
+        saslMechanisms: ANONYMOUS
+      }
+
 - kind: DeploymentConfig
   apiVersion: v1
   metadata:
@@ -1269,6 +1303,22 @@ objects:
           from:
             kind: ImageStreamTag
             name: hono-adapter-http-vertx:latest
+      - type: ImageChange
+        imageChangeParams:
+          automatic: true
+          containerNames:
+            - qdr-proxy
+          from:
+            kind: ImageStreamTag
+            name: qdrouterd-base:latest
+      - type: ImageChange
+        imageChangeParams:
+          automatic: true
+          containerNames:
+            - qdr-cfg
+          from:
+            kind: ImageStreamTag
+            name: qdr-proxy-configurator:latest
     template:
       metadata:
         labels:
@@ -1276,6 +1326,24 @@ objects:
           deploymentconfig: hono-adapter-http-vertx
       spec:
         containers:
+        - name: qdr-cfg
+          image: hono-qdrouter-proxy
+          volumeMounts:
+          - mountPath: /var/qdr-certs
+            name: qdr-certs
+        - name: qdr-proxy
+          image: qdrouterd-base
+          args: ["/sbin/qdrouterd", "-c", "/etc/config/qdrouterd.conf" ]
+          volumeMounts:
+          - mountPath: /var/qdr-certs
+            name: qdr-certs
+            readOnly: true
+          - mountPath: /etc/config
+            name: qdrouterd-proxy-conf
+            readOnly: true
+          - mountPath: /etc/tls
+            name: tls
+            readOnly: true
         - name: eclipsehono-hono-adapter-http-vertx
           image: hono-adapter-http-vertx
           imagePullPolicy: Always
@@ -1291,31 +1359,19 @@ objects:
               fieldRef:
                 fieldPath: metadata.namespace
           - name: HONO_MESSAGING_HOST
-            valueFrom:
-              configMapKeyRef:
-                name: hono-configuration
-                key: downstream.host
+            value: localhost
           - name: HONO_MESSAGING_PORT
-            valueFrom:
-              configMapKeyRef:
-                name: hono-configuration
-                key: downstream.port
+            value: "5672"
           - name: HONO_COMMAND_HOST
-            valueFrom:
-              configMapKeyRef:
-                name: hono-configuration
-                key: downstream.host
+            value: localhost
           - name: HONO_COMMAND_PORT
-            valueFrom:
-              configMapKeyRef:
-                name: hono-configuration
-                key: downstream.port
+            value: "5672"
           - name: HONO_REGISTRATION_HOST
             value: hono-service-device-registry.$(KUBERNETES_NAMESPACE).svc
           - name: HONO_CREDENTIALS_HOST
             value: hono-service-device-registry.$(KUBERNETES_NAMESPACE).svc
           - name: HONO_TENANT_HOST
-            value: hono-service-device-registry.$(KUBERNETES_NAMESPACE).svc
+            value: iot-tenant-service.$(KUBERNETES_NAMESPACE).svc
           - name: MANAGEMENT_METRICS_EXPORT_GRAPHITE_HOST
             value: influxdb.$(KUBERNETES_NAMESPACE).svc
           - name: AB_JOLOKIA_USER
@@ -1375,6 +1431,11 @@ objects:
         - name: tls
           secret:
             secretName: hono-adapter-http-vertx-tls
+        - name: qdrouterd-proxy-conf
+          configMap:
+            name: hono-adapter-proxy-map
+        - name: qdr-certs
+          emptyDir: {}
 
 - apiVersion: v1
   kind: Service
