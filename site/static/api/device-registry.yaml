@@ -15,8 +15,18 @@ externalDocs:
    url: https://eclipse.org/hono
 
 tags:
+   - name: tenant
+     description: Tenant Management
+     externalDocs:
+        description: Hono Multi-Tenancy
+        url: https://www.eclipse.org/hono/concepts/tenancy/
    - name: registration
      description: Device registration
+     externalDocs:
+        description: Hono device identity
+        url: https://www.eclipse.org/hono/concepts/device-identity/
+   - name: credentials
+     description: Device credentials
      externalDocs:
         description: Hono device identity
         url: https://www.eclipse.org/hono/concepts/device-identity/
@@ -30,6 +40,89 @@ servers:
            default: https://cors-anywhere.herokuapp.com/
 
 paths:
+
+# Tenant API
+
+   /tenant:
+      post:
+         tags:
+            - tenant
+         summary: Create new tenant
+         operationId: createTenant
+         requestBody:
+            description: New device registration
+            content:
+               application/json:
+                  schema:
+                     $ref: '#/components/schemas/TenantCreate'
+            required: true
+         responses:
+            201:
+               description: device registered
+            400:
+               description: malformed request
+            409:
+               description: device already registered
+
+   /tenant/{tenant}:
+      get:
+         tags:
+            - tenant
+         summary: Get tenant information
+         operationId: getTenant
+         parameters:
+            - $ref: '#/components/parameters/tenant'
+         responses:
+            200:
+               description: operation successful
+               content:
+                  application/json:
+                     schema:
+                        $ref: '#/components/schemas/TenantCreate'
+            400:
+               description: malformed request
+            404:
+               description: tenant not found
+      put:
+         tags:
+            - tenant
+         summary: Update tenant information
+         operationId: updateTenant
+         parameters:
+            - $ref: '#/components/parameters/tenant'
+         requestBody:
+            description: Tenant information
+            content:
+               application/json:
+                  schema:
+                     $ref: '#/components/schemas/TenantData'
+            required: true
+         responses:
+            204:
+               description: tenant updated
+            400:
+               description: malformed request
+            403:
+               description: operation not allowed
+            404:
+               description: tenant not found
+      delete:
+         tags:
+            - tenant
+         summary: Delete tenant
+         operationId: deleteTenant
+         parameters:
+            - $ref: '#/components/parameters/tenant'
+         responses:
+            204:
+               description: tenant deleted
+            403:
+               description: operation not allowed
+            404:
+               description: tenant not found
+
+# Registration API
+
    /registration/{tenant}:
       post:
          tags:
@@ -52,6 +145,7 @@ paths:
                description: malformed request
             409:
                description: device already registered
+
    /registration/{tenant}/{deviceId}:
       get:
          tags:
@@ -67,7 +161,7 @@ paths:
                content:
                   application/json:
                      schema:
-                        $ref: '#/components/schemas/Registration'
+                        $ref: '#/components/schemas/RegistrationGet'
             400:
                description: malformed request
             404:
@@ -76,11 +170,12 @@ paths:
          tags:
             - registration
          summary: Update existing device registration
+         operationId: updateRegistration
          parameters:
             - $ref: '#/components/parameters/tenant'
             - $ref: '#/components/parameters/deviceId'
          requestBody:
-            description: New device registration
+            description: Updated device registration
             content:
                application/json:
                   schema:
@@ -99,6 +194,7 @@ paths:
          tags:
             - registration
          summary: Delete device registration
+         operationId: deleteRegistration
          parameters:
             - $ref: '#/components/parameters/tenant'
             - $ref: '#/components/parameters/deviceId'
@@ -112,20 +208,33 @@ paths:
 
 components:
    schemas:
+
+      TenantCreate:
+         type: object
+         additionalProperties: true
+         properties:
+            "tenant-id":
+               type: string
+               required: true
+      TenantData:
+         type: object
+         additionalProperties: true
+
       RegistrationCreate:
          type: object
          additionalProperties: true
          properties:
             "device-id":
                type: string
+               required: true
       RegistrationGet:
          type: object
          properties:
             "device-id":
                type: string 
-            data:
+            "data":
                type: object
-               $ref: '#/components/schema/RegistrationData'
+               $ref: '#/components/schemas/RegistrationData'
       RegistrationData:
          type: object
          additionalProperties: true
