@@ -1,0 +1,149 @@
+openapi: 3.0.1
+info:
+   title: Eclipse Hono™ Device Registry API
+   description: |
+      This API allows one to interact with the Eclipse Hono Device Registry
+      API. It acts as a common basis which all Hono device registries should
+      implement.
+   license:
+      name: EPL-2.0
+      url: https://www.eclipse.org/legal/epl-2.0/
+   version: 1.0.0
+
+externalDocs:
+   description: Eclipse Hono homepage
+   url: https://eclipse.org/hono
+
+tags:
+   - name: registration
+     description: Device registration
+     externalDocs:
+        description: Hono device identity
+        url: https://www.eclipse.org/hono/concepts/device-identity/
+
+servers:
+   - url: '{corsProxy}{server}/'
+     variables:
+        server:
+           default: http://hono.eclipse.org:28080
+        corsProxy:
+           default: https://cors-anywhere.herokuapp.com/
+
+paths:
+   /registration/{tenant}:
+      post:
+         tags:
+            - registration
+         summary: Create new device registration
+         operationId: createRegistration
+         parameters:
+            - $ref: '#/components/parameters/tenant'
+         requestBody:
+            description: New device registration
+            content:
+               application/json:
+                  schema:
+                     $ref: '#/components/schemas/RegistrationCreate'
+            required: true
+         responses:
+            201:
+               description: device registered
+            400:
+               description: malformed request
+            409:
+               description: device already registered
+   /registration/{tenant}/{deviceId}:
+      get:
+         tags:
+            - registration
+         summary: Get device registration information
+         operationId: getRegistration
+         parameters:
+            - $ref: '#/components/parameters/tenant'
+            - $ref: '#/components/parameters/deviceId'
+         responses:
+            200:
+               description: operation successful
+               content:
+                  application/json:
+                     schema:
+                        $ref: '#/components/schemas/Registration'
+            400:
+               description: malformed request
+            404:
+               description: device not found
+      put:
+         tags:
+            - registration
+         summary: Update existing device registration
+         parameters:
+            - $ref: '#/components/parameters/tenant'
+            - $ref: '#/components/parameters/deviceId'
+         requestBody:
+            description: New device registration
+            content:
+               application/json:
+                  schema:
+                     $ref: '#/components/schemas/RegistrationData'
+            required: true
+         responses:
+            204:
+               description: device registration updated
+            400:
+               description: malformed request
+            403:
+               description: operation not allowed
+            404:
+               description: device not found
+      delete:
+         tags:
+            - registration
+         summary: Delete device registration
+         parameters:
+            - $ref: '#/components/parameters/tenant'
+            - $ref: '#/components/parameters/deviceId'
+         responses:
+            204:
+               description: device deleted
+            403:
+               description: operation not allowed
+            404:
+               description: device not found
+
+components:
+   schemas:
+      RegistrationCreate:
+         type: object
+         additionalProperties: true
+         properties:
+            "device-id":
+               type: string
+      RegistrationGet:
+         type: object
+         properties:
+            "device-id":
+               type: string 
+            data:
+               type: object
+               $ref: '#/components/schema/RegistrationData'
+      RegistrationData:
+         type: object
+         additionalProperties: true
+
+   parameters:
+      tenant:
+         name: tenant
+         in: path
+         description: The tenant name
+         required: true
+         schema:
+            type: string
+         example: DEFAULT_TENANT
+      deviceId:
+         name: deviceId
+         in: path
+         description: The ID of the device
+         required: true
+         schema:
+            type: string
+         example: 4711
