@@ -61,6 +61,8 @@ paths:
                description: device registered
             400:
                description: malformed request
+            403:
+               description: operation not allowed
             409:
                description: device already registered
 
@@ -81,6 +83,8 @@ paths:
                         $ref: '#/components/schemas/TenantCreate'
             400:
                description: malformed request
+            403:
+               description: operation not allowed
             404:
                description: tenant not found
       put:
@@ -143,6 +147,8 @@ paths:
                description: device registered
             400:
                description: malformed request
+            403:
+               description: operation not allowed
             409:
                description: device already registered
 
@@ -164,6 +170,8 @@ paths:
                         $ref: '#/components/schemas/RegistrationGet'
             400:
                description: malformed request
+            403:
+               description: operation not allowed
             404:
                description: device not found
       put:
@@ -195,6 +203,70 @@ paths:
             - registration
          summary: Delete device registration
          operationId: deleteRegistration
+         parameters:
+            - $ref: '#/components/parameters/tenant'
+            - $ref: '#/components/parameters/deviceId'
+         responses:
+            204:
+               description: device deleted
+            403:
+               description: operation not allowed
+            404:
+               description: device not found
+
+# Credentials API
+
+   /credentials/{tenant}:
+      post:
+         tags:
+            - credentials
+         summary: Create new device registration
+         operationId: createRegistration
+         parameters:
+            - $ref: '#/components/parameters/tenant'
+         requestBody:
+            description: New device registration
+            content:
+               application/json:
+                  schema:
+                     $ref: '#/components/schemas/RegistrationCreate'
+            required: true
+         responses:
+            201:
+               description: device registered
+            400:
+               description: malformed request
+            409:
+               description: device already registered
+
+   /credentials/{tenant}/{deviceId}:
+      get:
+         tags:
+            - credentials
+         summary: Get device credentials
+         operationId: getCredentials
+         parameters:
+            - $ref: '#/components/parameters/tenant'
+            - $ref: '#/components/parameters/deviceId'
+         responses:
+            200:
+               description: operation successful
+               content:
+                  application/json:
+                     schema:
+                        $ref: '#/components/schemas/CredentialsGet'
+            400:
+               description: malformed request
+            403:
+               description: operation not allowed
+            404:
+               description: device not found
+
+      delete:
+         tags:
+            - credentials
+         summary: Delete device registration
+         operationId: deleteCredentials
          parameters:
             - $ref: '#/components/parameters/tenant'
             - $ref: '#/components/parameters/deviceId'
@@ -238,6 +310,100 @@ components:
       RegistrationData:
          type: object
          additionalProperties: true
+
+      CredentialsGet:
+         type: object
+         properties:
+            "total":
+               type: integer
+            "credentials":
+               type: array
+               $ref: '#/components/schemas/Credentials'
+
+      CredentialsCommon:
+         type: object
+         properties:
+            "device-id":
+               type: string
+               required: true
+            "type":
+               type: string
+               required: true
+            "auth-id":
+               type: string
+               required: true
+            "enabled":
+               type: boolean
+
+      Credentials:
+         oneOf:
+            - $ref: '#/components/schemas/PasswordCredentials'
+            - $ref: '#/components/schemas/X509Credentials'
+            - $ref: '#/components/schemas/PSKCredentials'
+         discriminator:
+            propertyName: type
+
+      PasswordCredentials:
+         allOf:
+            - $ref: '#/components/schemas/CredentialsCommon'
+            - type: object
+              properties:
+                 "secrets":
+                    type: array
+                    $ref: '#/components/schemas/PasswordSecret'
+
+      CommonSecret:
+         type: object
+         properties:
+            "not-before":
+               type: string
+               format: date-time
+            "not-after":
+               type: string
+               format: date-time
+            "comment":
+               type: string
+
+      PasswordSecret:
+         allOf:
+            - $ref: '#/components/schemas/CommonSecret'
+            - type: object
+              properties:
+                 "hash-function":
+                    type: string
+                 "pwd-hash":
+                    type: string
+                    format: byte
+                 "salt":
+                    type: string
+                    format: byte
+
+      X509Credentials:
+         allOf:
+            - $ref: '#/components/schemas/CredentialsCommon'
+            - type: object
+              properties:
+                 "secrets":
+                    type: array
+                    $ref: '#/components/schemas/CommonSecret'
+
+      PSKCredentials:
+         allOf:
+            - $ref: '#/components/schemas/CredentialsCommon'
+            - type: object
+              properties:
+                 "secrets":
+                    type: array
+                    $ref: '#/components/schemas/PSKSecret'
+
+      PSKSecret:
+         allOf:
+            - $ref: '#/components/schemas/CommonSecret'
+            - type: object
+              properties:
+                 "key":
+                    type: string
+                    format: byte
 
    parameters:
       tenant:
