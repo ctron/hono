@@ -1,0 +1,340 @@
+openapi: 3.0.1
+info:
+   title: Eclipse Hono™ Device Registry API
+   description: |
+      This API allows one to interact with the Eclipse Hono Device Registry
+      API. It acts as a common basis which all Hono device registries should
+      implement.
+   contact:
+      email: "hono-dev@eclipse.org"
+   license:
+      name: EPL-2.0
+      url: https://www.eclipse.org/legal/epl-2.0/
+   version: 1.0.0
+
+externalDocs:
+   description: Eclipse Hono homepage
+   url: https://eclipse.org/hono
+
+tags:
+   - name: tenant
+     description: Tenant Management
+     externalDocs:
+        description: Hono Multi-Tenancy
+        url: https://www.eclipse.org/hono/concepts/tenancy/
+   - name: registration
+     description: Device registration
+     externalDocs:
+        description: Hono device identity
+        url: https://www.eclipse.org/hono/concepts/device-identity/
+   - name: credentials
+     description: Device credentials
+     externalDocs:
+        description: Hono device identity
+        url: https://www.eclipse.org/hono/concepts/device-identity/
+
+servers:
+   - url: '{corsProxy}{server}/'
+     variables:
+        server:
+           default: http://hono.eclipse.org:28080
+        corsProxy:
+           default: https://cors-anywhere.herokuapp.com/
+
+paths:
+
+# Tenant API
+
+   /tenants/{tenant}:
+
+      post:
+         tags:
+            - tenant
+         summary: Create new tenant
+         operationId: createTenant
+         requestBody:
+            description: New device registration
+            content:
+               application/json:
+                  schema:
+                     $ref: '#/components/schemas/Tenant'
+            required: true
+         responses:
+            201:
+               description: device registered
+            400:
+               $ref: '#/components/responses/MalformedRequest'
+            403:
+               $ref: '#/components/responses/NotAllowed'
+            409:
+               $ref: '#/components/responses/AlreadyExists'
+
+      get:
+         tags:
+            - tenant
+         summary: Get tenant information
+         operationId: getTenant
+         parameters:
+            - $ref: '#/components/parameters/tenant'
+         responses:
+            200:
+               description: operation successful
+               content:
+                  application/json:
+                     schema:
+                        $ref: '#/components/schemas/Tenant'
+               headers:
+                  X-Resource-Version:
+                     description: Version of the resource
+                     schema:
+                        type: string
+            400:
+               $ref: '#/components/responses/MalformedRequest'
+            403:
+               $ref: '#/components/responses/NotAllowed'
+            404:
+               $ref: '#/components/responses/NotFound'
+
+      put:
+         tags:
+            - tenant
+         summary: Update tenant information
+         operationId: updateTenant
+         parameters:
+            - $ref: '#/components/parameters/tenant'
+            - $ref: '#/components/parameters/resourceVersion'
+         requestBody:
+            description: Tenant information
+            content:
+               application/json:
+                  schema:
+                     $ref: '#/components/schemas/Tenant'
+            required: true
+         responses:
+            204:
+               description: tenant updated
+            400:
+               $ref: '#/components/responses/MalformedRequest'
+            403:
+               $ref: '#/components/responses/NotAllowed'
+            404:
+               $ref: '#/components/responses/NotFound'
+            409:
+               $ref: '#/components/responses/ResourceVersionMismatch'
+
+      delete:
+         tags:
+            - tenant
+         summary: Delete tenant
+         operationId: deleteTenant
+         parameters:
+            - $ref: '#/components/parameters/tenant'
+         responses:
+            204:
+               description: tenant deleted
+            400:
+               $ref: '#/components/responses/MalformedRequest'
+            403:
+               $ref: '#/components/responses/NotAllowed'
+            404:
+               $ref: '#/components/responses/NotFound'
+
+# Registration API
+
+   /registrations/{tenant}/{deviceId}:
+      post:
+         tags:
+            - registration
+         summary: Create new device registration
+         operationId: createRegistration
+         parameters:
+            - $ref: '#/components/parameters/tenant'
+            - $ref: '#/components/parameters/deviceId'
+         requestBody:
+            description: New device registration
+            content:
+               application/json:
+                  schema:
+                     $ref: '#/components/schemas/Registration'
+            required: true
+         responses:
+            201:
+               description: device registered
+            400:
+               $ref: '#/components/responses/MalformedRequest'
+            403:
+               $ref: '#/components/responses/NotAllowed'
+            409:
+               $ref: '#/components/responses/AlreadyExists'
+
+      get:
+         tags:
+            - registration
+         summary: Get device registration information
+         operationId: getRegistration
+         parameters:
+            - $ref: '#/components/parameters/tenant'
+            - $ref: '#/components/parameters/deviceId'
+         responses:
+            200:
+               description: operation successful
+               content:
+                  application/json:
+                     schema:
+                        $ref: '#/components/schemas/Registration'
+               headers:
+                  X-Resource-Version:
+                     description: Version of the resource
+                     schema:
+                        type: string
+            400:
+               $ref: '#/components/responses/MalformedRequest'
+            403:
+               $ref: '#/components/responses/NotAllowed'
+            404:
+               $ref: '#/components/responses/NotFound'
+
+      put:
+         tags:
+            - registration
+         summary: Update existing device registration
+         operationId: updateRegistration
+         parameters:
+            - $ref: '#/components/parameters/tenant'
+            - $ref: '#/components/parameters/deviceId'
+            - $ref: '#/components/parameters/resourceVersion'
+         requestBody:
+            description: Updated device registration
+            content:
+               application/json:
+                  schema:
+                     $ref: '#/components/schemas/RegistrationData'
+            required: true
+         responses:
+            204:
+               description: device registration updated
+            400:
+               $ref: '#/components/responses/MalformedRequest'
+            403:
+               $ref: '#/components/responses/NotAllowed'
+            404:
+               $ref: '#/components/responses/NotFound'
+            409:
+               $ref: '#/components/responses/ResourceVersionMismatch'
+
+      delete:
+         tags:
+            - registration
+         summary: Delete device registration
+         operationId: deleteRegistration
+         parameters:
+            - $ref: '#/components/parameters/tenant'
+            - $ref: '#/components/parameters/deviceId'
+         responses:
+            204:
+               description: device deleted
+            403:
+               $ref: '#/components/responses/NotAllowed'
+            404:
+               $ref: '#/components/responses/NotFound'
+
+components:
+   schemas:
+
+# Common schema
+
+      Error:
+         type: object
+         required:
+            - error
+         properties:
+            "error":
+               type: string
+
+# Tenant schema
+
+      Tenant:
+         type: object
+         additionalProperties: true
+         properties:
+            "enabled":
+               type: boolean
+            "subject-dn":
+               type: string
+
+# Registration schema
+
+      Registration:
+         type: object
+         additionalProperties: true
+         properties:
+            "enabled":
+               type: boolean
+
+   parameters:
+
+      resourceVersion:
+         name: X-Resource-Version
+         in: header
+         description: The expected resource version
+         required: false
+         schema:
+            type: string
+
+      tenant:
+         name: tenant
+         in: path
+         description: The tenant name
+         required: true
+         schema:
+            type: string
+         example: DEFAULT_TENANT
+
+      deviceId:
+         name: deviceId
+         in: path
+         description: The ID of the device
+         required: true
+         schema:
+            type: string
+         example: 4711
+
+   responses:
+
+      NotFound:
+         description: device not found
+         content:
+            application/json:
+               schema:
+                  $ref: '#/components/schemas/Error'
+
+      NotAllowed:
+         description: operation not allowed
+         content:
+            application/json:
+               schema:
+                  $ref: '#/components/schemas/Error'
+
+      MalformedRequest:
+         description: malformed request
+         content:
+            application/json:
+               schema:
+                  $ref: '#/components/schemas/Error'
+
+      AlreadyExists:
+         description: object already exists
+         content:
+            application/json:
+               schema:
+                  $ref: '#/components/schemas/Error'
+
+      ResourceVersionMismatch:
+         description: |
+            Provided resource version does not match current.
+            This can only happen when the request header 'X-Resource-Version'
+            was set.
+         content:
+            application/json:
+               schema:
+                  $ref: '#/components/schemas/Error'
