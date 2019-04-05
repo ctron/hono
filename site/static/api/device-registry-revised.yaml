@@ -22,7 +22,7 @@ tags:
      externalDocs:
         description: Hono Multi-Tenancy
         url: https://www.eclipse.org/hono/concepts/tenancy/
-   - name: registration
+   - name: device
      description: Device registration
      externalDocs:
         description: Hono device identity
@@ -45,13 +45,47 @@ paths:
 
 # Tenant API
 
+   /tenants:
+
+      post:
+         tags:
+            - tenant
+         summary: Create new tenant with auto-generated ID
+         operationId: createTenant
+         requestBody:
+            description: New tenant information
+            content:
+               application/json:
+                  schema:
+                     $ref: '#/components/schemas/Tenant'
+            required: true
+         responses:
+            201:
+               description: object created
+               headers:
+                  Location:
+                     description: URL to the resource
+                     schema:
+                        type: string
+                        format: uri
+                  ETag:
+                     description: Version of the resource
+                     schema:
+                        type: string
+            400:
+               $ref: '#/components/responses/MalformedRequest'
+            403:
+               $ref: '#/components/responses/NotAllowed'
+
    /tenants/{tenant}:
 
       post:
          tags:
             - tenant
          summary: Create new tenant
-         operationId: createTenant
+         operationId: createTenantWithId
+         parameters:
+            - $ref: '#/components/parameters/tenant'
          requestBody:
             description: New device registration
             content:
@@ -61,7 +95,17 @@ paths:
             required: true
          responses:
             201:
-               description: device registered
+               description: resource created
+               headers:
+                  Location:
+                     description: URL to the resource
+                     schema:
+                        type: string
+                        format: uri
+                  ETag:
+                     description: Version of the resource
+                     schema:
+                        type: string
             400:
                $ref: '#/components/responses/MalformedRequest'
             403:
@@ -84,7 +128,7 @@ paths:
                      schema:
                         $ref: '#/components/schemas/Tenant'
                headers:
-                  X-Resource-Version:
+                  ETag:
                      description: Version of the resource
                      schema:
                         type: string
@@ -112,14 +156,19 @@ paths:
             required: true
          responses:
             204:
-               description: tenant updated
+               description: object updated
+               headers:
+                  ETag:
+                     description: The new version of the resource
+                     schema:
+                        type: string
             400:
                $ref: '#/components/responses/MalformedRequest'
             403:
                $ref: '#/components/responses/NotAllowed'
             404:
                $ref: '#/components/responses/NotFound'
-            409:
+            412:
                $ref: '#/components/responses/ResourceVersionMismatch'
 
       delete:
@@ -129,37 +178,81 @@ paths:
          operationId: deleteTenant
          parameters:
             - $ref: '#/components/parameters/tenant'
+            - $ref: '#/components/parameters/resourceVersion'
          responses:
             204:
-               description: tenant deleted
-            400:
-               $ref: '#/components/responses/MalformedRequest'
+               description: object deleted
             403:
                $ref: '#/components/responses/NotAllowed'
             404:
                $ref: '#/components/responses/NotFound'
+            412:
+               $ref: '#/components/responses/ResourceVersionMismatch'
 
-# Registration API
+# Device API
 
-   /registrations/{tenant}/{deviceId}:
+   /devices/{tenant}:
       post:
          tags:
-            - registration
+            - device
+         summary: Create new device registration with auto-generated ID
+         operationId: createDeviceRegistration
+         parameters:
+            - $ref: '#/components/parameters/tenant'
+         requestBody:
+            description: New device
+            content:
+               application/json:
+                  schema:
+                     $ref: '#/components/schemas/Device'
+            required: true
+         responses:
+            201:
+               description: object created
+               headers:
+                  Location:
+                     description: URL to the resource
+                     schema:
+                        type: string
+                        format: uri
+                  ETag:
+                     description: Version of the resource
+                     schema:
+                        type: string
+            400:
+               $ref: '#/components/responses/MalformedRequest'
+            403:
+               $ref: '#/components/responses/NotAllowed'
+
+   /devices/{tenant}/{deviceId}:
+      post:
+         tags:
+            - device
          summary: Create new device registration
-         operationId: createRegistration
+         operationId: createDeviceRegistrationWithId
          parameters:
             - $ref: '#/components/parameters/tenant'
             - $ref: '#/components/parameters/deviceId'
          requestBody:
-            description: New device registration
+            description: New device
             content:
                application/json:
                   schema:
-                     $ref: '#/components/schemas/Registration'
+                     $ref: '#/components/schemas/Device'
             required: true
          responses:
             201:
                description: device registered
+               headers:
+                  Location:
+                     description: URL to the resource
+                     schema:
+                        type: string
+                        format: uri
+                  ETag:
+                     description: Version of the resource
+                     schema:
+                        type: string
             400:
                $ref: '#/components/responses/MalformedRequest'
             403:
@@ -169,7 +262,7 @@ paths:
 
       get:
          tags:
-            - registration
+            - device
          summary: Get device registration information
          operationId: getRegistration
          parameters:
@@ -181,9 +274,9 @@ paths:
                content:
                   application/json:
                      schema:
-                        $ref: '#/components/schemas/Registration'
+                        $ref: '#/components/schemas/Device'
                headers:
-                  X-Resource-Version:
+                  ETag:
                      description: Version of the resource
                      schema:
                         type: string
@@ -196,7 +289,7 @@ paths:
 
       put:
          tags:
-            - registration
+            - device
          summary: Update existing device registration
          operationId: updateRegistration
          parameters:
@@ -208,28 +301,34 @@ paths:
             content:
                application/json:
                   schema:
-                     $ref: '#/components/schemas/RegistrationData'
+                     $ref: '#/components/schemas/Device'
             required: true
          responses:
             204:
                description: device registration updated
+               headers:
+                  ETag:
+                     description: New version of the resource
+                     schema:
+                        type: string
             400:
                $ref: '#/components/responses/MalformedRequest'
             403:
                $ref: '#/components/responses/NotAllowed'
             404:
                $ref: '#/components/responses/NotFound'
-            409:
+            412:
                $ref: '#/components/responses/ResourceVersionMismatch'
 
       delete:
          tags:
-            - registration
+            - device
          summary: Delete device registration
          operationId: deleteRegistration
          parameters:
             - $ref: '#/components/parameters/tenant'
             - $ref: '#/components/parameters/deviceId'
+            - $ref: '#/components/parameters/resourceVersion'
          responses:
             204:
                description: device deleted
@@ -237,6 +336,8 @@ paths:
                $ref: '#/components/responses/NotAllowed'
             404:
                $ref: '#/components/responses/NotFound'
+            412:
+               $ref: '#/components/responses/ResourceVersionMismatch'
 
 components:
    schemas:
@@ -250,6 +351,7 @@ components:
          properties:
             "error":
                type: string
+               description: A human readable error message of what went wrong.
 
 # Tenant schema
 
@@ -259,22 +361,24 @@ components:
          properties:
             "enabled":
                type: boolean
+               default: true
             "subject-dn":
                type: string
 
-# Registration schema
+# Device schema
 
-      Registration:
+      Device:
          type: object
          additionalProperties: true
          properties:
             "enabled":
                type: boolean
+               default: true
 
    parameters:
 
       resourceVersion:
-         name: X-Resource-Version
+         name: If-Match
          in: header
          description: The expected resource version
          required: false
@@ -332,7 +436,7 @@ components:
       ResourceVersionMismatch:
          description: |
             Provided resource version does not match current.
-            This can only happen when the request header 'X-Resource-Version'
+            This can only happen when the request header 'ETag'
             was set.
          content:
             application/json:
