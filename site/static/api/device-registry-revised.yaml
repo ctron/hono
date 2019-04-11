@@ -357,23 +357,27 @@ components:
 
       Tenant:
          type: object
-         additionalProperties: true
          properties:
             "enabled":
                type: boolean
                default: true
             "subject-dn":
                type: string
+            "ext":
+               type: object
+               additionalProperties: true
 
 # Device schema
 
       Device:
          type: object
-         additionalProperties: true
          properties:
             "enabled":
                type: boolean
                default: true
+            "ext":
+               type: object
+               additionalProperties: true
 
    parameters:
 
