@@ -13,16 +13,16 @@ info:
    version: 1.0.0
 
 externalDocs:
-   description: Eclipse Hono homepage
+   description: Eclipse Hono™ homepage
    url: https://eclipse.org/hono
 
 tags:
-   - name: tenant
+   - name: tenants
      description: Tenant Management
      externalDocs:
         description: Hono Multi-Tenancy
         url: https://www.eclipse.org/hono/concepts/tenancy/
-   - name: device
+   - name: devices
      description: Device registration
      externalDocs:
         description: Hono device identity
@@ -41,6 +41,9 @@ servers:
         corsProxy:
            default: https://cors-anywhere.herokuapp.com/
 
+security:
+   - BearerAuth: []
+
 paths:
 
 # Tenant API
@@ -49,7 +52,7 @@ paths:
 
       post:
          tags:
-            - tenant
+            - tenants
          summary: Create new tenant with auto-generated ID
          operationId: createTenant
          requestBody:
@@ -61,27 +64,21 @@ paths:
             required: true
          responses:
             201:
-               description: object created
-               headers:
-                  Location:
-                     description: URL to the resource
-                     schema:
-                        type: string
-                        format: uri
-                  ETag:
-                     description: Version of the resource
-                     schema:
-                        type: string
+               $ref: '#/components/responses/Created'
             400:
                $ref: '#/components/responses/MalformedRequest'
+            401:
+               $ref: '#/components/responses/Unauthorized'
             403:
                $ref: '#/components/responses/NotAllowed'
+            409:
+               $ref: '#/components/responses/AlreadyExists'
 
    /tenants/{tenant}:
 
       post:
          tags:
-            - tenant
+            - tenants
          summary: Create new tenant
          operationId: createTenantWithId
          parameters:
@@ -95,19 +92,11 @@ paths:
             required: true
          responses:
             201:
-               description: resource created
-               headers:
-                  Location:
-                     description: URL to the resource
-                     schema:
-                        type: string
-                        format: uri
-                  ETag:
-                     description: Version of the resource
-                     schema:
-                        type: string
+               $ref: '#/components/responses/Created'
             400:
                $ref: '#/components/responses/MalformedRequest'
+            401:
+               $ref: '#/components/responses/Unauthorized'
             403:
                $ref: '#/components/responses/NotAllowed'
             409:
@@ -115,7 +104,7 @@ paths:
 
       get:
          tags:
-            - tenant
+            - tenants
          summary: Get tenant information
          operationId: getTenant
          parameters:
@@ -134,14 +123,14 @@ paths:
                         type: string
             400:
                $ref: '#/components/responses/MalformedRequest'
-            403:
-               $ref: '#/components/responses/NotAllowed'
+            401:
+               $ref: '#/components/responses/Unauthorized'
             404:
                $ref: '#/components/responses/NotFound'
 
       put:
          tags:
-            - tenant
+            - tenants
          summary: Update tenant information
          operationId: updateTenant
          parameters:
@@ -156,14 +145,11 @@ paths:
             required: true
          responses:
             204:
-               description: object updated
-               headers:
-                  ETag:
-                     description: The new version of the resource
-                     schema:
-                        type: string
+               $ref: '#/components/responses/Updated'
             400:
                $ref: '#/components/responses/MalformedRequest'
+            401:
+               $ref: '#/components/responses/Unauthorized'
             403:
                $ref: '#/components/responses/NotAllowed'
             404:
@@ -173,7 +159,7 @@ paths:
 
       delete:
          tags:
-            - tenant
+            - tenants
          summary: Delete tenant
          operationId: deleteTenant
          parameters:
@@ -182,6 +168,8 @@ paths:
          responses:
             204:
                description: object deleted
+            401:
+               $ref: '#/components/responses/Unauthorized'
             403:
                $ref: '#/components/responses/NotAllowed'
             404:
@@ -194,7 +182,7 @@ paths:
    /devices/{tenant}:
       post:
          tags:
-            - device
+            - devices
          summary: Create new device registration with auto-generated ID
          operationId: createDeviceRegistration
          parameters:
@@ -208,26 +196,18 @@ paths:
             required: true
          responses:
             201:
-               description: object created
-               headers:
-                  Location:
-                     description: URL to the resource
-                     schema:
-                        type: string
-                        format: uri
-                  ETag:
-                     description: Version of the resource
-                     schema:
-                        type: string
+               $ref: '#/components/responses/Created'
             400:
                $ref: '#/components/responses/MalformedRequest'
+            401:
+               $ref: '#/components/responses/Unauthorized'
             403:
                $ref: '#/components/responses/NotAllowed'
 
    /devices/{tenant}/{deviceId}:
       post:
          tags:
-            - device
+            - devices
          summary: Create new device registration
          operationId: createDeviceRegistrationWithId
          parameters:
@@ -255,6 +235,8 @@ paths:
                         type: string
             400:
                $ref: '#/components/responses/MalformedRequest'
+            401:
+               $ref: '#/components/responses/Unauthorized'
             403:
                $ref: '#/components/responses/NotAllowed'
             409:
@@ -262,7 +244,7 @@ paths:
 
       get:
          tags:
-            - device
+            - devices
          summary: Get device registration information
          operationId: getRegistration
          parameters:
@@ -282,14 +264,14 @@ paths:
                         type: string
             400:
                $ref: '#/components/responses/MalformedRequest'
-            403:
-               $ref: '#/components/responses/NotAllowed'
+            401:
+               $ref: '#/components/responses/Unauthorized'
             404:
                $ref: '#/components/responses/NotFound'
 
       put:
          tags:
-            - device
+            - devices
          summary: Update existing device registration
          operationId: updateRegistration
          parameters:
@@ -305,14 +287,11 @@ paths:
             required: true
          responses:
             204:
-               description: device registration updated
-               headers:
-                  ETag:
-                     description: New version of the resource
-                     schema:
-                        type: string
+               $ref: '#/components/responses/Updated'
             400:
                $ref: '#/components/responses/MalformedRequest'
+            401:
+               $ref: '#/components/responses/Unauthorized'
             403:
                $ref: '#/components/responses/NotAllowed'
             404:
@@ -322,7 +301,7 @@ paths:
 
       delete:
          tags:
-            - device
+            - devices
          summary: Delete device registration
          operationId: deleteRegistration
          parameters:
@@ -331,7 +310,9 @@ paths:
             - $ref: '#/components/parameters/resourceVersion'
          responses:
             204:
-               description: device deleted
+               $ref: '#/components/responses/Delete'
+            401:
+               $ref: '#/components/responses/Unauthorized'
             403:
                $ref: '#/components/responses/NotAllowed'
             404:
@@ -353,31 +334,84 @@ components:
                type: string
                description: A human readable error message of what went wrong.
 
+      Extensions:
+         type: object
+         additionalProperties: true
+         description: Allows arbitrary properties as extension to the ones
+                      specified by the Hono API.
+
 # Tenant schema
 
       Tenant:
          type: object
+         additionalProperties: false
          properties:
             "enabled":
                type: boolean
                default: true
+            "ext":
+               $ref: '#/components/schemas/Extensions'
+            "adapters":
+               type: array
+               description: Only a single entry per type is allowed. If multiple entries for the same type are present it is handled as an error.
+               items:
+                  $ref: '#/components/schemas/Adapter'
+            "limits":
+               $ref: '#/components/schemas/ResourceLimit'
+            "trusted-ca":
+               $ref: '#/components/schemas/TrustedCA'
+
+      TrustedCA:
+         type: object
+         additionalProperties: false
+         required:
+            - "subject-dn"
+         properties:
             "subject-dn":
                type: string
+            "public-key":
+               type: string
+               format: byte
+            "cert":
+               type: string
+               format: byte
+
+      Adapter:
+         type: object
+         additionalProperties: true
+         required:
+            - type
+         properties:
+            "type":
+               type: string
+            "enabled":
+               type: boolean
+               default: false
+            "device-authentication-required":
+               type: boolean
+               default: true
             "ext":
-               type: object
-               additionalProperties: true
+               $ref: '#/components/schemas/Extensions'
+
+      ResourceLimit:
+         type: object
+         additionalProperties: false
+         properties:
+            "max-connections":
+               type: integer
+               default: -1
 
 # Device schema
 
       Device:
          type: object
+         additionalProperties: false
          properties:
             "enabled":
                type: boolean
                default: true
             "ext":
-               type: object
-               additionalProperties: true
+               $ref: '#/components/schemas/Extensions'
 
    parameters:
 
@@ -409,29 +443,66 @@ components:
 
    responses:
 
+      Unauthorized:
+         description: Authentication credentials are required, but missing.
+         headers:
+            "WWW-Authenticate":
+               schema:
+                  type: string
+
+      Created:
+         description: Object created.
+         headers:
+            Location:
+               description: URL to the resource
+               schema:
+                  type: string
+                  format: uri
+            ETag:
+               description: Version of the resource
+               schema:
+                  type: string
+
+      Updated:
+         description: Object updated.
+         headers:
+            ETag:
+               description: The new version of the resource
+               schema:
+                  type: string
+
+      Deleted:
+         description: Object deleted.
+
       NotFound:
-         description: device not found
+         description: |
+            Object not found. This may also be returned for some operations
+            if the user misses read access for the object.
          content:
             application/json:
                schema:
                   $ref: '#/components/schemas/Error'
 
       NotAllowed:
-         description: operation not allowed
+         description: |
+            Operation not allowed. If the user does not have read access
+            for this object, then `404` will be returned instead.
          content:
             application/json:
                schema:
                   $ref: '#/components/schemas/Error'
 
       MalformedRequest:
-         description: malformed request
+         description: Malformed request
          content:
             application/json:
                schema:
                   $ref: '#/components/schemas/Error'
 
       AlreadyExists:
-         description: object already exists
+         description: |
+            Object already exists. If the user has no read access for
+            the existing object, then `403` should be returned instead.
          content:
             application/json:
                schema:
@@ -439,10 +510,16 @@ components:
 
       ResourceVersionMismatch:
          description: |
-            Provided resource version does not match current.
-            This can only happen when the request header 'ETag'
+            Expected resource version does not match current.
+            This can only happen when the request header `If-Match`
             was set.
          content:
             application/json:
                schema:
                   $ref: '#/components/schemas/Error'
+
+   securitySchemes:
+
+      BearerAuth:
+         type: http
+         scheme: bearer
