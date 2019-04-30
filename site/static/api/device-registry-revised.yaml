@@ -320,7 +320,83 @@ paths:
             412:
                $ref: '#/components/responses/ResourceVersionMismatch'
 
+   /credentials/{tenant}/{deviceId}:
+
+      get:
+         tags:
+            - credentials
+         summary: Get credentials set of a device.
+         operationId: getAllCredentials
+         parameters:
+            - $ref: '#/components/parameters/tenant'
+            - $ref: '#/components/parameters/deviceId'
+         responses:
+            200:
+               description: Operation successful
+               content:
+                  application/json:
+                     schema:
+                        $ref: '#/components/schemas/Credentials'
+               headers:
+                  ETag:
+                     description: Version of the resource
+                     schema:
+                        type: string
+            401:
+               $ref: '#/components/responses/Unauthorized'
+            403:
+               $ref: '#/components/responses/NotAllowed'
+            404:
+               $ref: '#/components/responses/NotFound'
+            412:
+               $ref: '#/components/responses/ResourceVersionMismatch'
+
+      put:
+         tags:
+            - credentials
+         summary: Update credentials set for registered device
+         operationId: setAllCredentials
+         parameters:
+            - $ref: '#/components/parameters/tenant'
+            - $ref: '#/components/parameters/deviceId'
+            - $ref: '#/components/parameters/resourceVersion'
+         responses:
+            204:
+               $ref: '#/components/responses/Updated'
+            400:
+               $ref: '#/components/responses/MalformedRequest'
+            401:
+               $ref: '#/components/responses/Unauthorized'
+            403:
+               $ref: '#/components/responses/NotAllowed'
+            404:
+               $ref: '#/components/responses/NotFound'
+            412:
+               $ref: '#/components/responses/ResourceVersionMismatch'
+
+      delete:
+         tags:
+            - credentials
+         summary: Delete all credentials of a device
+         operationId: deleteAllCredentials
+         parameters:
+            - $ref: '#/components/parameters/tenant'
+            - $ref: '#/components/parameters/deviceId'
+            - $ref: '#/components/parameters/resourceVersion'
+         responses:
+            204:
+               $ref: '#/components/responses/Delete'
+            401:
+               $ref: '#/components/responses/Unauthorized'
+            403:
+               $ref: '#/components/responses/NotAllowed'
+            404:
+               $ref: '#/components/responses/NotFound'
+            412:
+               $ref: '#/components/responses/ResourceVersionMismatch'
+
 components:
+
    schemas:
 
 # Common schema
@@ -401,7 +477,7 @@ components:
                type: integer
                default: -1
 
-# Device schema
+# Devices schema
 
       Device:
          type: object
@@ -412,6 +488,118 @@ components:
                default: true
             "ext":
                $ref: '#/components/schemas/Extensions'
+
+# Credentials
+
+      Credentials:
+         type: object
+         properties:
+            "psk":
+               $ref: '#/components/schemas/PSKCredentials'
+            "hashed-password":
+               $ref: '#/components/schemas/PasswordCredentials'
+            "x509-cert":
+               $ref: '#/components/schemas/X509CertificateSet'
+         additionalProperties: true
+
+      PSKCredentials:
+         type: object
+         additionalProperties:
+            type: array
+            items:
+               $ref: '#/components/schemas/PSKSet'
+
+      PasswordCredentials:
+         type: object
+         additionalProperties:
+            type: array
+            items:
+               $ref: '#/components/schemas/PasswordSet'
+
+      X509CertificateCredentials:
+         type: object
+         additionalProperties:
+            type: array
+            items:
+               $ref: '#/components/schemas/X509CertificateSet'
+
+      CommonSet:
+         type: object
+         properties:
+            "enabled":
+               type: boolean
+               default: true
+
+      PSKSet:
+         allOf:
+            - $ref: '#/components/schemas/CommonSet'
+            - type: object
+              additionalProperties: false
+              properties:
+                 "secrets":
+                    type: array
+                    items:
+                       $ref: '#/components/schemas/PSKSecret'
+
+      PasswordSet:
+         allOf:
+            - $ref: '#/components/schemas/CommonSet'
+            - type: object
+              additionalProperties: false
+              properties:
+                 "secrets":
+                    type: array
+                    items:
+                       $ref: '#/components/schemas/PasswordSecret'
+
+      X509CertificateSet:
+         allOf:
+            - $ref: '#/components/schemas/CommonSet'
+            - type: object
+              additionalProperties: false
+              properties:
+                 "secrets":
+                    type: array
+                    items:
+                       $ref: '#/components/schemas/CommonSecret'
+
+      CommonSecret:
+         type: object
+         properties:
+            "not-before":
+               type: string
+               format: date-time
+            "not-after":
+               type: string
+               format: date-time
+            "comment":
+               type: string
+
+      PasswordSecret:
+         allOf:
+            - $ref: '#/components/schemas/CommonSecret'
+            - type: object
+              properties:
+                 "hash-function":
+                    type: string
+                    example: sha-512
+                 "pwd-hash":
+                    type: string
+                    format: byte
+                 "salt":
+                    type: string
+                    format: byte
+
+      PSKSecret:
+         allOf:
+            - $ref: '#/components/schemas/CommonSecret'
+            - type: object
+              required:
+                 - key
+              properties:
+                 "key":
+                    type: string
+                    format: byte
 
    parameters:
 
@@ -459,7 +647,7 @@ components:
                   type: string
                   format: uri
             ETag:
-               description: Version of the resource
+               description: The new version of the resource
                schema:
                   type: string
 
