@@ -395,6 +395,44 @@ paths:
             412:
                $ref: '#/components/responses/ResourceVersionMismatch'
 
+   /credentials/{tenant}/{deviceId}/{type}/{authId}:
+
+      get:
+         tags:
+            - credentials
+         summary: Get credentials for an authId and type combination of a device.
+         operationId: getCredentialsByTypeAndAuthId
+         parameters:
+            - $ref: '#/components/parameters/tenant'
+            - $ref: '#/components/parameters/deviceId'
+            - $ref: '#/components/parameters/type'
+            - $ref: '#/components/parameters/authId'
+         responses:
+            200:
+               description: Operation successful
+               content:
+                  application/json:
+                     schema:
+                        type: object # workaround for: https://github.com/swagger-api/swagger-ui/issues/3803
+                        anyOf:
+                           - $ref: '#/components/schemas/PSKSet'
+                           - $ref: '#/components/schemas/PasswordSet'
+                           - $ref: '#/components/schemas/X509CertificateSet'
+                           - $ref: '#/components/schemas/CommonSet'
+               headers:
+                  ETag:
+                     description: Version of the resource
+                     schema:
+                        type: string
+            401:
+               $ref: '#/components/responses/Unauthorized'
+            403:
+               $ref: '#/components/responses/NotAllowed'
+            404:
+               $ref: '#/components/responses/NotFound'
+            412:
+               $ref: '#/components/responses/ResourceVersionMismatch'
+
 components:
 
    schemas:
@@ -525,10 +563,15 @@ components:
 
       CommonSet:
          type: object
+         additionalProperties: false
          properties:
             "enabled":
                type: boolean
                default: true
+            "secrets":
+               type: array
+               items:
+                  $ref: '#/components/schemas/CommonSecret'
 
       PSKSet:
          allOf:
@@ -628,6 +671,24 @@ components:
          schema:
             type: string
          example: 4711
+
+      authId:
+         name: authId
+         in: path
+         description: The authentication ID of the device
+         required: true
+         schema:
+            type: string
+         example: sensor1
+
+      type:
+         name: type
+         in: path
+         description: The credentials type
+         required: true
+         schema:
+            type: string
+         example: sha-256
 
    responses:
 
