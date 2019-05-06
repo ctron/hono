@@ -5,6 +5,12 @@ info:
       This API allows one to interact with the Eclipse Hono Device Registry
       API. It acts as a common basis which all Hono device registries should
       implement.
+
+      All operations, except the `tenants` resource are required. The tenant
+      management might be outside of the scope of the device registry and
+      managed by a higher level system. In this case all calls should simply
+      return `404`. However, if the `tenants` resource is implemented, then all
+      operations of it must be implemented.
    contact:
       email: "hono-dev@eclipse.org"
    license:
@@ -18,7 +24,7 @@ externalDocs:
 
 tags:
    - name: tenants
-     description: Tenant Management
+     description: Tenant Management (optional)
      externalDocs:
         description: Hono Multi-Tenancy
         url: https://www.eclipse.org/hono/concepts/tenancy/
@@ -34,7 +40,7 @@ tags:
         url: https://www.eclipse.org/hono/concepts/device-identity/
 
 servers:
-   - url: '{corsProxy}{server}/'
+   - url: '{corsProxy}{server}/v1'
      variables:
         server:
            default: http://hono.eclipse.org:28080
@@ -326,6 +332,10 @@ paths:
          tags:
             - credentials
          summary: Get credentials set of a device.
+         description: |
+            Get the credentials set of a device. As long as the device is
+            registered and the user has read access to is, this call should
+            never return "not found".
          operationId: getAllCredentials
          parameters:
             - $ref: '#/components/parameters/tenant'
@@ -336,20 +346,18 @@ paths:
                content:
                   application/json:
                      schema:
-                        $ref: '#/components/schemas/Credentials'
+                        $ref: '#/components/schemas/CredentialsSet'
                headers:
                   ETag:
                      description: Version of the resource
                      schema:
                         type: string
+            400:
+               $ref: '#/components/responses/MalformedRequest'
             401:
                $ref: '#/components/responses/Unauthorized'
-            403:
-               $ref: '#/components/responses/NotAllowed'
             404:
                $ref: '#/components/responses/NotFound'
-            412:
-               $ref: '#/components/responses/ResourceVersionMismatch'
 
       put:
          tags:
@@ -378,6 +386,11 @@ paths:
          tags:
             - credentials
          summary: Delete all credentials of a device
+         description: |
+             Deletes all credentials from a device registration. The device is
+             still registered, and a following call to *get* credentials must
+             not return `404`, as the device is still registered. Instead an
+             empty result must be returned.
          operationId: deleteAllCredentials
          parameters:
             - $ref: '#/components/parameters/tenant'
@@ -386,44 +399,6 @@ paths:
          responses:
             204:
                $ref: '#/components/responses/Delete'
-            401:
-               $ref: '#/components/responses/Unauthorized'
-            403:
-               $ref: '#/components/responses/NotAllowed'
-            404:
-               $ref: '#/components/responses/NotFound'
-            412:
-               $ref: '#/components/responses/ResourceVersionMismatch'
-
-   /credentials/{tenant}/{deviceId}/{type}/{authId}:
-
-      get:
-         tags:
-            - credentials
-         summary: Get credentials for an authId and type combination of a device.
-         operationId: getCredentialsByTypeAndAuthId
-         parameters:
-            - $ref: '#/components/parameters/tenant'
-            - $ref: '#/components/parameters/deviceId'
-            - $ref: '#/components/parameters/type'
-            - $ref: '#/components/parameters/authId'
-         responses:
-            200:
-               description: Operation successful
-               content:
-                  application/json:
-                     schema:
-                        type: object # workaround for: https://github.com/swagger-api/swagger-ui/issues/3803
-                        anyOf:
-                           - $ref: '#/components/schemas/PSKSet'
-                           - $ref: '#/components/schemas/PasswordSet'
-                           - $ref: '#/components/schemas/X509CertificateSet'
-                           - $ref: '#/components/schemas/CommonSet'
-               headers:
-                  ETag:
-                     description: Version of the resource
-                     schema:
-                        type: string
             401:
                $ref: '#/components/responses/Unauthorized'
             403:
@@ -529,41 +504,15 @@ components:
 
 # Credentials
 
-      Credentials:
-         type: object
-         properties:
-            "psk":
-               $ref: '#/components/schemas/PSKCredentials'
-            "hashed-password":
-               $ref: '#/components/schemas/PasswordCredentials'
-            "x509-cert":
-               $ref: '#/components/schemas/X509CertificateSet'
-         additionalProperties: true
-
-      PSKCredentials:
+      CredentialsSet:
          type: object
          additionalProperties:
-            type: array
-            items:
-               $ref: '#/components/schemas/PSKSet'
+            $ref: '#/components/schemas/AuthenticationIdentity'
 
-      PasswordCredentials:
+      AuthenticationIdentity:
          type: object
-         additionalProperties:
-            type: array
-            items:
-               $ref: '#/components/schemas/PasswordSet'
-
-      X509CertificateCredentials:
-         type: object
-         additionalProperties:
-            type: array
-            items:
-               $ref: '#/components/schemas/X509CertificateSet'
-
-      CommonSet:
-         type: object
-         additionalProperties: false
+         required:
+            - secrets
          properties:
             "enabled":
                type: boolean
@@ -571,44 +520,27 @@ components:
             "secrets":
                type: array
                items:
-                  $ref: '#/components/schemas/CommonSecret'
+                  $ref: '#/components/schemas/TypedSecret'
 
-      PSKSet:
-         allOf:
-            - $ref: '#/components/schemas/CommonSet'
-            - type: object
-              additionalProperties: false
-              properties:
-                 "secrets":
-                    type: array
-                    items:
-                       $ref: '#/components/schemas/PSKSecret'
-
-      PasswordSet:
-         allOf:
-            - $ref: '#/components/schemas/CommonSet'
-            - type: object
-              additionalProperties: false
-              properties:
-                 "secrets":
-                    type: array
-                    items:
-                       $ref: '#/components/schemas/PasswordSecret'
-
-      X509CertificateSet:
-         allOf:
-            - $ref: '#/components/schemas/CommonSet'
-            - type: object
-              additionalProperties: false
-              properties:
-                 "secrets":
-                    type: array
-                    items:
-                       $ref: '#/components/schemas/CommonSecret'
+      TypedSecret:
+         oneOf:
+            - $ref: '#/components/schemas/PasswordSecret'
+            - $ref: '#/components/schemas/PSKSecret'
+            - $ref: '#/components/schemas/X509CertificateSecret'
+         discriminator:
+            propertyName: type
+            mapping:
+               "hashed-password": '#/components/schemas/PasswordSecret'
+               "psk": '#/components/schemas/PSKSecret'
+               "x509-cert": '#/components/schemas/X509CertificateSecret'
 
       CommonSecret:
          type: object
+         required:
+            - type
          properties:
+            "type":
+               type: string
             "not-before":
                type: string
                format: date-time
@@ -617,6 +549,10 @@ components:
                format: date-time
             "comment":
                type: string
+
+      X509CertificateSecret:
+         allOf:
+            - $ref: '#/components/schemas/CommonSecret'
 
       PasswordSecret:
          allOf:
