@@ -541,6 +541,9 @@ components:
          properties:
             "type":
                type: string
+            "enabled":
+               type: boolean
+               default: true
             "not-before":
                type: string
                format: date-time
