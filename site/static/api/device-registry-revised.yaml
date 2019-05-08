@@ -379,6 +379,12 @@ paths:
             - $ref: '#/components/parameters/tenant'
             - $ref: '#/components/parameters/deviceId'
             - $ref: '#/components/parameters/resourceVersion'
+         requestBody:
+            content:
+               application/json:
+                  schema:
+                     $ref: '#/components/schemas/CredentialsSet'
+            required: true
          responses:
             204:
                $ref: '#/components/responses/Updated'
