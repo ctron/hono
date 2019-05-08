@@ -6,11 +6,21 @@ info:
       API. It acts as a common basis which all Hono device registries should
       implement.
 
+      ## Required APIs
+
       All operations, except the `tenants` resource are required. The tenant
       management might be outside of the scope of the device registry and
       managed by a higher level system. In this case all calls should simply
       return `404`. However, if the `tenants` resource is implemented, then all
       operations of it must be implemented.
+
+      ## Security
+
+      This specification explicitly leaves out the part of authenticating and
+      authorizing users with the device registry. It is assumed that some form
+      of token exchange between the user agent and the backend service will
+      take place. Like for example HTTP basic authentication, or a bearer token.
+
    contact:
       email: "hono-dev@eclipse.org"
    license:
