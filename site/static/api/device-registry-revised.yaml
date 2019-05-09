@@ -91,10 +91,10 @@ paths:
             409:
                $ref: '#/components/responses/AlreadyExists'
 
-   /tenants/{tenant}:
+   /tenants/{tenantName}:
 
       parameters:
-         - $ref: '#/components/parameters/tenant'
+         - $ref: '#/components/parameters/tenantName'
 
       post:
          tags:
@@ -193,10 +193,10 @@ paths:
 
 # Device API
 
-   /devices/{tenant}:
+   /devices/{tenantName}:
 
       parameters:
-         - $ref: '#/components/parameters/tenant'
+         - $ref: '#/components/parameters/tenantName'
 
       post:
          tags:
@@ -220,10 +220,10 @@ paths:
             403:
                $ref: '#/components/responses/NotAllowed'
 
-   /devices/{tenant}/{deviceId}:
+   /devices/{tenantName}/{deviceId}:
 
       parameters:
-         - $ref: '#/components/parameters/tenant'
+         - $ref: '#/components/parameters/tenantName'
          - $ref: '#/components/parameters/deviceId'
 
       post:
@@ -331,10 +331,10 @@ paths:
             412:
                $ref: '#/components/responses/ResourceVersionMismatch'
 
-   /credentials/{tenant}/{deviceId}:
+   /credentials/{tenantName}/{deviceId}:
 
       parameters:
-         - $ref: '#/components/parameters/tenant'
+         - $ref: '#/components/parameters/tenantName'
          - $ref: '#/components/parameters/deviceId'
 
       get:
@@ -601,8 +601,8 @@ components:
          schema:
             type: string
 
-      tenant:
-         name: tenant
+      tenantName:
+         name: tenantName
          in: path
          description: The name of the tenant
          required: true
