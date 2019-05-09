@@ -93,13 +93,14 @@ paths:
 
    /tenants/{tenant}:
 
+      parameters:
+         - $ref: '#/components/parameters/tenant'
+
       post:
          tags:
             - tenants
          summary: Create new tenant
          operationId: createTenantWithId
-         parameters:
-            - $ref: '#/components/parameters/tenant'
          requestBody:
             description: New device registration
             content:
@@ -124,8 +125,6 @@ paths:
             - tenants
          summary: Get tenant information
          operationId: getTenant
-         parameters:
-            - $ref: '#/components/parameters/tenant'
          responses:
             200:
                description: operation successful
@@ -151,7 +150,6 @@ paths:
          summary: Update tenant information
          operationId: updateTenant
          parameters:
-            - $ref: '#/components/parameters/tenant'
             - $ref: '#/components/parameters/resourceVersion'
          requestBody:
             description: Tenant information
@@ -180,7 +178,6 @@ paths:
          summary: Delete tenant
          operationId: deleteTenant
          parameters:
-            - $ref: '#/components/parameters/tenant'
             - $ref: '#/components/parameters/resourceVersion'
          responses:
             204:
@@ -197,13 +194,15 @@ paths:
 # Device API
 
    /devices/{tenant}:
+
+      parameters:
+         - $ref: '#/components/parameters/tenant'
+
       post:
          tags:
             - devices
          summary: Create new device registration with auto-generated ID
          operationId: createDeviceRegistration
-         parameters:
-            - $ref: '#/components/parameters/tenant'
          requestBody:
             description: New device
             content:
@@ -222,14 +221,16 @@ paths:
                $ref: '#/components/responses/NotAllowed'
 
    /devices/{tenant}/{deviceId}:
+
+      parameters:
+         - $ref: '#/components/parameters/tenant'
+         - $ref: '#/components/parameters/deviceId'
+
       post:
          tags:
             - devices
          summary: Create new device registration
          operationId: createDeviceRegistrationWithId
-         parameters:
-            - $ref: '#/components/parameters/tenant'
-            - $ref: '#/components/parameters/deviceId'
          requestBody:
             description: New device
             content:
@@ -264,9 +265,6 @@ paths:
             - devices
          summary: Get device registration information
          operationId: getRegistration
-         parameters:
-            - $ref: '#/components/parameters/tenant'
-            - $ref: '#/components/parameters/deviceId'
          responses:
             200:
                description: operation successful
@@ -292,8 +290,6 @@ paths:
          summary: Update existing device registration
          operationId: updateRegistration
          parameters:
-            - $ref: '#/components/parameters/tenant'
-            - $ref: '#/components/parameters/deviceId'
             - $ref: '#/components/parameters/resourceVersion'
          requestBody:
             description: Updated device registration
@@ -322,8 +318,6 @@ paths:
          summary: Delete device registration
          operationId: deleteRegistration
          parameters:
-            - $ref: '#/components/parameters/tenant'
-            - $ref: '#/components/parameters/deviceId'
             - $ref: '#/components/parameters/resourceVersion'
          responses:
             204:
@@ -339,6 +333,10 @@ paths:
 
    /credentials/{tenant}/{deviceId}:
 
+      parameters:
+         - $ref: '#/components/parameters/tenant'
+         - $ref: '#/components/parameters/deviceId'
+
       get:
          tags:
             - credentials
@@ -348,9 +346,6 @@ paths:
             registered and the user has read access to is, this call should
             never return "not found".
          operationId: getAllCredentials
-         parameters:
-            - $ref: '#/components/parameters/tenant'
-            - $ref: '#/components/parameters/deviceId'
          responses:
             200:
                description: Operation successful
@@ -376,8 +371,6 @@ paths:
          summary: Update credentials set for registered device
          operationId: setAllCredentials
          parameters:
-            - $ref: '#/components/parameters/tenant'
-            - $ref: '#/components/parameters/deviceId'
             - $ref: '#/components/parameters/resourceVersion'
          requestBody:
             content:
@@ -410,8 +403,6 @@ paths:
              empty result must be returned.
          operationId: deleteAllCredentials
          parameters:
-            - $ref: '#/components/parameters/tenant'
-            - $ref: '#/components/parameters/deviceId'
             - $ref: '#/components/parameters/resourceVersion'
          responses:
             204:
@@ -613,7 +604,7 @@ components:
       tenant:
          name: tenant
          in: path
-         description: The tenant name
+         description: The name of the tenant
          required: true
          schema:
             type: string
