@@ -21,6 +21,15 @@ info:
       of token exchange between the user agent and the backend service will
       take place. Like for example HTTP basic authentication, or a bearer token.
 
+      ## Code generation
+
+      This model is not optimized for generating code from it. Code generators
+      try to understand the model and then translate this into the require
+      programming language. Even if the there would be no bugs in the code
+      generators, that process would be already only be an approximation. So
+      this model does focus in the description of the API, and doesn't tweak
+      the specification in a way to please code generators.
+
    contact:
       email: "hono-dev@eclipse.org"
    license:
