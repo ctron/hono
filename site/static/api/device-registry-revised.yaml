@@ -522,22 +522,9 @@ components:
 # Credentials
 
       CredentialsSet:
-         type: object
-         additionalProperties:
-            $ref: '#/components/schemas/AuthenticationIdentity'
-
-      AuthenticationIdentity:
-         type: object
-         required:
-            - secrets
-         properties:
-            "enabled":
-               type: boolean
-               default: true
-            "secrets":
-               type: array
-               items:
-                  $ref: '#/components/schemas/TypedSecret'
+         type: array
+         items:
+            $ref: '#/components/schemas/TypedSecret'
 
       TypedSecret:
          oneOf:
@@ -554,9 +541,12 @@ components:
       CommonSecret:
          type: object
          required:
+            - auth-id
             - type
          properties:
             "type":
+               type: string
+            "auth-id":
                type: string
             "enabled":
                type: boolean
