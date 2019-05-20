@@ -2,8 +2,8 @@ openapi: 3.0.1
 info:
    title: Eclipse Hono™ Device Registry API
    description: |
-      This API allows one to interact with the Eclipse Hono Device Registry
-      API. It acts as a common basis which all Hono device registries should
+      This API defines how to manage *Tenants*, *Devices*, and *Credentials*.
+      It acts as a common basis which all Hono device registries should
       implement.
 
       ## Required APIs
@@ -31,14 +31,15 @@ info:
       the specification in a way to please code generators.
 
    contact:
-      email: "hono-dev@eclipse.org"
+      name: Contact details
+      url: https://www.eclipse.org/hono/community/get-in-touch/
    license:
       name: EPL-2.0
       url: https://www.eclipse.org/legal/epl-2.0/
    version: 1.0.0
 
 externalDocs:
-   description: Eclipse Hono™ homepage
+   description: Eclipse Hono™ web page
    url: https://eclipse.org/hono
 
 tags:
@@ -97,13 +98,11 @@ paths:
                $ref: '#/components/responses/Unauthorized'
             403:
                $ref: '#/components/responses/NotAllowed'
-            409:
-               $ref: '#/components/responses/AlreadyExists'
 
-   /tenants/{tenantName}:
+   /tenants/{tenantId}:
 
       parameters:
-         - $ref: '#/components/parameters/tenantName'
+         - $ref: '#/components/parameters/tenantId'
 
       post:
          tags:
@@ -111,7 +110,7 @@ paths:
          summary: Create new tenant
          operationId: createTenantWithId
          requestBody:
-            description: New device registration
+            description: New tenant registration
             content:
                application/json:
                   schema:
@@ -202,10 +201,10 @@ paths:
 
 # Device API
 
-   /devices/{tenantName}:
+   /devices/{tenantId}:
 
       parameters:
-         - $ref: '#/components/parameters/tenantName'
+         - $ref: '#/components/parameters/tenantId'
 
       post:
          tags:
@@ -229,10 +228,10 @@ paths:
             403:
                $ref: '#/components/responses/NotAllowed'
 
-   /devices/{tenantName}/{deviceId}:
+   /devices/{tenantId}/{deviceId}:
 
       parameters:
-         - $ref: '#/components/parameters/tenantName'
+         - $ref: '#/components/parameters/tenantId'
          - $ref: '#/components/parameters/deviceId'
 
       post:
@@ -249,17 +248,7 @@ paths:
             required: true
          responses:
             201:
-               description: device registered
-               headers:
-                  Location:
-                     description: URL to the resource
-                     schema:
-                        type: string
-                        format: uri
-                  ETag:
-                     description: Version of the resource
-                     schema:
-                        type: string
+               $ref: '#/components/responses/Created'
             400:
                $ref: '#/components/responses/MalformedRequest'
             401:
@@ -340,10 +329,10 @@ paths:
             412:
                $ref: '#/components/responses/ResourceVersionMismatch'
 
-   /credentials/{tenantName}/{deviceId}:
+   /credentials/{tenantId}/{deviceId}:
 
       parameters:
-         - $ref: '#/components/parameters/tenantName'
+         - $ref: '#/components/parameters/tenantId'
          - $ref: '#/components/parameters/deviceId'
 
       get:
@@ -352,7 +341,7 @@ paths:
          summary: Get credentials set of a device.
          description: |
             Get the credentials set of a device. As long as the device is
-            registered and the user has read access to is, this call should
+            registered and the user has read access to it, this call should
             never return "not found".
          operationId: getAllCredentials
          responses:
@@ -433,6 +422,7 @@ components:
 
       Error:
          type: object
+         additionalProperties: true
          required:
             - error
          properties:
@@ -475,12 +465,20 @@ components:
          properties:
             "subject-dn":
                type: string
+               description: The subject DN of the trusted root certificate in
+                            the format defined by RFC 2253.
             "public-key":
                type: string
                format: byte
+               description: The Base64 encoded binary DER encoding of the
+                            trusted root certificate’s public key.
+                            Either this property or `cert` must be set.
             "cert":
                type: string
                format: byte
+               description: The Base64 encoded binary DER encoding of the
+                            trusted root certificate. Either this property
+                            or `public-key` must be set.
 
       Adapter:
          type: object
@@ -506,6 +504,11 @@ components:
             "max-connections":
                type: integer
                default: -1
+               description: The maximum number of concurrent connections allowed
+                            from devices of this tenant. The default value -1
+                            indicates that no limit is set.
+            "ext":
+               $ref: '#/components/schemas/Extensions'
 
 # Devices schema
 
@@ -527,6 +530,7 @@ components:
             $ref: '#/components/schemas/TypedSecret'
 
       TypedSecret:
+         additionalProperties: false
          oneOf:
             - $ref: '#/components/schemas/PasswordSecret'
             - $ref: '#/components/schemas/PSKSecret'
@@ -540,6 +544,7 @@ components:
 
       CommonSecret:
          type: object
+         additionalProperties: false
          required:
             - auth-id
             - type
@@ -561,13 +566,16 @@ components:
                type: string
 
       X509CertificateSecret:
+         additionalProperties: false
          allOf:
             - $ref: '#/components/schemas/CommonSecret'
 
       PasswordSecret:
+         additionalProperties: false
          allOf:
             - $ref: '#/components/schemas/CommonSecret'
             - type: object
+              additionalProperties: false
               properties:
                  "hash-function":
                     type: string
@@ -580,9 +588,11 @@ components:
                     format: byte
 
       PSKSecret:
+         additionalProperties: false
          allOf:
             - $ref: '#/components/schemas/CommonSecret'
             - type: object
+              additionalProperties: false
               required:
                  - key
               properties:
@@ -600,10 +610,10 @@ components:
          schema:
             type: string
 
-      tenantName:
-         name: tenantName
+      tenantId:
+         name: tenantId
          in: path
-         description: The name of the tenant
+         description: The ID of the tenant
          required: true
          schema:
             type: string
@@ -657,6 +667,17 @@ components:
                description: The new version of the resource
                schema:
                   type: string
+         content:
+            application/json:
+               schema:
+                  type: object
+                  additionalProperties: false
+                  required:
+                     - id
+                  properties:
+                     id:
+                        type: string
+                        description: The ID of the created object
 
       Updated:
          description: Object updated.

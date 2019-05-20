@@ -50,7 +50,7 @@ paths:
          summary: Create new tenant
          operationId: createTenant
          requestBody:
-            description: New device registration
+            description: New tenant registration
             content:
                application/json:
                   schema:
