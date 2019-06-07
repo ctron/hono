@@ -39,6 +39,7 @@ import io.vertx.ext.web.RoutingContext;
  * It receives HTTP requests representing operation invocations and sends them to an address on the vertx
  * event bus for processing. The outcome is then returned to the peer in the HTTP response.
  */
+@Deprecated
 public final class RegistrationHttpEndpoint extends AbstractHttpEndpoint<ServiceConfigProperties> {
 
     /**
@@ -101,7 +102,7 @@ public final class RegistrationHttpEndpoint extends AbstractHttpEndpoint<Service
             response.setStatusCode(status);
             switch (status) {
                 case HttpURLConnection.HTTP_OK:
-                    HttpUtils.setResponseBody(ctx.response(), registrationResult);
+                    HttpUtils.setResponseBody(ctx.response(), registrationResult.getJsonPayload());
                 default:
                     response.end();
                 }

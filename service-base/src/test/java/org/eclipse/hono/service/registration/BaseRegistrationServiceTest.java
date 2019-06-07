@@ -26,8 +26,7 @@ import static org.mockito.Mockito.verify;
 import java.net.HttpURLConnection;
 import java.util.function.Function;
 
-import org.eclipse.hono.client.ServerErrorException;
-import org.eclipse.hono.config.ServiceConfigProperties;
+import org.eclipse.hono.client.ClientErrorException;
 import org.eclipse.hono.util.Constants;
 import org.eclipse.hono.util.MessageHelper;
 import org.eclipse.hono.util.RegistrationConstants;
@@ -36,6 +35,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 
+import io.opentracing.Span;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -47,7 +47,7 @@ import io.vertx.junit5.VertxTestContext;
 
 
 /**
- * Tests verifying behavior of {@link BaseRegistrationService}.
+ * Tests verifying behavior of {@link AbstractRegistrationService}.
  *
  */
 @ExtendWith(VertxExtension.class)
@@ -62,7 +62,7 @@ public class BaseRegistrationServiceTest {
     public void testAssertDeviceRegistrationFailsForDisabledDevice(final VertxTestContext ctx) {
 
         // GIVEN a registry that contains a disabled device
-        final BaseRegistrationService<ServiceConfigProperties> registrationService = newRegistrationService();
+        final AbstractRegistrationService registrationService = newRegistrationService();
 
         // WHEN trying to assert the device's registration status
         registrationService.assertRegistration(Constants.DEFAULT_TENANT, "4712", ctx.succeeding(result -> ctx.verify(() -> {
@@ -83,7 +83,7 @@ public class BaseRegistrationServiceTest {
     public void testAssertDeviceRegistrationFailsForNonExistingDevice(final VertxTestContext ctx) {
 
         // GIVEN a registry that does not contain any devices
-        final BaseRegistrationService<ServiceConfigProperties> registrationService = newRegistrationService();
+        final AbstractRegistrationService registrationService = newRegistrationService();
 
         // WHEN trying to assert a device's registration status
         registrationService.assertRegistration(Constants.DEFAULT_TENANT, "non-existent", ctx.succeeding(result -> ctx.verify(() -> {
@@ -104,7 +104,7 @@ public class BaseRegistrationServiceTest {
     public void testAssertDeviceRegistrationFailsForNonExistingGateway(final VertxTestContext ctx) {
 
         // GIVEN a registry that contains an enabled device but no gateway
-        final BaseRegistrationService<ServiceConfigProperties> registrationService = newRegistrationService();
+        final AbstractRegistrationService registrationService = newRegistrationService();
 
         // WHEN trying to assert the device's registration status for a gateway
         registrationService.assertRegistration(Constants.DEFAULT_TENANT, "4711", "non-existent-gw", ctx.succeeding(result -> ctx.verify(() -> {
@@ -127,7 +127,7 @@ public class BaseRegistrationServiceTest {
         // GIVEN a registry that contains an enabled device
         // and a gateway that the device is configured for but
         // which is disabled
-        final BaseRegistrationService<ServiceConfigProperties> registrationService = newRegistrationService();
+        final AbstractRegistrationService registrationService = newRegistrationService();
 
         // WHEN trying to assert the device's registration status for a gateway
         registrationService.assertRegistration(Constants.DEFAULT_TENANT, "4713", "gw-3", ctx.succeeding(result -> ctx.verify(() -> {
@@ -151,7 +151,7 @@ public class BaseRegistrationServiceTest {
         // GIVEN a registry that contains an enabled device and two gateways:
         // 1. the gateway that the device is configured for.
         // 2. another gateway
-        final BaseRegistrationService<ServiceConfigProperties> registrationService = newRegistrationService();
+        final AbstractRegistrationService registrationService = newRegistrationService();
 
         // WHEN trying to assert the device's registration status for the wrong gateway
         registrationService.assertRegistration(Constants.DEFAULT_TENANT, "4711", "gw-2", ctx.succeeding(result -> ctx.verify(() -> {
@@ -165,7 +165,7 @@ public class BaseRegistrationServiceTest {
 
     /**
      * Verifies that the getDevice method returns "not implemented" if the base
-     * {@link BaseRegistrationService#getDevice(String, String, Handler)} implementation is used.
+     * {@link AbstractRegistrationService#getDevice(String, String, Handler)} implementation is used.
      *
      * @param ctx The vert.x unit test context.
      */
@@ -173,7 +173,7 @@ public class BaseRegistrationServiceTest {
     public void testGetDeviceBaseImpl(final VertxTestContext ctx) {
 
         // GIVEN an empty registry (using the BaseRegistrationService#getDevice(String, String, Handler) implementation)
-        final BaseRegistrationService<ServiceConfigProperties> registrationService = newRegistrationServiceWithoutImpls();
+        final AbstractRegistrationService registrationService = newRegistrationServiceWithoutImpls();
 
         // WHEN trying to get a device's data
         registrationService.getDevice(Constants.DEFAULT_TENANT, "4711", ctx.succeeding(result -> ctx.verify(() -> {
@@ -194,7 +194,7 @@ public class BaseRegistrationServiceTest {
     public void testAssertDeviceRegistrationSucceedsForDeviceWithViaProperty(final VertxTestContext ctx) {
 
         // GIVEN a registry that contains an enabled device with a default content type set
-        final BaseRegistrationService<ServiceConfigProperties> registrationService = spy(newRegistrationService());
+        final AbstractRegistrationService registrationService = spy(newRegistrationService());
 
         // WHEN trying to assert the device's registration status
         registrationService.assertRegistration(Constants.DEFAULT_TENANT, "4711", ctx.succeeding(result -> ctx.verify(() -> {
@@ -209,7 +209,8 @@ public class BaseRegistrationServiceTest {
             assertEquals("application/default", defaults.getString(MessageHelper.SYS_PROPERTY_CONTENT_TYPE));
             // and the device data 'last-via' property was updated
             final ArgumentCaptor<String> gatewayCaptor = ArgumentCaptor.forClass(String.class);
-            verify(registrationService).updateDeviceLastVia(anyString(), anyString(), gatewayCaptor.capture(), any(JsonObject.class));
+                    verify(registrationService).updateDeviceLastViaIfNeeded(anyString(), anyString(),
+                            gatewayCaptor.capture(), any(JsonObject.class), any(Span.class));
             assertEquals("4711", gatewayCaptor.getValue());
             ctx.completeNow();
         })));
@@ -226,7 +227,7 @@ public class BaseRegistrationServiceTest {
 
         // GIVEN a registry that contains an enabled device that is configured to
         // connect via any of two enabled gateways.
-        final BaseRegistrationService<ServiceConfigProperties> registrationService = newRegistrationService();
+        final AbstractRegistrationService registrationService = newRegistrationService();
 
         final Checkpoint assertion = ctx.checkpoint(2);
 
@@ -262,7 +263,7 @@ public class BaseRegistrationServiceTest {
 
         // GIVEN a registry that contains an enabled device that is configured to
         // be connected to an enabled gateway
-        final BaseRegistrationService<ServiceConfigProperties> registrationService = spy(newRegistrationService());
+        final AbstractRegistrationService registrationService = spy(newRegistrationService());
 
         // WHEN trying to assert the device's registration status for gateway 1
         registrationService.assertRegistration(Constants.DEFAULT_TENANT, "4714", "gw-1", ctx.succeeding(result -> ctx.verify(() -> {
@@ -273,11 +274,12 @@ public class BaseRegistrationServiceTest {
             assertNotNull(payload);
 
             // and the device data 'last-via' property was updated
-            verify(registrationService).updateDeviceLastVia(
+                    verify(registrationService).updateDeviceLastViaIfNeeded(
                     eq(Constants.DEFAULT_TENANT),
                     eq("4714"),
                     eq("gw-1"),
-                    any(JsonObject.class));
+                            any(JsonObject.class),
+                            any(Span.class));
             ctx.completeNow();
         })));
     }
@@ -293,7 +295,7 @@ public class BaseRegistrationServiceTest {
 
         // GIVEN a registry that contains an enabled device that is configured to
         // be connected to an enabled gateway
-        final BaseRegistrationService<ServiceConfigProperties> registrationService = spy(newRegistrationService());
+        final AbstractRegistrationService registrationService = spy(newRegistrationService());
 
         final Checkpoint assertion = ctx.checkpoint(1);
 
@@ -307,7 +309,8 @@ public class BaseRegistrationServiceTest {
 
             // and the device data 'last-via' property was updated
             final ArgumentCaptor<String> gatewayCaptor = ArgumentCaptor.forClass(String.class);
-            verify(registrationService).updateDeviceLastVia(anyString(), anyString(), gatewayCaptor.capture(), any(JsonObject.class));
+                    verify(registrationService).updateDeviceLastViaIfNeeded(anyString(), anyString(),
+                            gatewayCaptor.capture(), any(JsonObject.class), any(Span.class));
             assertEquals("4714", gatewayCaptor.getValue());
             assertion.flag();
         })));
@@ -318,23 +321,14 @@ public class BaseRegistrationServiceTest {
      *
      * @return New BaseRegistrationService instance.
      */
-    private BaseRegistrationService<ServiceConfigProperties> newRegistrationService() {
+    private AbstractRegistrationService newRegistrationService() {
         return newRegistrationService(this::getDevice);
     }
 
-    private BaseRegistrationService<ServiceConfigProperties> newRegistrationService(final Function<String, Future<RegistrationResult>> devices) {
+    private AbstractRegistrationService newRegistrationService(
+            final Function<String, Future<RegistrationResult>> devices) {
 
-        return new BaseRegistrationService<>() {
-
-            @Override
-            protected String getEventBusAddress() {
-                return "requests.in";
-            }
-
-            @Override
-            public void setConfig(final ServiceConfigProperties configuration) {
-                setSpecificConfig(configuration);
-            }
+        return new AbstractRegistrationService() {
 
             @Override
             public void getDevice(final String tenantId, final String deviceId, final Handler<AsyncResult<RegistrationResult>> resultHandler) {
@@ -346,6 +340,7 @@ public class BaseRegistrationServiceTest {
                     final JsonObject deviceData) {
                 return Future.succeededFuture();
             }
+
         };
     }
 
@@ -355,32 +350,44 @@ public class BaseRegistrationServiceTest {
      *
      * @return New BaseRegistrationService instance.
      */
-    private BaseRegistrationService<ServiceConfigProperties> newRegistrationServiceWithoutImpls() {
+    private AbstractRegistrationService newRegistrationServiceWithoutImpls() {
 
-        return new BaseRegistrationService<>() {
+        return new AbstractRegistrationService() {
 
             @Override
-            protected String getEventBusAddress() {
-                return "requests.in";
+            protected Future<Void> updateDeviceLastVia(final String tenantId, final String deviceId, final String gatewayId,
+                    final JsonObject deviceData) {
+                return Future.failedFuture(new ClientErrorException(HttpURLConnection.HTTP_NOT_IMPLEMENTED));
             }
 
             @Override
-            public void setConfig(final ServiceConfigProperties configuration) {
-                setSpecificConfig(configuration);
-            }
-
-            @Override
-            protected Future<Void> updateDeviceLastVia(final String tenantId, final String deviceId,
-                    final String gatewayId, final JsonObject deviceData) {
-                return Future.failedFuture(new ServerErrorException(HttpURLConnection.HTTP_NOT_IMPLEMENTED));
+            protected void getDevice(final String tenantId, final String deviceId,
+                    final Handler<AsyncResult<RegistrationResult>> resultHandler) {
+                resultHandler.handle(
+                        Future.succeededFuture(RegistrationResult.from(HttpURLConnection.HTTP_NOT_IMPLEMENTED)));
             }
         };
+    }
+
+    /**
+     * Wraps a given device ID and registration data into a JSON structure suitable to be returned to clients as the
+     * result of a registration operation.
+     *
+     * @param deviceId The device ID.
+     * @param data The registration data.
+     * @return The JSON structure.
+     */
+    protected static final JsonObject getResultPayload(final String deviceId, final JsonObject data) {
+
+        return new JsonObject()
+                .put(RegistrationConstants.FIELD_PAYLOAD_DEVICE_ID, deviceId)
+                .put(RegistrationConstants.FIELD_DATA, data);
     }
 
     private Future<RegistrationResult> getDevice(final String deviceId) {
 
         if ("4711".equals(deviceId)) {
-            final JsonObject responsePayload = BaseRegistrationService.getResultPayload(
+            final JsonObject responsePayload = getResultPayload(
                     "4711",
                     new JsonObject()
                         .put(RegistrationConstants.FIELD_ENABLED, true)
@@ -389,19 +396,19 @@ public class BaseRegistrationServiceTest {
                         .put(RegistrationConstants.FIELD_VIA, "gw-1"));
             return Future.succeededFuture(RegistrationResult.from(HttpURLConnection.HTTP_OK, responsePayload));
         } else if ("4712".equals(deviceId)) {
-                final JsonObject responsePayload = BaseRegistrationService.getResultPayload(
+            final JsonObject responsePayload = getResultPayload(
                         "4712",
                         new JsonObject().put(RegistrationConstants.FIELD_ENABLED, false));
                 return Future.succeededFuture(RegistrationResult.from(HttpURLConnection.HTTP_OK, responsePayload));
         } else if ("4713".equals(deviceId)) {
-            final JsonObject responsePayload = BaseRegistrationService.getResultPayload(
+            final JsonObject responsePayload = getResultPayload(
                     "4713",
                     new JsonObject()
                         .put(RegistrationConstants.FIELD_ENABLED, true)
                         .put(RegistrationConstants.FIELD_VIA, "gw-3"));
             return Future.succeededFuture(RegistrationResult.from(HttpURLConnection.HTTP_OK, responsePayload));
         } else if ("4714".equals(deviceId)) {
-            final JsonObject responsePayload = BaseRegistrationService.getResultPayload(
+            final JsonObject responsePayload = getResultPayload(
                     "4714",
                     new JsonObject()
                         .put(RegistrationConstants.FIELD_ENABLED, true)
@@ -410,22 +417,22 @@ public class BaseRegistrationServiceTest {
                         .put(RegistrationConstants.FIELD_VIA, new JsonArray().add("gw-1").add("gw-4")));
             return Future.succeededFuture(RegistrationResult.from(HttpURLConnection.HTTP_OK, responsePayload));
         } else if ("gw-1".equals(deviceId)) {
-            final JsonObject responsePayload = BaseRegistrationService.getResultPayload(
+            final JsonObject responsePayload = getResultPayload(
                     "gw-1",
                     new JsonObject().put(RegistrationConstants.FIELD_ENABLED, true));
             return Future.succeededFuture(RegistrationResult.from(HttpURLConnection.HTTP_OK, responsePayload));
         } else if ("gw-2".equals(deviceId)) {
-            final JsonObject responsePayload = BaseRegistrationService.getResultPayload(
+            final JsonObject responsePayload = getResultPayload(
                     "gw-2",
                     new JsonObject().put(RegistrationConstants.FIELD_ENABLED, true));
             return Future.succeededFuture(RegistrationResult.from(HttpURLConnection.HTTP_OK, responsePayload));
         } else if ("gw-3".equals(deviceId)) {
-            final JsonObject responsePayload = BaseRegistrationService.getResultPayload(
+            final JsonObject responsePayload = getResultPayload(
                     "gw-3",
                     new JsonObject().put(RegistrationConstants.FIELD_ENABLED, false));
             return Future.succeededFuture(RegistrationResult.from(HttpURLConnection.HTTP_OK, responsePayload));
         } else if ("gw-4".equals(deviceId)) {
-            final JsonObject responsePayload = BaseRegistrationService.getResultPayload(
+            final JsonObject responsePayload = getResultPayload(
                     "gw-4",
                     new JsonObject().put(RegistrationConstants.FIELD_ENABLED, true));
             return Future.succeededFuture(RegistrationResult.from(HttpURLConnection.HTTP_OK, responsePayload));

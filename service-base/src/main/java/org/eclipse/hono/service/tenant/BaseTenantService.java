@@ -18,15 +18,6 @@ import java.util.Objects;
 
 import javax.security.auth.x500.X500Principal;
 
-import org.eclipse.hono.client.ClientErrorException;
-import org.eclipse.hono.client.ServerErrorException;
-import org.eclipse.hono.service.EventBusService;
-import org.eclipse.hono.tracing.TracingHelper;
-import org.eclipse.hono.util.EventBusMessage;
-import org.eclipse.hono.util.MessageHelper;
-import org.eclipse.hono.util.TenantConstants;
-import org.eclipse.hono.util.TenantResult;
-
 import io.opentracing.References;
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
@@ -36,7 +27,17 @@ import io.opentracing.tag.Tags;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.Verticle;
 import io.vertx.core.json.JsonObject;
+import org.eclipse.hono.client.ClientErrorException;
+import org.eclipse.hono.client.ServerErrorException;
+import org.eclipse.hono.service.EventBusService;
+import org.eclipse.hono.tracing.TracingHelper;
+import org.eclipse.hono.util.EventBusMessage;
+import org.eclipse.hono.util.MessageHelper;
+import org.eclipse.hono.util.TenantConstants;
+import org.eclipse.hono.util.TenantResult;
+
 
 /**
  * a Base class for implementing {@link TenantService}.
@@ -47,7 +48,8 @@ import io.vertx.core.json.JsonObject;
  *
  * @param <T> The type of configuration properties this service requires.
  */
-public abstract class BaseTenantService<T> extends EventBusService<T> implements TenantService {
+@Deprecated
+public abstract class BaseTenantService<T> extends EventBusService<T> implements TenantService, Verticle {
 
     private static final String SPAN_NAME_GET_TENANT = "get Tenant";
 

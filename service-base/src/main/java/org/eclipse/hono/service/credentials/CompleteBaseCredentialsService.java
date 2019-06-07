@@ -39,12 +39,13 @@ import io.vertx.core.json.JsonObject;
  *
  * @param <T> The type of configuration class this service supports.
  */
+@Deprecated
 public abstract class CompleteBaseCredentialsService<T> extends BaseCredentialsService<T>
     implements CompleteCredentialsService {
 
     private static final int DEFAULT_MAX_BCRYPT_ITERATIONS = 10;
 
-    private HonoPasswordEncoder pwdEncoder;
+    private final HonoPasswordEncoder pwdEncoder;
 
     /**
      * Creates a new service instance for a password encoder.
@@ -112,12 +113,12 @@ public abstract class CompleteBaseCredentialsService<T> extends BaseCredentialsS
             payload.checkValidity(this::checkSecret);
             final Future<CredentialsResult<JsonObject>> result = Future.future();
             add(tenantId, JsonObject.mapFrom(payload), result);
-            return result.map(res -> {
-                return request.getResponse(res.getStatus())
+            return result.map(cr -> {
+                return request.getResponse(cr.getStatus())
                         .setDeviceId(payload.getDeviceId())
-                        .setCacheDirective(res.getCacheDirective());
+                        .setCacheDirective(cr.getCacheDirective());
             });
-        } catch (IllegalStateException e) {
+        } catch (final IllegalStateException e) {
             return Future.failedFuture(new ClientErrorException(
                     HttpURLConnection.HTTP_BAD_REQUEST,
                     e.getMessage()));
@@ -154,7 +155,7 @@ public abstract class CompleteBaseCredentialsService<T> extends BaseCredentialsS
                         .setDeviceId(payload.getDeviceId())
                         .setCacheDirective(res.getCacheDirective());
             });
-        } catch (IllegalStateException e) {
+        } catch (final IllegalStateException e) {
             return Future.failedFuture(new ClientErrorException(
                     HttpURLConnection.HTTP_BAD_REQUEST,
                     e.getMessage()));

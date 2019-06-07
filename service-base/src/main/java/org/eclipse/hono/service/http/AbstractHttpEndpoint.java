@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2016, 2018 Contributors to the Eclipse Foundation
+ * Copyright (c) 2016, 2019 Contributors to the Eclipse Foundation
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
@@ -21,8 +21,10 @@ import java.util.function.Predicate;
 import org.eclipse.hono.client.ClientErrorException;
 import org.eclipse.hono.service.AbstractEndpoint;
 import org.eclipse.hono.util.Constants;
+import org.eclipse.hono.util.EventBusMessage;
 import org.eclipse.hono.util.MessageHelper;
 import org.eclipse.hono.util.RequestResponseApiConstants;
+import org.eclipse.hono.util.Strings;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 
@@ -30,6 +32,7 @@ import io.opentracing.contrib.vertx.ext.web.TracingHandler;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.DeliveryOptions;
+import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonObject;
@@ -39,7 +42,7 @@ import io.vertx.ext.web.RoutingContext;
 
 /**
  * Base class for HTTP based Hono endpoints.
- * 
+ *
  * @param <T> The type of configuration properties this endpoint understands.
  */
 public abstract class AbstractHttpEndpoint<T> extends AbstractEndpoint implements HttpEndpoint {
@@ -56,6 +59,10 @@ public abstract class AbstractHttpEndpoint<T> extends AbstractEndpoint implement
      * The name of the URI path parameter for the device ID.
      */
     protected static final String PARAM_DEVICE_ID = "device_id";
+    /**
+     * The key that is used to put the if-Match ETags values to the RoutingContext.
+     */
+    protected static final String KEY_RESOURCE_VERSION = "KEY_RESOURCE_VERSION";
 
     /**
      * The configuration properties for this endpoint.
@@ -64,7 +71,7 @@ public abstract class AbstractHttpEndpoint<T> extends AbstractEndpoint implement
 
     /**
      * Creates an endpoint for a Vertx instance.
-     * 
+     *
      * @param vertx The Vertx instance to use.
      * @throws NullPointerException if vertx is {@code null};
      */
@@ -74,7 +81,7 @@ public abstract class AbstractHttpEndpoint<T> extends AbstractEndpoint implement
 
     /**
      * Sets configuration properties.
-     * 
+     *
      * @param props The properties.
      * @throws NullPointerException if props is {@code null}.
      */
@@ -102,7 +109,6 @@ public abstract class AbstractHttpEndpoint<T> extends AbstractEndpoint implement
      * @param ctx The routing context to retrieve the JSON request body from.
      */
     protected void extractRequiredJsonPayload(final RoutingContext ctx) {
-
         final MIMEHeader contentType = ctx.parsedHeaders().contentType();
         if (contentType == null) {
             ctx.fail(new ClientErrorException(HttpURLConnection.HTTP_BAD_REQUEST, "Missing Content-Type header"));
@@ -123,14 +129,43 @@ public abstract class AbstractHttpEndpoint<T> extends AbstractEndpoint implement
     }
 
     /**
+     * Check the Content-Type of the request to be 'application/json' and extract the payload if this check was
+     * successful.
+     * <p>
+     * The payload is parsed to ensure it is valid JSON and is put to the RoutingContext ctx with the
+     * key {@link #KEY_REQUEST_BODY}.
+     *
+     * @param ctx The routing context to retrieve the JSON request body from.
+     */
+    protected void extractRequiredJsonArrayPayload(final RoutingContext ctx) {
+        final MIMEHeader contentType = ctx.parsedHeaders().contentType();
+        if (contentType == null) {
+            ctx.fail(new ClientErrorException(HttpURLConnection.HTTP_BAD_REQUEST, "Missing Content-Type header"));
+        } else if (!HttpUtils.CONTENT_TYPE_JSON.equalsIgnoreCase(contentType.value())) {
+            ctx.fail(new ClientErrorException(HttpURLConnection.HTTP_BAD_REQUEST, "Unsupported Content-Type"));
+        } else {
+            try {
+                if (ctx.getBody() != null) {
+                    ctx.put(KEY_REQUEST_BODY, ctx.getBodyAsJsonArray());
+                    ctx.next();
+                } else {
+                    ctx.fail(new ClientErrorException(HttpURLConnection.HTTP_BAD_REQUEST, "Empty body"));
+                }
+            } catch (final DecodeException e) {
+                ctx.fail(new ClientErrorException(HttpURLConnection.HTTP_BAD_REQUEST, "Invalid JSON"));
+            }
+        }
+    }
+
+    /**
      * Get a response handler that implements the default behavior for responding to the HTTP request (except for adding an object).
      *
      * @param ctx The routing context of the request.
      * @return BiConsumer&lt;Integer, JsonObject&gt; A consumer for the status and the JSON object that implements the default behavior for responding to the HTTP request.
      * @throws NullPointerException If ctx is null.
      */
-    protected final BiConsumer<Integer, JsonObject> getDefaultResponseHandler(final RoutingContext ctx) {
-        return getDefaultResponseHandler(ctx, status -> false , null);
+    protected final BiConsumer<Integer, EventBusMessage> getDefaultResponseHandler(final RoutingContext ctx) {
+        return getDefaultResponseHandler(ctx, status -> false , (Handler<HttpServerResponse>) null);
     }
 
     /**
@@ -145,7 +180,7 @@ public abstract class AbstractHttpEndpoint<T> extends AbstractEndpoint implement
      * the JSON object is written to the response body and the given custom handler is
      * invoked (if not {@code null}).</li>
      * </ol>
-     * 
+     *
      * @param ctx The routing context of the request.
      * @param successfulOutcomeFilter A predicate that evaluates to {@code true} for the status code(s) representing a
      *                           successful outcome.
@@ -154,7 +189,7 @@ public abstract class AbstractHttpEndpoint<T> extends AbstractEndpoint implement
      * @return The created handler for processing responses.
      * @throws NullPointerException If routing context or filter is {@code null}.
      */
-    protected final BiConsumer<Integer, JsonObject> getDefaultResponseHandler(
+    protected final BiConsumer<Integer, EventBusMessage> getDefaultResponseHandler(
             final RoutingContext ctx,
             final Predicate<Integer> successfulOutcomeFilter,
             final Handler<HttpServerResponse> customHandler) {
@@ -162,12 +197,12 @@ public abstract class AbstractHttpEndpoint<T> extends AbstractEndpoint implement
         Objects.requireNonNull(successfulOutcomeFilter);
         final HttpServerResponse response = ctx.response();
 
-        return (status, jsonResult) -> {
+        return (status, responseMessage) -> {
             response.setStatusCode(status);
             if (status >= 400) {
-                HttpUtils.setResponseBody(response, jsonResult);
+                HttpUtils.setResponseBody(response, responseMessage.getJsonPayload());
             } else if (successfulOutcomeFilter.test(status)) {
-                HttpUtils.setResponseBody(response, jsonResult);
+                HttpUtils.setResponseBody(response, responseMessage.getJsonPayload());
                 if (customHandler != null) {
                     customHandler.handle(response);
                 }
@@ -177,10 +212,53 @@ public abstract class AbstractHttpEndpoint<T> extends AbstractEndpoint implement
     }
 
     /**
+     * Gets a response handler that implements the default behavior for responding to an HTTP request.
+     * <p>
+     * The default behavior is as follows:
+     * <ol>
+     * <li>Set the status code on the response.</li>
+     * <li>If the status code represents an error condition (i.e. the code is &gt;= 400),
+     * then the JSON object passed in to the returned handler is written to the response body.</li>
+     * <li>Otherwise, if the given filter evaluates to {@code true} for the status code,
+     * the given custom handler is invoked (if not {@code null}), then
+     * the JSON object is written to the response body and </li>
+     * </ol>
+     *
+     * @param ctx The routing context of the request.
+     * @param successfulOutcomeFilter A predicate that evaluates to {@code true} for the status code(s) representing a
+     *                           successful outcome.
+     * @param customHandler An (optional) handler for post processing the HTTP response, e.g. to set any additional HTTP
+     *                        headers. The handler <em>must not</em> write to response body. May be {@code null}.
+     * @return The created handler for processing responses.
+     * @throws NullPointerException If routing context or filter is {@code null}.
+     */
+    protected final BiConsumer<Integer, EventBusMessage> getDefaultResponseHandler(
+            final RoutingContext ctx,
+            final Predicate<Integer> successfulOutcomeFilter,
+            final BiConsumer<HttpServerResponse, EventBusMessage> customHandler) {
+
+        Objects.requireNonNull(successfulOutcomeFilter);
+        final HttpServerResponse response = ctx.response();
+
+        return (status, result) -> {
+            response.setStatusCode(status);
+            if (status >= 400) {
+                HttpUtils.setResponseBody(response, result.getJsonPayload());
+            } else if (successfulOutcomeFilter.test(status)) {
+                if (customHandler != null) {
+                    customHandler.accept(response, result);
+                }
+                HttpUtils.setResponseBody(response, result.getJsonPayload());
+            }
+            response.end();
+        };
+    }
+
+    /**
      * Sends a request message to an address via the vert.x event bus for further processing.
      * <p>
      * The address is determined by invoking {@link #getEventBusAddress()}.
-     * 
+     *
      * @param ctx The routing context of the request.
      * @param requestMsg The JSON object to send via the event bus.
      * @param responseHandler The handler to be invoked for the message received in response to the request.
@@ -190,17 +268,24 @@ public abstract class AbstractHttpEndpoint<T> extends AbstractEndpoint implement
      *                        retrieved from the {@link RequestResponseApiConstants#FIELD_PAYLOAD} field.
      * @throws NullPointerException If the routing context is {@code null}.
      */
-    protected final void sendAction(final RoutingContext ctx, final JsonObject requestMsg, final BiConsumer<Integer, JsonObject> responseHandler) {
+    protected final void sendAction(final RoutingContext ctx, final JsonObject requestMsg,
+            final BiConsumer<Integer, EventBusMessage> responseHandler) {
 
         final DeliveryOptions options = createEventBusMessageDeliveryOptions(TracingHandler.serverSpanContext(ctx));
         vertx.eventBus().send(getEventBusAddress(), requestMsg, options, invocation -> {
             if (invocation.failed()) {
                 HttpUtils.serviceUnavailable(ctx, 2);
             } else {
-                final JsonObject jsonResult = (JsonObject) invocation.result().body();
-                final Integer status = jsonResult.getInteger(MessageHelper.APP_PROPERTY_STATUS);
-                final JsonObject payload = jsonResult.getJsonObject(RequestResponseApiConstants.FIELD_PAYLOAD);
-                responseHandler.accept(status, payload);
+                final EventBusMessage response = EventBusMessage.fromJson((JsonObject) invocation.result().body());
+
+                final Integer status = response.getStatus();
+
+                final String version = response.getResourceVersion();
+                if (! Strings.isNullOrEmpty(version)) {
+                    ctx.response().putHeader(HttpHeaders.ETAG, version);
+                }
+
+                responseHandler.accept(status, response);
             }
         });
     }
@@ -227,4 +312,22 @@ public abstract class AbstractHttpEndpoint<T> extends AbstractEndpoint implement
         return ctx.request().getParam(PARAM_DEVICE_ID);
     }
 
+    /**
+     * Check the ETags values from the HTTP if-Match header if they exist,
+     * and extract the values if this check was successful
+     * <p>
+     * The HTTP header "If-Match"is parsed and the values are put to the routingContext ctx with the
+     * key {@link #KEY_RESOURCE_VERSION}.
+     *
+     * @param ctx The routing context of the request.
+     */
+    protected void extractIfMatchVersionParam(final RoutingContext ctx) {
+        final String ifMatchHeader = ctx.request().getHeader(HttpHeaders.IF_MATCH);
+        if (ifMatchHeader != null) {
+            if (!ifMatchHeader.isBlank()) {
+                ctx.put(KEY_RESOURCE_VERSION, ifMatchHeader);
+            }
+        }
+        ctx.next();
+    }
 }

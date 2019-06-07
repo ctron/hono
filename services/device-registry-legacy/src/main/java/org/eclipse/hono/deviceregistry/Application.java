@@ -1,0 +1,194 @@
+/*******************************************************************************
+ * Copyright (c) 2016, 2019 Contributors to the Eclipse Foundation
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ *******************************************************************************/
+
+package org.eclipse.hono.deviceregistry;
+
+import java.util.Objects;
+
+import io.vertx.core.CompositeFuture;
+import io.vertx.core.Verticle;
+
+import org.eclipse.hono.service.AbstractApplication;
+import org.eclipse.hono.service.HealthCheckProvider;
+import org.eclipse.hono.service.auth.AuthenticationService;
+import org.eclipse.hono.service.credentials.CredentialsService;
+import org.eclipse.hono.service.registration.RegistrationService;
+import org.eclipse.hono.service.tenant.TenantService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+
+import io.vertx.core.Future;
+
+/**
+ * A Spring Boot application exposing an AMQP based endpoint that implements Hono's device registry.
+ * <p>
+ * The application implements Hono's <a href="https://www.eclipse.org/hono/api/Device-Registration-API/">Device Registration API</a>
+ * and <a href="https://www.eclipse.org/hono/api/Credentials-API/">Credentials API</a>.
+ * </p>
+ */
+@ComponentScan(basePackages = { "org.eclipse.hono.service.auth", "org.eclipse.hono.service.metric", "org.eclipse.hono.deviceregistry" })
+@Configuration
+@EnableAutoConfiguration
+public class Application extends AbstractApplication {
+
+    /**
+     * Composite interface of {@link Verticle} and {@link CredentialsService}.
+     */
+    private interface VerticleCredentialsService extends CredentialsService, Verticle {
+    }
+
+    /**
+     * Composite interface of {@link Verticle} and {@link RegistrationService}.
+     */
+    private interface VerticleRegistrationService extends RegistrationService, Verticle {
+    }
+
+    /**
+     * Composite interface of {@link Verticle} and {@link TenantService}.
+     */
+    private interface VerticleTenantService extends TenantService, Verticle {
+    }
+
+    private AuthenticationService authenticationService;
+    private VerticleCredentialsService credentialsService;
+    private VerticleRegistrationService registrationService;
+    private VerticleTenantService tenantService;
+
+    /**
+     * Sets the credentials service implementation this server is based on.
+     * 
+     * @param credentialsService The service implementation.
+     * @throws NullPointerException if service is {@code null}.
+     */
+    @Autowired
+    public final void setCredentialsService(final VerticleCredentialsService credentialsService) {
+        this.credentialsService = Objects.requireNonNull(credentialsService);
+    }
+
+    /**
+     * Sets the registration service implementation this server is based on.
+     *
+     * @param registrationService The registrationService to set.
+     * @throws NullPointerException if service is {@code null}.
+     */
+    @Autowired
+    public final void setRegistrationService(final VerticleRegistrationService registrationService) {
+        this.registrationService = Objects.requireNonNull(registrationService);
+    }
+
+    /**
+     * Sets the tenant service implementation this server is based on.
+     *
+     * @param tenantService The tenantService to set.
+     * @throws NullPointerException if service is {@code null}.
+     */
+    @Autowired
+    public final void setTenantService(final VerticleTenantService tenantService) {
+        this.tenantService = Objects.requireNonNull(tenantService);
+    }
+
+    /**
+     * Sets the authentication service implementation this server is based on.
+     *
+     * @param authenticationService The authenticationService to set.
+     * @throws NullPointerException if service is {@code null}.
+     */
+    @Autowired
+    public final void setAuthenticationService(final AuthenticationService authenticationService) {
+        this.authenticationService = Objects.requireNonNull(authenticationService);
+    }
+
+    @Override
+    protected final Future<Void> deployRequiredVerticles(final int maxInstances) {
+
+        final Future<Void> result = Future.future();
+        CompositeFuture.all(
+                deployAuthenticationService(), // we only need 1 authentication service
+                deployTenantService(),
+                deployRegistrationService(),
+                deployCredentialsService()).setHandler(ar -> {
+            if (ar.succeeded()) {
+                result.complete();
+            } else {
+                result.fail(ar.cause());
+            }
+        });
+        return result;
+    }
+
+    private Future<String> deployCredentialsService() {
+        final Future<String> result = Future.future();
+        log.info("Starting credentials service {}", credentialsService);
+        getVertx().deployVerticle(credentialsService, result);
+        return result;
+    }
+
+    private Future<String> deployAuthenticationService() {
+        final Future<String> result = Future.future();
+        if (!Verticle.class.isInstance(authenticationService)) {
+            result.fail("authentication service is not a verticle");
+        } else {
+            log.info("Starting authentication service {}", authenticationService);
+            getVertx().deployVerticle((Verticle) authenticationService, result);
+        }
+        return result;
+    }
+
+    private Future<String> deployRegistrationService() {
+        final Future<String> result = Future.future();
+        log.info("Starting registration service {}", registrationService);
+        getVertx().deployVerticle(registrationService, result);
+        return result;
+    }
+
+    private Future<String> deployTenantService() {
+        final Future<String> result = Future.future();
+        log.info("Starting tenant service {}", tenantService);
+        getVertx().deployVerticle(tenantService, result);
+        return result;
+    }
+
+    /**
+     * Registers any additional health checks that the service implementation components provide.
+     * 
+     * @return A succeeded future.
+     */
+    @Override
+    protected Future<Void> postRegisterServiceVerticles() {
+        if (HealthCheckProvider.class.isInstance(authenticationService)) {
+            registerHealthchecks((HealthCheckProvider) authenticationService);
+        }
+        if (HealthCheckProvider.class.isInstance(credentialsService)) {
+            registerHealthchecks((HealthCheckProvider) credentialsService);
+        }
+        if (HealthCheckProvider.class.isInstance(registrationService)) {
+            registerHealthchecks((HealthCheckProvider) registrationService);
+        }
+        if (HealthCheckProvider.class.isInstance(tenantService)) {
+            registerHealthchecks((HealthCheckProvider) tenantService);
+        }
+        return Future.succeededFuture();
+    }
+
+    /**
+     * Starts the Device Registry Server.
+     * 
+     * @param args command line arguments to pass to the server.
+     */
+    public static void main(final String[] args) {
+        SpringApplication.run(Application.class, args);
+    }
+}

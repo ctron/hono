@@ -10,31 +10,11 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  *******************************************************************************/
-
 package org.eclipse.hono.deviceregistry;
 
-import static java.net.HttpURLConnection.*;
-import static org.eclipse.hono.util.RegistrationConstants.FIELD_DATA;
-import static org.eclipse.hono.util.RequestResponseApiConstants.FIELD_PAYLOAD_DEVICE_ID;
-import static org.eclipse.hono.util.RequestResponseApiConstants.FIELD_ENABLED;
+import static org.eclipse.hono.util.Constants.JSON_FIELD_DEVICE_ID;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import org.eclipse.hono.client.StatusCodeMapper;
-import org.eclipse.hono.service.registration.CompleteBaseRegistrationService;
-import org.eclipse.hono.util.CacheDirective;
-import org.eclipse.hono.util.RegistrationConstants;
-import org.eclipse.hono.util.RegistrationResult;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.stereotype.Repository;
-
+import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -43,15 +23,56 @@ import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
+import org.eclipse.hono.client.StatusCodeMapper;
+import org.eclipse.hono.service.management.Id;
+import org.eclipse.hono.service.management.OperationResult;
+import org.eclipse.hono.service.management.Result;
+import org.eclipse.hono.service.management.device.Device;
+import org.eclipse.hono.service.management.device.DeviceManagementService;
+import org.eclipse.hono.service.registration.AbstractRegistrationService;
+import org.eclipse.hono.service.registration.RegistrationService;
+import org.eclipse.hono.util.CacheDirective;
+import org.eclipse.hono.util.RegistrationConstants;
+import org.eclipse.hono.util.RegistrationResult;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.stereotype.Component;
+
+import static java.net.HttpURLConnection.HTTP_CONFLICT;
+import static java.net.HttpURLConnection.HTTP_CREATED;
+import static java.net.HttpURLConnection.HTTP_FORBIDDEN;
+import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
+import static java.net.HttpURLConnection.HTTP_NO_CONTENT;
+import static java.net.HttpURLConnection.HTTP_OK;
+import static java.net.HttpURLConnection.HTTP_PRECON_FAILED;
+import static org.eclipse.hono.util.RegistrationConstants.FIELD_DATA;
+import static org.eclipse.hono.util.RequestResponseApiConstants.FIELD_PAYLOAD_DEVICE_ID;
+
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+
 /**
- * A registration service that keeps all data in memory but is backed by a file.
- * <p>
- * On startup this adapter loads all registered devices from a file. On shutdown all
- * devices kept in memory are written to the file.
+ * A device backend that keeps all data in memory but is backed by a file.
  */
-@Repository
+@Component
+@Qualifier("serviceImpl")
 @ConditionalOnProperty(name = "hono.app.type", havingValue = "file", matchIfMissing = true)
-public final class FileBasedRegistrationService extends CompleteBaseRegistrationService<FileBasedRegistrationConfigProperties> {
+public class FileBasedRegistrationService extends AbstractVerticle
+        implements DeviceManagementService, RegistrationService {
+
+    //// VERTICLE
 
     /**
      * The name of the JSON array containing device registration information for a tenant.
@@ -62,19 +83,83 @@ public final class FileBasedRegistrationService extends CompleteBaseRegistration
      */
     public static final String FIELD_TENANT = "tenant";
 
+    private static final Logger log = LoggerFactory.getLogger(FileBasedRegistrationService.class);
+
     // <tenantId, <deviceId, registrationData>>
-    private final Map<String, Map<String, JsonObject>> identities = new HashMap<>();
+    private final Map<String, Map<String, Versioned<Device>>> identities = new HashMap<>();
     private boolean running = false;
     private boolean dirty = false;
+    private FileBasedRegistrationConfigProperties config;
+
+    /**
+     * Registration service, based on {@link AbstractRegistrationService}.
+     * <p>
+     * This helps work around Java's inability to inherit from multiple base classes. We create a new Registration
+     * service, overriding the implementation of {@link AbstractRegistrationService} with the implementation of our
+     * {@link FileBasedRegistrationService#getDevice(String, String, Handler)}.
+     */
+    private final AbstractRegistrationService registrationService = new AbstractRegistrationService() {
+
+        @Override
+        protected Future<Void> updateDeviceLastVia(
+                final String tenantId,
+                final String deviceId,
+                final String gatewayId,
+                final JsonObject deviceData) {
+
+            Objects.requireNonNull(tenantId);
+            Objects.requireNonNull(deviceId);
+            Objects.requireNonNull(gatewayId);
+            Objects.requireNonNull(deviceData);
+
+            final Device device = deviceData.mapTo(Device.class);
+
+            final Future<Void> resultFuture = Future.future();
+            deviceData.put(RegistrationConstants.FIELD_LAST_VIA, createLastViaObject(gatewayId));
+            FileBasedRegistrationService.this.updateDevice(tenantId, deviceId, device, Optional.empty(), res -> {
+                if (res.failed() || res.result() == null) {
+                    resultFuture.fail(res.cause());
+                } else if (res.result().isError()) {
+                    resultFuture.fail(StatusCodeMapper.from(res.result().getStatus(), null));
+                } else {
+                    resultFuture.complete();
+                }
+            });
+            return resultFuture;
+        }
+
+        /**
+         * Creates the JsonObject used as value for the <em>last-via</em> property.
+         * 
+         * @param gatewayId The gateway id.
+         * @return JSON value for the <em>last-via</em> property.
+         */
+        protected JsonObject createLastViaObject(final String gatewayId) {
+            final JsonObject lastViaObj = new JsonObject();
+            lastViaObj.put(JSON_FIELD_DEVICE_ID, gatewayId);
+            lastViaObj.put(RegistrationConstants.FIELD_LAST_VIA_UPDATE_DATE,
+                    ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT));
+            return lastViaObj;
+        }
+
+        @Override
+        public void getDevice(final String tenantId, final String deviceId,
+                final Handler<AsyncResult<RegistrationResult>> resultHandler) {
+            FileBasedRegistrationService.this.getDevice(tenantId, deviceId, resultHandler);
+        }
+    };
 
     @Autowired
-    @Override
-    public void setConfig(final FileBasedRegistrationConfigProperties configuration) {
-        setSpecificConfig(configuration);
+    public void setConfig(final FileBasedRegistrationConfigProperties config) {
+        this.config = config;
+    }
+
+    public FileBasedRegistrationConfigProperties getConfig() {
+        return config;
     }
 
     @Override
-    protected void doStart(final Future<Void> startFuture) {
+    public void start(final Future<Void> startFuture) {
 
         if (running) {
             startFuture.complete();
@@ -89,20 +174,25 @@ public final class FileBasedRegistrationService extends CompleteBaseRegistration
                 running = true;
                 startFuture.complete();
             } else {
-                checkFileExists(getConfig().isSaveToFile()).compose(ok -> {
-                    return loadRegistrationData();
-                }).compose(s -> {
-                    if (getConfig().isSaveToFile()) {
-                        log.info("saving device identities to file every 3 seconds");
-                        vertx.setPeriodic(3000, tid -> {
-                            saveToFile();
+                checkFileExists(getConfig().isSaveToFile())
+                        .compose(ok -> loadRegistrationData())
+                        .compose(s -> {
+                            if (getConfig().isSaveToFile()) {
+                                log.info("saving device identities to file every 3 seconds");
+                                vertx.setPeriodic(3000, tid -> {
+                                    saveToFile();
+                                });
+                            } else {
+                                log.info("persistence is disabled, will not save device identities to file");
+                            }
+                            running = true;
+                            return Future.succeededFuture();
+                        })
+                        .<Void> mapEmpty()
+                        .setHandler(ar -> {
+                            log.debug("startup complete", ar.cause());
+                            startFuture.handle(ar);
                         });
-                    } else {
-                        log.info("persistence is disabled, will not save device identities to file");
-                    }
-                    running = true;
-                    startFuture.complete();
-                }, startFuture);
             }
         }
     }
@@ -112,16 +202,17 @@ public final class FileBasedRegistrationService extends CompleteBaseRegistration
         if (getConfig().getFilename() == null || getConfig().isStartEmpty()) {
             log.info("Either filename is null or empty start is set, won't load any device identities");
             return Future.succeededFuture();
-        } else {
-            final Future<Buffer> readResult = Future.future();
-            vertx.fileSystem().readFile(getConfig().getFilename(), readResult);
-            return readResult.compose(buffer -> {
-                return addAll(buffer);
-            }).recover(t -> {
-                log.debug("cannot load device identities from file [{}]: {}", getConfig().getFilename(), t.getMessage());
-                return Future.succeededFuture();
-            });
         }
+
+        final Future<Buffer> readResult = Future.future();
+        vertx.fileSystem().readFile(getConfig().getFilename(), readResult);
+        return readResult
+                .compose(this::addAll)
+                .recover(t -> {
+                    log.debug("cannot load device identities from file [{}]: {}", getConfig().getFilename(),
+                            t.getMessage());
+                    return Future.succeededFuture();
+                });
     }
 
     private Future<Void> checkFileExists(final boolean createIfMissing) {
@@ -138,6 +229,7 @@ public final class FileBasedRegistrationService extends CompleteBaseRegistration
             result.complete();
         }
         return result;
+
     }
 
     private Future<Void> addAll(final Buffer deviceIdentities) {
@@ -147,7 +239,7 @@ public final class FileBasedRegistrationService extends CompleteBaseRegistration
             int deviceCount = 0;
             final JsonArray allObjects = deviceIdentities.toJsonArray();
             for (final Object obj : allObjects) {
-                if (JsonObject.class.isInstance(obj)) {
+                if (obj instanceof JsonObject) {
                     deviceCount += addDevicesForTenant((JsonObject) obj);
                 }
             }
@@ -165,16 +257,15 @@ public final class FileBasedRegistrationService extends CompleteBaseRegistration
         final String tenantId = tenant.getString(FIELD_TENANT);
         if (tenantId != null) {
             log.debug("loading devices for tenant [{}]", tenantId);
-            final Map<String, JsonObject> deviceMap = new HashMap<>();
+            final Map<String, Versioned<Device>> deviceMap = new HashMap<>();
             for (final Object deviceObj : tenant.getJsonArray(ARRAY_DEVICES)) {
-                if (JsonObject.class.isInstance(deviceObj)) {
-                    final JsonObject device = (JsonObject) deviceObj;
-                    final String deviceId = device.getString(FIELD_PAYLOAD_DEVICE_ID);
+                if (deviceObj instanceof JsonObject) {
+                    final JsonObject entry = (JsonObject) deviceObj;
+                    final String deviceId = entry.getString(FIELD_PAYLOAD_DEVICE_ID);
                     if (deviceId != null) {
                         log.trace("loading device [{}]", deviceId);
-                        final JsonObject data = device.getJsonObject(FIELD_DATA,
-                                new JsonObject().put(FIELD_ENABLED, Boolean.TRUE));
-                        deviceMap.put(deviceId, data);
+                        final Device device = mapFromStoredJson(entry.getJsonObject(FIELD_DATA));
+                        deviceMap.put(deviceId, new Versioned<>(UUID.randomUUID().toString(), device));
                         count++;
                     }
                 }
@@ -185,8 +276,27 @@ public final class FileBasedRegistrationService extends CompleteBaseRegistration
         return count;
     }
 
+    private static Device mapFromStoredJson(final JsonObject json) {
+        final Device device = new Device();
+
+        device.setEnabled(json.getBoolean("enabled"));
+        json.remove("enabled");
+        device.setExtensions(json.getMap());
+
+        return device;
+    }
+
+    private static JsonObject mapToStoredJson(final Device device) {
+        final JsonObject json = new JsonObject();
+        if (device.getExtensions() != null) {
+            json.getMap().putAll(device.getExtensions());
+        }
+        json.put("enabled", device.getEnabled());
+        return json;
+    }
+
     @Override
-    protected void doStop(final Future<Void> stopFuture) {
+    public void stop(final Future<Void> stopFuture) {
 
         if (running) {
             saveToFile().compose(s -> {
@@ -202,214 +312,264 @@ public final class FileBasedRegistrationService extends CompleteBaseRegistration
 
         if (!getConfig().isSaveToFile()) {
             return Future.succeededFuture();
-        } else if (dirty) {
-            return checkFileExists(true).compose(s -> {
-                final AtomicInteger idCount = new AtomicInteger();
-                final JsonArray tenants = new JsonArray();
-                for (final Entry<String, Map<String, JsonObject>> entry : identities.entrySet()) {
-                    final JsonArray devices = new JsonArray();
-                    for (final Entry<String, JsonObject> deviceEntry : entry.getValue().entrySet()) {
-                        devices.add(
-                                new JsonObject()
-                                        .put(FIELD_PAYLOAD_DEVICE_ID, deviceEntry.getKey())
-                                        .put(FIELD_DATA, deviceEntry.getValue()));
-                        idCount.incrementAndGet();
-                    }
-                    tenants.add(
-                            new JsonObject()
-                                    .put(FIELD_TENANT, entry.getKey())
-                                    .put(ARRAY_DEVICES, devices));
-                }
+        }
 
-                final Future<Void> writeHandler = Future.future();
-                vertx.fileSystem().writeFile(getConfig().getFilename(), Buffer.factory.buffer(tenants.encodePrettily()), writeHandler);
-                return writeHandler.map(ok -> {
-                    dirty = false;
-                    log.trace("successfully wrote {} device identities to file {}", idCount.get(), getConfig().getFilename());
-                    return (Void) null;
-                }).otherwise(t -> {
-                    log.warn("could not write device identities to file {}", getConfig().getFilename(), t);
-                    return (Void) null;
-                });
-            });
-        } else {
+        if (!dirty) {
             log.trace("registry does not need to be persisted");
             return Future.succeededFuture();
         }
+
+        return checkFileExists(true).compose(s -> {
+            final AtomicInteger idCount = new AtomicInteger();
+            final JsonArray tenants = new JsonArray();
+            for (final Entry<String, Map<String, Versioned<Device>>> entry : identities.entrySet()) {
+                final JsonArray devices = new JsonArray();
+                for (final Entry<String, Versioned<Device>> deviceEntry : entry.getValue().entrySet()) {
+                    devices.add(
+                            new JsonObject()
+                                    .put(FIELD_PAYLOAD_DEVICE_ID, deviceEntry.getKey())
+                                    .put(FIELD_DATA, mapToStoredJson(deviceEntry.getValue().getValue())));
+                    idCount.incrementAndGet();
+                }
+                tenants.add(
+                        new JsonObject()
+                                .put(FIELD_TENANT, entry.getKey())
+                                .put(ARRAY_DEVICES, devices));
+            }
+
+            final Future<Void> writeHandler = Future.future();
+            vertx.fileSystem().writeFile(getConfig().getFilename(), Buffer.factory.buffer(tenants.encodePrettily()),
+                    writeHandler);
+            return writeHandler.map(ok -> {
+                dirty = false;
+                log.trace("successfully wrote {} device identities to file {}", idCount.get(),
+                        getConfig().getFilename());
+                return (Void) null;
+            }).otherwise(t -> {
+                log.warn("could not write device identities to file {}", getConfig().getFilename(), t);
+                return (Void) null;
+            });
+        });
+
+    }
+
+    ///// DEVICES
+
+    @Override
+    public void assertRegistration(final String tenantId, final String deviceId,
+            final Handler<AsyncResult<RegistrationResult>> resultHandler) {
+        registrationService.assertRegistration(tenantId, deviceId, resultHandler);
     }
 
     @Override
-    public void getDevice(final String tenantId, final String deviceId, final Handler<AsyncResult<RegistrationResult>> resultHandler) {
+    public void assertRegistration(final String tenantId, final String deviceId, final String gatewayId,
+            final Handler<AsyncResult<RegistrationResult>> resultHandler) {
+        registrationService.assertRegistration(tenantId, deviceId, gatewayId, resultHandler);
+    }
+
+    private void getDevice(final String tenantId, final String deviceId,
+            final Handler<AsyncResult<RegistrationResult>> resultHandler) {
+
         Objects.requireNonNull(tenantId);
         Objects.requireNonNull(deviceId);
         Objects.requireNonNull(resultHandler);
+
+        resultHandler.handle(Future.succeededFuture(convertResult(getDevice(tenantId, deviceId))));
+    }
+
+    private RegistrationResult convertResult(final OperationResult<Device> result) {
+        return RegistrationResult.from(
+                result.getStatus(),
+                convertDevice(result.getPayload()),
+                result.getCacheDirective().orElse(null));
+    }
+
+    private JsonObject convertDevice(final Device payload) {
+
+        if (payload == null) {
+            return null;
+        }
+
+        final JsonObject data = new JsonObject();
+        if ( payload.getExtensions() != null ) {
+            data.getMap().putAll(payload.getExtensions());
+        }
+
+        return new JsonObject()
+                .put("enabled", payload.getEnabled())
+                .put("data", data);
+    }
+
+    @Override
+    public void readDevice(final String tenantId, final String deviceId,
+            final Handler<AsyncResult<OperationResult<Device>>> resultHandler) {
+
+        Objects.requireNonNull(tenantId);
+        Objects.requireNonNull(deviceId);
+        Objects.requireNonNull(resultHandler);
+
         resultHandler.handle(Future.succeededFuture(getDevice(tenantId, deviceId)));
     }
 
-    RegistrationResult getDevice(final String tenantId, final String deviceId) {
-        final JsonObject data = getRegistrationData(tenantId, deviceId);
-        if (data != null) {
-            return RegistrationResult.from(
-                    HTTP_OK,
-                    getResultPayload(deviceId, data.copy()),
-                    getCacheDirective(deviceId, tenantId));
-        } else {
-            return RegistrationResult.from(HTTP_NOT_FOUND);
+    OperationResult<Device> getDevice(final String tenantId, final String deviceId) {
+        final Versioned<Device> device = getRegistrationData(tenantId, deviceId);
+
+        if (device == null) {
+            return OperationResult.empty(HTTP_NOT_FOUND);
         }
+
+        return OperationResult.ok(HTTP_OK,
+                new Device(device.getValue()),
+                Optional.ofNullable(getCacheDirective(deviceId, tenantId)),
+                Optional.ofNullable(device.getVersion()));
     }
 
-    private JsonObject getRegistrationData(final String tenantId, final String deviceId) {
+    private Versioned<Device> getRegistrationData(final String tenantId, final String deviceId) {
 
-        final Map<String, JsonObject> devices = identities.get(tenantId);
-        if (devices != null) {
-            return devices.get(deviceId);
-        } else {
+        final Map<String, Versioned<Device>> devices = this.identities.get(tenantId);
+        if (devices == null) {
             return null;
         }
+
+        return devices.get(deviceId);
+
     }
 
     @Override
-    public void removeDevice(final String tenantId, final String deviceId, final Handler<AsyncResult<RegistrationResult>> resultHandler) {
+    public void deleteDevice(final String tenantId, final String deviceId, final Optional<String> resourceVersion,
+            final Handler<AsyncResult<Result<Void>>> resultHandler) {
 
         Objects.requireNonNull(tenantId);
         Objects.requireNonNull(deviceId);
+        Objects.requireNonNull(resourceVersion);
         Objects.requireNonNull(resultHandler);
 
-        resultHandler.handle(Future.succeededFuture(removeDevice(tenantId, deviceId)));
+        resultHandler.handle(Future.succeededFuture(deleteDevice(tenantId, deviceId, resourceVersion)));
     }
 
-    RegistrationResult removeDevice(final String tenantId, final String deviceId) {
+    Result<Void> deleteDevice(final String tenantId, final String deviceId,
+            final Optional<String> resourceVersion) {
 
         Objects.requireNonNull(tenantId);
         Objects.requireNonNull(deviceId);
 
-        if (getConfig().isModificationEnabled()) {
-            final Map<String, JsonObject> devices = identities.get(tenantId);
-            if (devices != null && devices.remove(deviceId) != null) {
-                dirty = true;
-                return RegistrationResult.from(HTTP_NO_CONTENT);
-            } else {
-                return RegistrationResult.from(HTTP_NOT_FOUND);
-            }
-        } else {
-            return RegistrationResult.from(HTTP_FORBIDDEN);
+        if (!getConfig().isModificationEnabled()) {
+            return Result.from(HTTP_FORBIDDEN);
         }
+
+        final Map<String, Versioned<Device>> devices = identities.get(tenantId);
+        if (devices == null) {
+            return Result.from(HTTP_NOT_FOUND);
+        }
+        final Versioned<Device> device = devices.get(deviceId);
+        if (device == null) {
+            return Result.from(HTTP_NOT_FOUND);
+        }
+
+        if (resourceVersion.isPresent() && !resourceVersion.get().equals(device.getVersion())) {
+            return Result.from(HTTP_PRECON_FAILED);
+        }
+
+        devices.remove(deviceId);
+        dirty = true;
+        return Result.from(HTTP_NO_CONTENT);
+
     }
 
     @Override
-    public void addDevice(final String tenantId, final String deviceId, final JsonObject data, final Handler<AsyncResult<RegistrationResult>> resultHandler) {
+    public void createDevice(final String tenantId, final Optional<String> deviceId, final Device device,
+            final Handler<AsyncResult<OperationResult<Id>>> resultHandler) {
 
         Objects.requireNonNull(tenantId);
         Objects.requireNonNull(deviceId);
         Objects.requireNonNull(resultHandler);
 
-        resultHandler.handle(Future.succeededFuture(addDevice(tenantId, deviceId, data)));
+        resultHandler.handle(Future.succeededFuture(createDevice(tenantId, deviceId, device)));
     }
 
     /**
      * Adds a device to this registry.
-     * 
+     *
      * @param tenantId The tenant the device belongs to.
      * @param deviceId The ID of the device to add.
-     * @param data Additional data to register with the device (may be {@code null}).
+     * @param device Additional data to register with the device (may be {@code null}).
      * @return The outcome of the operation indicating success or failure.
      */
-    public RegistrationResult addDevice(final String tenantId, final String deviceId, final JsonObject data) {
+    public OperationResult<Id> createDevice(final String tenantId, final Optional<String> deviceId,
+            final Device device) {
 
         Objects.requireNonNull(tenantId);
-        Objects.requireNonNull(deviceId);
+        final String deviceIdValue = deviceId.orElseGet(() -> generateDeviceId(tenantId));
 
-        final JsonObject obj = Optional.ofNullable(data)
-                .map(d -> d.copy())
-                .orElse(new JsonObject().put(FIELD_ENABLED, Boolean.TRUE));
-        final Map<String, JsonObject> devices = getDevicesForTenant(tenantId);
-        if (devices.size() < getConfig().getMaxDevicesPerTenant()) {
-            if (devices.putIfAbsent(deviceId, obj) == null) {
-                dirty = true;
-                return RegistrationResult.from(HTTP_CREATED);
-            } else {
-                return RegistrationResult.from(HTTP_CONFLICT);
-            }
-        } else {
-            return RegistrationResult.from(HTTP_FORBIDDEN);
+        final Map<String, Versioned<Device>> devices = getDevicesForTenant(tenantId);
+        if (devices.size() >= getConfig().getMaxDevicesPerTenant()) {
+            return Result.from(HTTP_FORBIDDEN, OperationResult::empty);
         }
-    }
 
-    /**
-     * {@inheritDoc}
-     * <p>
-     * This implementation bypasses the check of the <em>modificationEnabled</em> property
-     * and thus always updates the last gateway.
-     */
-    @Override
-    protected Future<Void> updateDeviceLastVia(
-            final String tenantId,
-            final String deviceId,
-            final String gatewayId,
-            final JsonObject deviceData) {
-
-        Objects.requireNonNull(tenantId);
-        Objects.requireNonNull(deviceId);
-        Objects.requireNonNull(gatewayId);
-        Objects.requireNonNull(deviceData);
-
-        deviceData.put(RegistrationConstants.FIELD_LAST_VIA, createLastViaObject(gatewayId));
-        final RegistrationResult updateResult = doUpdateDevice(tenantId, deviceId, deviceData);
-
-        if (updateResult.isError()) {
-            return Future.failedFuture(StatusCodeMapper.from(updateResult));
+        final Versioned<Device> newDevice = new Versioned<>(device);
+        if (devices.putIfAbsent(deviceIdValue, newDevice) == null) {
+            dirty = true;
+            return OperationResult.ok(HTTP_CREATED,
+                    Id.of(deviceIdValue), Optional.empty(), Optional.of(newDevice.getVersion()));
         } else {
-            return Future.succeededFuture();
+            return Result.from(HTTP_CONFLICT, OperationResult::empty);
         }
+
     }
 
     @Override
-    public void updateDevice(final String tenantId, final String deviceId, final JsonObject data, final Handler<AsyncResult<RegistrationResult>> resultHandler) {
+    public void updateDevice(final String tenantId, final String deviceId, final Device device,
+            final Optional<String> resourceVersion,
+            final Handler<AsyncResult<OperationResult<Id>>> resultHandler) {
 
         Objects.requireNonNull(tenantId);
         Objects.requireNonNull(deviceId);
+        Objects.requireNonNull(resourceVersion);
         Objects.requireNonNull(resultHandler);
 
-        resultHandler.handle(Future.succeededFuture(updateDevice(tenantId, deviceId, data)));
+        resultHandler.handle(Future.succeededFuture(updateDevice(tenantId, deviceId, device, resourceVersion)));
     }
 
-    RegistrationResult updateDevice(final String tenantId, final String deviceId, final JsonObject data) {
+    OperationResult<Id> updateDevice(final String tenantId, final String deviceId, final Device device,
+            final Optional<String> resourceVersion) {
 
         Objects.requireNonNull(tenantId);
         Objects.requireNonNull(deviceId);
 
         if (getConfig().isModificationEnabled()) {
-            return doUpdateDevice(tenantId, deviceId, data);
+            return doUpdateDevice(tenantId, deviceId, device, resourceVersion);
         } else {
-            return RegistrationResult.from(HTTP_FORBIDDEN);
+            return Result.from(HTTP_FORBIDDEN, OperationResult::empty);
         }
     }
 
-    private RegistrationResult doUpdateDevice(final String tenantId, final String deviceId, final JsonObject data) {
+    private OperationResult<Id> doUpdateDevice(final String tenantId, final String deviceId, final Device device,
+            final Optional<String> resourceVersion) {
 
-        final JsonObject obj = Optional.ofNullable(data)
-                .map(d -> d.copy())
-                .orElse(new JsonObject().put(FIELD_ENABLED, Boolean.TRUE));
-        final Map<String, JsonObject> devices = identities.get(tenantId);
-        if (devices != null && devices.containsKey(deviceId)) {
-            devices.put(deviceId, obj);
-            dirty = true;
-            return RegistrationResult.from(HTTP_NO_CONTENT);
-        } else {
-            return RegistrationResult.from(HTTP_NOT_FOUND);
+        final Map<String, Versioned<Device>> devices = identities.get(tenantId);
+        if (devices == null) {
+            return Result.from(HTTP_NOT_FOUND, OperationResult::empty);
         }
+
+        final Versioned<Device> currentDevice = devices.get(deviceId);
+        if (currentDevice == null) {
+            return Result.from(HTTP_NOT_FOUND, OperationResult::empty);
+        }
+
+        final Versioned<Device> newDevice = currentDevice.update(resourceVersion, () -> device);
+        if (newDevice == null) {
+            return Result.from(HTTP_PRECON_FAILED, OperationResult::empty);
+        }
+
+        devices.put(deviceId, newDevice);
+        dirty = true;
+
+        return OperationResult.ok(HTTP_NO_CONTENT, Id.of(deviceId), Optional.empty(),
+                Optional.ofNullable(newDevice.getVersion()));
     }
 
-    private Map<String, JsonObject> getDevicesForTenant(final String tenantId) {
+    private Map<String, Versioned<Device>> getDevicesForTenant(final String tenantId) {
         return identities.computeIfAbsent(tenantId, id -> new ConcurrentHashMap<>());
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    protected CacheDirective getRegistrationAssertionCacheDirective(final String deviceId, final String tenantId) {
-        return getCacheDirective(deviceId, tenantId);
     }
 
     private CacheDirective getCacheDirective(final String deviceId, final String tenantId) {
@@ -430,6 +590,21 @@ public final class FileBasedRegistrationService extends CompleteBaseRegistration
 
     @Override
     public String toString() {
-        return String.format("%s[filename=%s]", FileBasedRegistrationService.class.getSimpleName(), getConfig().getFilename());
+        return String.format("%s[filename=%s]", FileBasedRegistrationService.class.getSimpleName(),
+                getConfig().getFilename());
     }
+
+    /**
+     * Generate a random device ID.
+     */
+    private String generateDeviceId(final String tenantId) {
+
+        final Map<String, Versioned<Device>> devices = getDevicesForTenant(tenantId);
+        String tempDeviceId;
+        do {
+            tempDeviceId = UUID.randomUUID().toString();
+        } while (devices.containsKey(tempDeviceId));
+        return tempDeviceId;
+    }
+
 }

@@ -48,8 +48,7 @@ abstract class CredentialsApiTests extends DeviceRegistryTestBase {
     protected abstract Future<CredentialsClient> getClient(String tenant);
 
     /**
-     * Verify that a request to retrieve credentials for a non-existing authentication
-     * ID fails with a 404.
+     * Verify that a request to retrieve credentials for a non-existing authentication ID fails with a 404.
      *
      * @param ctx The vert.x test context.
      */
@@ -58,16 +57,16 @@ abstract class CredentialsApiTests extends DeviceRegistryTestBase {
     public void testGetCredentialsFailsForNonExistingAuthId(final VertxTestContext ctx) {
 
         getClient(Constants.DEFAULT_TENANT)
-        .compose(client -> client.get(CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD, "nonExisting"))
-        .setHandler(ctx.failing(t -> {
-            ctx.verify(() -> assertErrorCode(t, HttpURLConnection.HTTP_NOT_FOUND));
-            ctx.completeNow();
-        }));
+                .compose(client -> client.get(CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD, "nonExisting"))
+                .setHandler(ctx.failing(t -> {
+                    ctx.verify(() -> assertErrorCode(t, HttpURLConnection.HTTP_NOT_FOUND));
+                    ctx.completeNow();
+                }));
     }
 
     /**
-     * Verifies that the service returns credentials for a given type and authentication ID
-     * including the default value for the enabled property..
+     * Verifies that the service returns credentials for a given type and authentication ID including the default value
+     * for the enabled property..
      *
      * @param ctx The vert.x test context.
      */
@@ -78,18 +77,19 @@ abstract class CredentialsApiTests extends DeviceRegistryTestBase {
         final CredentialsObject credentials = getRandomHashedPasswordCredentials();
 
         getHelper().registry
-        .addCredentials(Constants.DEFAULT_TENANT, JsonObject.mapFrom(credentials))
-        .compose(ok -> getClient(Constants.DEFAULT_TENANT))
-        .compose(client -> client.get(CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD, credentials.getAuthId()))
-        .setHandler(ctx.succeeding(result -> {
-            ctx.verify(() -> assertStandardProperties(
+                .addCredentials(Constants.DEFAULT_TENANT, credentials.getDeviceId(), JsonObject.mapFrom(credentials))
+                .compose(ok -> getClient(Constants.DEFAULT_TENANT))
+                .compose(client -> client.get(CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD,
+                        credentials.getAuthId()))
+                .setHandler(ctx.succeeding(result -> {
+                    ctx.verify(() -> assertStandardProperties(
                     result,
                     credentials.getDeviceId(),
                     true,
                     credentials.getAuthId(),
                     CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD,
-                    2));
-            ctx.completeNow();
+                            2));
+                    ctx.completeNow();
         }));
     }
 
@@ -107,18 +107,19 @@ abstract class CredentialsApiTests extends DeviceRegistryTestBase {
         credentials.setEnabled(false);
 
         getHelper().registry
-        .addCredentials(Constants.DEFAULT_TENANT, JsonObject.mapFrom(credentials))
-        .compose(ok -> getClient(Constants.DEFAULT_TENANT))
-        .compose(client -> client.get(CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD, credentials.getAuthId()))
-        .setHandler(ctx.succeeding(result -> {
-            ctx.verify(() -> assertStandardProperties(
+                .addCredentials(Constants.DEFAULT_TENANT, credentials.getDeviceId(), JsonObject.mapFrom(credentials))
+                .compose(ok -> getClient(Constants.DEFAULT_TENANT))
+                .compose(client -> client.get(CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD,
+                        credentials.getAuthId()))
+                .setHandler(ctx.succeeding(result -> {
+                    ctx.verify(() -> assertStandardProperties(
                     result,
                     credentials.getDeviceId(),
                     credentials.isEnabled(),
                     credentials.getAuthId(),
                     CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD,
-                    2));
-            ctx.completeNow();
+                            2));
+                    ctx.completeNow();
         }));
     }
 
@@ -138,21 +139,22 @@ abstract class CredentialsApiTests extends DeviceRegistryTestBase {
                 .put("client-id", "gateway-one");
 
         getHelper().registry
-        .addCredentials(Constants.DEFAULT_TENANT, JsonObject.mapFrom(credentials))
-        .compose(ok -> getClient(Constants.DEFAULT_TENANT))
-        .compose(client -> client.get(CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD, credentials.getAuthId(), clientContext))
-        .setHandler(ctx.succeeding(result -> {
-            ctx.verify(() -> {
-                assertStandardProperties(
-                        result,
-                        credentials.getDeviceId(),
-                        true,
-                        credentials.getAuthId(),
-                        CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD,
-                        2);
-                assertThat((String) result.getProperty("client-id")).isEqualTo("gateway-one");
-            });
-            ctx.completeNow();
+                .addCredentials(Constants.DEFAULT_TENANT, credentials.getDeviceId(), JsonObject.mapFrom(credentials))
+                .compose(ok -> getClient(Constants.DEFAULT_TENANT))
+                .compose(client -> client.get(CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD,
+                        credentials.getAuthId(), clientContext))
+                .setHandler(ctx.succeeding(result -> {
+                    ctx.verify(() -> {
+                        assertStandardProperties(
+                                result,
+                                credentials.getDeviceId(),
+                                true,
+                                credentials.getAuthId(),
+                                CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD,
+                                2);
+                        assertThat((String) result.getProperty("client-id")).isEqualTo("gateway-one");
+                    });
+                    ctx.completeNow();
         }));
     }
 
@@ -173,12 +175,13 @@ abstract class CredentialsApiTests extends DeviceRegistryTestBase {
                 .put("client-id", "non-matching");
 
         getHelper().registry
-        .addCredentials(Constants.DEFAULT_TENANT, JsonObject.mapFrom(credentials))
-        .compose(ok ->  getClient(Constants.DEFAULT_TENANT))
-        .compose(client -> client.get(CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD, credentials.getAuthId(), clientContext))
-        .setHandler(ctx.failing(t -> {
-            ctx.verify(() -> assertErrorCode(t, HttpURLConnection.HTTP_NOT_FOUND));
-            ctx.completeNow();
+                .addCredentials(Constants.DEFAULT_TENANT, credentials.getDeviceId(), JsonObject.mapFrom(credentials))
+                .compose(ok -> getClient(Constants.DEFAULT_TENANT))
+                .compose(client -> client.get(CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD,
+                        credentials.getAuthId(), clientContext))
+                .setHandler(ctx.failing(t -> {
+                    ctx.verify(() -> assertErrorCode(t, HttpURLConnection.HTTP_NOT_FOUND));
+                    ctx.completeNow();
         }));
     }
 
@@ -198,12 +201,13 @@ abstract class CredentialsApiTests extends DeviceRegistryTestBase {
                 .put("client-id", "gateway-one");
 
         getHelper().registry
-        .addCredentials(Constants.DEFAULT_TENANT, JsonObject.mapFrom(credentials))
-        .compose(ok -> getClient(Constants.DEFAULT_TENANT))
-        .compose(client -> client.get(CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD, credentials.getAuthId(), clientContext))
-        .setHandler(ctx.failing( t -> {
-            ctx.verify(() -> assertErrorCode(t, HttpURLConnection.HTTP_NOT_FOUND));
-            ctx.completeNow();
+                .addCredentials(Constants.DEFAULT_TENANT, credentials.getDeviceId(), JsonObject.mapFrom(credentials))
+                .compose(ok -> getClient(Constants.DEFAULT_TENANT))
+                .compose(client -> client.get(CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD,
+                        credentials.getAuthId(), clientContext))
+                .setHandler(ctx.failing(t -> {
+                    ctx.verify(() -> assertErrorCode(t, HttpURLConnection.HTTP_NOT_FOUND));
+                    ctx.completeNow();
         }));
     }
 

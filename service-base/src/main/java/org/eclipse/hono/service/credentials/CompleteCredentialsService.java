@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2016, 2018 Contributors to the Eclipse Foundation
+ * Copyright (c) 2016, 2019 Contributors to the Eclipse Foundation
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
@@ -26,6 +26,7 @@ import io.vertx.core.json.JsonObject;
  *
  * @see <a href="https://github.com/eclipse/hono/blob/1.0-M4/site/content/api/Credentials-API.md">Credentials API</a>
  */
+@Deprecated
 public interface CompleteCredentialsService extends CredentialsService {
 
     /**
@@ -92,7 +93,7 @@ public interface CompleteCredentialsService extends CredentialsService {
     }
 
     /**
-     * Updates existing device credentials.
+     * Updates or create the set of credentials.
      *
      * @param tenantId The tenant the device belongs to.
      * @param credentialsObject A map containing keys and values that fulfill the credentials format of the credentials api.
@@ -109,7 +110,8 @@ public interface CompleteCredentialsService extends CredentialsService {
      * @see <a href="https://github.com/eclipse/hono/blob/1.0-M4/site/content/api/Credentials-API.md#update-credentials">
      *      Credentials API - Update Credentials</a>
      */
-    void update(String tenantId, JsonObject credentialsObject, Handler<AsyncResult<CredentialsResult<JsonObject>>> resultHandler);
+    void update(String tenantId, JsonObject credentialsObject,
+            Handler<AsyncResult<CredentialsResult<JsonObject>>> resultHandler);
 
     /**
      * Removes credentials by authentication identifier and type.
@@ -128,7 +130,8 @@ public interface CompleteCredentialsService extends CredentialsService {
      * @see <a href="https://github.com/eclipse/hono/blob/1.0-M4/site/content/api/Credentials-API.md#remove-credentials">
      *      Credentials API - Remove Credentials</a>
      */
-    void remove(String tenantId, String type, String authId, Handler<AsyncResult<CredentialsResult<JsonObject>>> resultHandler);
+    void remove(String tenantId, String type, String authId,
+            Handler<AsyncResult<CredentialsResult<JsonObject>>> resultHandler);
 
     /**
      * Removes all credentials for a device.

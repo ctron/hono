@@ -13,7 +13,7 @@
 package org.eclipse.hono.deviceregistry;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -25,11 +25,17 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.net.HttpURLConnection;
+import java.util.Optional;
 
-import org.eclipse.hono.service.registration.AbstractCompleteRegistrationServiceTest;
-import org.eclipse.hono.service.registration.CompleteBaseRegistrationService;
+import org.eclipse.hono.service.management.Id;
+import org.eclipse.hono.service.management.OperationResult;
+import org.eclipse.hono.service.management.Result;
+import org.eclipse.hono.service.management.device.Device;
+import org.eclipse.hono.service.management.device.DeviceManagementService;
+import org.eclipse.hono.service.registration.AbstractRegistrationServiceTest;
+import org.eclipse.hono.service.registration.RegistrationService;
 import org.eclipse.hono.util.RegistrationConstants;
-import org.eclipse.hono.util.RegistrationResult;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,7 +48,6 @@ import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.file.FileSystem;
-import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 
@@ -50,13 +55,12 @@ import io.vertx.junit5.VertxTestContext;
  * Tests {@link FileBasedRegistrationService}.
  */
 @ExtendWith(VertxExtension.class)
-public class FileBasedRegistrationServiceTest extends AbstractCompleteRegistrationServiceTest {
+public class FileBasedRegistrationServiceTest extends AbstractRegistrationServiceTest {
 
     private static final String FILE_NAME = "/device-identities.json";
 
-
-    private FileBasedRegistrationConfigProperties props;
     private FileBasedRegistrationService registrationService;
+    private FileBasedRegistrationConfigProperties props;
     private Vertx vertx;
     private EventBus eventBus;
     private FileSystem fileSystem;
@@ -75,14 +79,20 @@ public class FileBasedRegistrationServiceTest extends AbstractCompleteRegistrati
 
         props = new FileBasedRegistrationConfigProperties();
         props.setFilename(FILE_NAME);
+
         registrationService = new FileBasedRegistrationService();
         registrationService.setConfig(props);
         registrationService.init(vertx, ctx);
     }
 
     @Override
-    public CompleteBaseRegistrationService<FileBasedRegistrationConfigProperties> getCompleteRegistrationService() {
-        return registrationService;
+    public RegistrationService getRegistrationService() {
+        return this.registrationService;
+    }
+
+    @Override
+    public DeviceManagementService getDeviceManagementService() {
+        return this.registrationService;
     }
 
     /**
@@ -110,7 +120,7 @@ public class FileBasedRegistrationServiceTest extends AbstractCompleteRegistrati
         }).when(fileSystem).createFile(eq(props.getFilename()), any(Handler.class));
 
         // WHEN persisting a dirty registry
-        registrationService.addDevice(TENANT, DEVICE, null);
+        registrationService.createDevice(TENANT, Optional.of(DEVICE), new Device());
         registrationService.saveToFile().setHandler(ctx.succeeding(s -> ctx.verify(() -> {
             // THEN the file has been created
             verify(fileSystem).createFile(eq(props.getFilename()), any(Handler.class));
@@ -149,7 +159,7 @@ public class FileBasedRegistrationServiceTest extends AbstractCompleteRegistrati
             verify(fileSystem).createFile(eq(props.getFilename()), any(Handler.class));
             ctx.completeNow();
         })));
-        registrationService.doStart(startupTracker);
+        registrationService.start(startupTracker);
     }
 
     /**
@@ -178,9 +188,7 @@ public class FileBasedRegistrationServiceTest extends AbstractCompleteRegistrati
             // THEN startup has failed
             ctx.completeNow();
         }));
-        registrationService.doStart(startupTracker);
-
-
+        registrationService.start(startupTracker);
 
     }
 
@@ -209,7 +217,8 @@ public class FileBasedRegistrationServiceTest extends AbstractCompleteRegistrati
             // THEN startup succeeds
             ctx.completeNow();
         }));
-        registrationService.doStart(startupTracker);
+        registrationService.start(startupTracker);
+
     }
 
     /**
@@ -217,7 +226,7 @@ public class FileBasedRegistrationServiceTest extends AbstractCompleteRegistrati
      *
      * @param ctx The test context.
      */
-    @SuppressWarnings({ "unchecked" })
+    @SuppressWarnings("unchecked")
     @Test
     public void testDoStartLoadsDeviceIdentities(final VertxTestContext ctx) {
 
@@ -233,17 +242,18 @@ public class FileBasedRegistrationServiceTest extends AbstractCompleteRegistrati
         // WHEN the service is started
         final Future<Void> startFuture = Future.future();
         startFuture
-        .compose(ok -> assertRegistered(TENANT, DEVICE))
-        .compose(ok -> assertRegistered(TENANT, GW))
-        .compose(ok -> assertRegistered(TENANT, "4712"))
+        .compose(ok -> assertReadDevice(TENANT, DEVICE))
+        .compose(ok -> assertReadDevice(TENANT, GW))
+        .compose(ok -> assertReadDevice(TENANT, "4712"))
         .setHandler(ctx.succeeding(result -> {
             ctx.verify(() -> {
-                final JsonObject data = result.getPayload().getJsonObject(RegistrationConstants.FIELD_DATA);
-                assertEquals(data.getString(RegistrationConstants.FIELD_VIA), GW);
+                        final Device device = result.getPayload();
+                        assertEquals(device.getExtensions().get(RegistrationConstants.FIELD_VIA), GW);
             });
             ctx.completeNow();
         }));
-        registrationService.doStart(startFuture);
+        registrationService.start(startFuture);
+
     }
 
     /**
@@ -267,7 +277,8 @@ public class FileBasedRegistrationServiceTest extends AbstractCompleteRegistrati
             verify(fileSystem, never()).readFile(anyString(), any(Handler.class));
             ctx.completeNow();
         })));
-        registrationService.doStart(startFuture);
+        registrationService.start(startFuture);
+
     }
 
     /**
@@ -278,10 +289,11 @@ public class FileBasedRegistrationServiceTest extends AbstractCompleteRegistrati
 
         // GIVEN a registry whose devices-per-tenant limit has been reached
         props.setMaxDevicesPerTenant(1);
-        registrationService.addDevice(TENANT, DEVICE, null);
+        registrationService.createDevice(TENANT, Optional.of(DEVICE), new Device());
 
         // WHEN registering an additional device for the tenant
-        final RegistrationResult result = registrationService.addDevice(TENANT, "newDevice", null);
+        final OperationResult<Id> result = registrationService.createDevice(TENANT, Optional.of("newDevice"),
+                new Device());
 
         // THEN the result contains a FORBIDDEN status code and the device has not been added to the registry
         assertEquals(HttpURLConnection.HTTP_FORBIDDEN, result.getStatus());
@@ -297,14 +309,19 @@ public class FileBasedRegistrationServiceTest extends AbstractCompleteRegistrati
         // GIVEN a registry that has been configured to not allow modification of entries
         // which contains a device
         props.setModificationEnabled(false);
-        registrationService.addDevice(TENANT, DEVICE, null);
+        registrationService.createDevice(TENANT, Optional.of(DEVICE), new Device().putExtension("value", "1"));
 
         // WHEN trying to update the device
-        final RegistrationResult result = registrationService.updateDevice(TENANT, DEVICE, new JsonObject().put("updated", true));
+        final OperationResult<Id> result = registrationService
+                .updateDevice(TENANT, DEVICE, new Device().putExtension("value", "2"), Optional.empty());
 
         // THEN the result contains a FORBIDDEN status code and the device has not been updated
         assertEquals(HttpURLConnection.HTTP_FORBIDDEN, result.getStatus());
-        assertFalse(registrationService.getDevice(TENANT, DEVICE).getPayload().containsKey("updated"));
+        final var device = registrationService.getDevice(TENANT, DEVICE);
+        assertNotNull(device);
+        assertNotNull(device.getPayload());
+        assertNotNull(device.getPayload().getExtensions());
+        Assertions.assertEquals("1", device.getPayload().getExtensions().get("value"));
     }
 
     /**
@@ -316,10 +333,10 @@ public class FileBasedRegistrationServiceTest extends AbstractCompleteRegistrati
         // GIVEN a registry that has been configured to not allow modification of entries
         // which contains a device
         props.setModificationEnabled(false);
-        registrationService.addDevice(TENANT, DEVICE, null);
+        registrationService.createDevice(TENANT, Optional.of(DEVICE), new Device());
 
         // WHEN trying to remove the device
-        final RegistrationResult result = registrationService.removeDevice(TENANT, DEVICE);
+        final Result<Void> result = registrationService.deleteDevice(TENANT, DEVICE, Optional.empty());
 
         // THEN the result contains a FORBIDDEN status code and the device has not been removed
         assertEquals(HttpURLConnection.HTTP_FORBIDDEN, result.getStatus());
@@ -349,7 +366,7 @@ public class FileBasedRegistrationServiceTest extends AbstractCompleteRegistrati
             verify(vertx, never()).setPeriodic(anyLong(), any(Handler.class));
             ctx.completeNow();
         })));
-        registrationService.doStart(startupTracker);
+        registrationService.start(startupTracker);
     }
 
     /**
@@ -375,9 +392,9 @@ public class FileBasedRegistrationServiceTest extends AbstractCompleteRegistrati
         startupTracker
         .compose(ok -> {
             // WHEN adding a device
-            registrationService.addDevice(TENANT, DEVICE, new JsonObject());
+                    registrationService.createDevice(TENANT, Optional.of(DEVICE), new Device());
             final Future<Void> shutdownTracker = Future.future();
-            registrationService.doStop(shutdownTracker);
+                    registrationService.stop(shutdownTracker);
             return shutdownTracker;
         })
         .setHandler(ctx.succeeding(shutDown -> ctx.verify(() -> {
@@ -385,6 +402,6 @@ public class FileBasedRegistrationServiceTest extends AbstractCompleteRegistrati
             verify(fileSystem, never()).createFile(eq(props.getFilename()), any(Handler.class));
             ctx.completeNow();
         })));
-        registrationService.doStart(startupTracker);
+        registrationService.start(startupTracker);
     }
 }

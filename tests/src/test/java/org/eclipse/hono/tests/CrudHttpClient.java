@@ -31,6 +31,7 @@ import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.http.HttpClientRequest;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.RequestOptions;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -275,6 +276,21 @@ public final class CrudHttpClient {
 
     /**
      * Updates a resource using an HTTP PUT request.
+     * <p>
+     * The content type in the request is set to <em>application/json</em>.
+     *
+     * @param uri The resource to update.
+     * @param body The content to update the resource with.
+     * @param successPredicate A predicate on the returned HTTP status code for determining success.
+     * @return A future that will succeed if the predicate evaluates to {@code true}.
+     * @throws NullPointerException if URI or predicate are {@code null}.
+     */
+    public Future<Void> update(final String uri, final JsonArray body, final Predicate<Integer> successPredicate) {
+        return update(uri, body, CONTENT_TYPE_JSON, successPredicate);
+    }
+
+    /**
+     * Updates a resource using an HTTP PUT request.
      * 
      * @param uri The resource to update.
      * @param body The content to update the resource with.
@@ -284,6 +300,20 @@ public final class CrudHttpClient {
      * @throws NullPointerException if URI or predicate are {@code null}.
      */
     public Future<Void> update(final String uri, final JsonObject body, final String contentType, final Predicate<Integer> successPredicate) {
+        return update(uri, Optional.ofNullable(body).map(json -> json.toBuffer()).orElse(null), contentType, successPredicate);
+    }
+
+    /**
+     * Updates a resource using an HTTP PUT request.
+     *
+     * @param uri The resource to update.
+     * @param body The content to update the resource with.
+     * @param contentType The content type to set in the request.
+     * @param successPredicate A predicate on the returned HTTP status code for determining success.
+     * @return A future that will succeed if the predicate evaluates to {@code true}.
+     * @throws NullPointerException if URI or predicate are {@code null}.
+     */
+    public Future<Void> update(final String uri, final JsonArray body, final String contentType, final Predicate<Integer> successPredicate) {
         return update(uri, Optional.ofNullable(body).map(json -> json.toBuffer()).orElse(null), contentType, successPredicate);
     }
 

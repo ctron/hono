@@ -524,7 +524,7 @@ public abstract class CoapTestBase {
 
         helper.registry.addTenant(JsonObject.mapFrom(tenant))
         .compose(ok -> helper.registry.registerDevice(tenantId, deviceId))
-        .compose(ok -> helper.registry.addCredentials(tenantId, JsonObject.mapFrom(creds)))
+        .compose(ok -> helper.registry.addCredentials(tenantId, deviceId, JsonObject.mapFrom(creds)))
         .setHandler(ctx.asyncAssertSuccess(ok -> setup.complete()));
         setup.await();
 

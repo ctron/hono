@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2016, 2018 Contributors to the Eclipse Foundation
+ * Copyright (c) 2016, 2019 Contributors to the Eclipse Foundation
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
@@ -16,9 +16,9 @@ package org.eclipse.hono.service.tenant;
 import java.net.HttpURLConnection;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 
-import io.vertx.core.Handler;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpServerResponse;
 import org.eclipse.hono.client.ClientErrorException;
@@ -41,6 +41,7 @@ import io.vertx.ext.web.handler.BodyHandler;
  * It receives HTTP requests representing operation invocations and sends them to an address on the vertx
  * event bus for processing. The outcome is then returned to the peer in the HTTP response.
  */
+@Deprecated
 public final class TenantHttpEndpoint extends AbstractHttpEndpoint<ServiceConfigProperties> {
 
     /**
@@ -61,13 +62,13 @@ public final class TenantHttpEndpoint extends AbstractHttpEndpoint<ServiceConfig
 
     @Override
     public String getName() {
-        return TenantConstants.TENANT_ENDPOINT;
+        return TenantConstants.TENANT_HTTP_ENDPOINT;
     }
 
     @Override
     public void addRoutes(final Router router) {
 
-        final String path = String.format("/%s", TenantConstants.TENANT_ENDPOINT);
+        final String path = String.format("/%s", getName());
 
         final BodyHandler bodyHandler = BodyHandler.create();
         bodyHandler.setBodyLimit(config.getMaxPayloadSize());
@@ -78,7 +79,7 @@ public final class TenantHttpEndpoint extends AbstractHttpEndpoint<ServiceConfig
         router.post(path).handler(this::checkPayloadForTenantId);
         router.post(path).handler(this::addTenant);
 
-        final String pathWithTenant = String.format("/%s/:%s", TenantConstants.TENANT_ENDPOINT, PARAM_TENANT_ID);
+        final String pathWithTenant = String.format("/%s/:%s", getName(), PARAM_TENANT_ID);
 
         // GET tenant
         router.get(pathWithTenant).handler(this::getTenant);
@@ -90,6 +91,29 @@ public final class TenantHttpEndpoint extends AbstractHttpEndpoint<ServiceConfig
 
         // REMOVE tenant
         router.delete(pathWithTenant).handler(this::removeTenant);
+    }
+
+    /**
+     * Check that the tenantId value is not blank then
+     * update the payload (that was put to the RoutingContext ctx with the
+     * key {@link #KEY_REQUEST_BODY}) with the tenant value retrieved from the RoutingContext.
+     * The tenantId value is associated with the key {@link TenantConstants#FIELD_PAYLOAD_TENANT_ID}.
+     *
+     * @param ctx The routing context to retrieve the JSON request body from.
+     */
+    protected void updatePayloadWithTenantId(final RoutingContext ctx) {
+
+        final JsonObject payload = ctx.get(KEY_REQUEST_BODY);
+        final String tenantId = getTenantIdFromContext(ctx);
+
+        if (tenantId.isBlank()) {
+            ctx.fail(new ClientErrorException(HttpURLConnection.HTTP_BAD_REQUEST,
+                    String.format("'%s' param cannot be empty", TenantConstants.FIELD_PAYLOAD_TENANT_ID)));
+        }
+
+        payload.put(TenantConstants.FIELD_PAYLOAD_TENANT_ID, tenantId);
+        ctx.put(KEY_REQUEST_BODY, payload);
+        ctx.next();
     }
 
     /**
@@ -122,12 +146,12 @@ public final class TenantHttpEndpoint extends AbstractHttpEndpoint<ServiceConfig
     private void addTenant(final RoutingContext ctx) {
 
         final String tenantId = getTenantIdFromContext(ctx);
-
-        final String location = String.format("/%s/%s", TenantConstants.TENANT_ENDPOINT, tenantId);
+        final String location = String.format("/%s/", getName());
 
         doTenantHttpRequest(ctx, tenantId, TenantConstants.TenantAction.add,
                 status -> status == HttpURLConnection.HTTP_CREATED,
-                response -> response.putHeader(HttpHeaders.LOCATION, location)
+                (response, payload) -> response.putHeader(HttpHeaders.LOCATION,
+                        location + payload.getJsonPayload().getString(TenantConstants.FIELD_PAYLOAD_TENANT_ID))
         );
     }
 
@@ -160,7 +184,7 @@ public final class TenantHttpEndpoint extends AbstractHttpEndpoint<ServiceConfig
             final String tenantId,
             final TenantConstants.TenantAction action,
             final Predicate<Integer> successfulOutcomeFilter,
-            final Handler<HttpServerResponse> httpServerResponseHandler) {
+            final BiConsumer<HttpServerResponse, EventBusMessage> httpServerResponseHandler) {
 
         logger.debug("http request [{}] for tenant [tenant: {}]", action, tenantId);
 

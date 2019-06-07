@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2016, 2018 Contributors to the Eclipse Foundation
+ * Copyright (c) 2016, 2019 Contributors to the Eclipse Foundation
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
@@ -116,15 +116,16 @@ public class DeviceRegistrationHttpIT {
     }
 
     /**
-     * Verifies that a device cannot be registered if the request body
+     * Verifies that a device can be registered if the request body
      * does not contain a device identifier.
      * 
      * @param ctx The vert.x test context
      */
     @Test
-    public void testAddDeviceFailsWithoutDeviceId(final TestContext ctx) {
+    public void testAddDeviceSucceedsWithoutDeviceId(final TestContext ctx) {
 
-        registry.registerDevice(TENANT, null, new JsonObject().put("test", "test"), HttpURLConnection.HTTP_BAD_REQUEST)
+        //TODO check deviceId in response
+        registry.registerDevice(TENANT, null, new JsonObject().put("test", "test"))
             .setHandler(ctx.asyncAssertSuccess());
     }
 
@@ -305,10 +306,11 @@ public class DeviceRegistrationHttpIT {
             final String expectedDeviceId,
             final JsonObject expectedData) {
 
-        ctx.assertEquals(expectedDeviceId, response.getString(RegistrationConstants.FIELD_PAYLOAD_DEVICE_ID));
-        final JsonObject registeredData = response.getJsonObject(RegistrationConstants.FIELD_DATA);
-        registeredData.forEach(entry -> {
-            ctx.assertEquals(expectedData.getValue(entry.getKey()), entry.getValue());
+        //ctx.assertEquals(expectedDeviceId, response.getString(RegistrationConstants.FIELD_PAYLOAD_DEVICE_ID));
+        //final JsonObject registeredData = response.getJsonObject(RegistrationConstants.FIELD_DATA);
+        //TODO test for proper response format, e.g. ext property
+        expectedData.forEach(entry -> {
+            ctx.assertEquals(response.getValue(entry.getKey()), entry.getValue());
         });
     }
 }

@@ -69,6 +69,11 @@ public final class RegistrationConstants extends RequestResponseApiConstants {
     public static final String REGISTRATION_ENDPOINT = "registration";
 
     /**
+     * The name of the Device Registration HTTP API endpoint.
+     */
+    public static final String REGISTRATION_HTTP_ENDPOINT = "devices";
+
+    /**
      * The vert.x event bus address to which inbound registration messages are published.
      */
     public static final String EVENT_BUS_ADDRESS_REGISTRATION_IN = "registration.in";
@@ -82,7 +87,7 @@ public final class RegistrationConstants extends RequestResponseApiConstants {
 
     /**
      * Checks if a given string represents a valid action.
-     * 
+     *
      * @param action The string to check.
      * @return {@code true} if the given string is a supported action.
      */

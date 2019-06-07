@@ -183,7 +183,7 @@ public class MqttConnectionIT extends MqttTestBase {
         .compose(ok -> {
             final CredentialsObject credentialsSpec =
                     CredentialsObject.fromSubjectDn(deviceId, new X500Principal("CN=4711"), null, null);
-            return helper.registry.addCredentials(tenant.getTenantId(), JsonObject.mapFrom(credentialsSpec));
+            return helper.registry.addCredentials(tenant.getTenantId(), deviceId, JsonObject.mapFrom(credentialsSpec));
         })
         // WHEN the device tries to connect using a client certificate with an unknown subject DN
         .compose(ok -> connectToAdapter(deviceCert))
@@ -265,7 +265,7 @@ public class MqttConnectionIT extends MqttTestBase {
             .addTenant(JsonObject.mapFrom(tenant))
             .compose(ok -> {
                 final CredentialsObject spec = CredentialsObject.fromClearTextPassword(deviceId, deviceId, password, null, null);
-                return helper.registry.addCredentials(tenantId, JsonObject.mapFrom(spec));
+                return helper.registry.addCredentials(tenantId, deviceId, JsonObject.mapFrom(spec));
             })
             // WHEN a device connects using the correct credentials
             .compose(ok -> connectToAdapter(IntegrationTestSupport.getUsername(deviceId, tenantId), password))
@@ -292,7 +292,7 @@ public class MqttConnectionIT extends MqttTestBase {
             .addTenant(JsonObject.mapFrom(tenant))
             .compose(ok -> {
                 final CredentialsObject spec = CredentialsObject.fromClearTextPassword(deviceId, deviceId, password, null, null);
-                return helper.registry.addCredentials(tenantId, JsonObject.mapFrom(spec));
+                return helper.registry.addCredentials(tenantId, deviceId, JsonObject.mapFrom(spec));
             })
             // WHEN a device connects using the correct credentials
             .compose(ok -> connectToAdapter(IntegrationTestSupport.getUsername(deviceId, tenantId), password))

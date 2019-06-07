@@ -33,6 +33,7 @@ import org.slf4j.LoggerFactory;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
 /**
@@ -45,10 +46,10 @@ public final class DeviceRegistryHttpClient {
     private static final Logger LOG = LoggerFactory.getLogger(DeviceRegistryHttpClient.class);
 
     private static final String CONTENT_TYPE_APPLICATION_JSON = "application/json";
-    private static final String URI_ADD_TENANT = "/" + TenantConstants.TENANT_ENDPOINT;
-    private static final String TEMPLATE_URI_TENANT_INSTANCE = String.format("/%s/%%s", TenantConstants.TENANT_ENDPOINT);
+    private static final String URI_ADD_TENANT = "/" + TenantConstants.TENANT_HTTP_ENDPOINT;
+    private static final String TEMPLATE_URI_TENANT_INSTANCE = String.format("/%s/%%s", TenantConstants.TENANT_HTTP_ENDPOINT);
 
-    private static final String TEMPLATE_URI_REGISTRATION_INSTANCE = String.format("/%s/%%s/%%s", RegistrationConstants.REGISTRATION_ENDPOINT);
+    private static final String TEMPLATE_URI_REGISTRATION_INSTANCE = String.format("/%s/%%s/%%s", RegistrationConstants.REGISTRATION_HTTP_ENDPOINT);
 
     private static final String TEMPLATE_URI_CREDENTIALS_INSTANCE = String.format("/%s/%%s/%%s/%%s", CredentialsConstants.CREDENTIALS_ENDPOINT);
     private static final String TEMPLATE_URI_CREDENTIALS_BY_DEVICE = String.format("/%s/%%s/%%s", CredentialsConstants.CREDENTIALS_ENDPOINT);
@@ -289,7 +290,10 @@ public final class DeviceRegistryHttpClient {
             // so that we can also test the case where the client POSTs an empty body
             requestJson.put(RegistrationConstants.FIELD_PAYLOAD_DEVICE_ID, deviceId);
         }
-        final String uri = String.format("/%s/%s", RegistrationConstants.REGISTRATION_ENDPOINT, tenantId);
+        String uri = String.format("/%s/%s", RegistrationConstants.REGISTRATION_HTTP_ENDPOINT, tenantId);
+        if (deviceId != null) {
+            uri = String.format("/%s/%s/%s", RegistrationConstants.REGISTRATION_HTTP_ENDPOINT, tenantId, deviceId);
+        }
         return httpClient.create(uri, requestJson, contentType, response -> response.statusCode() == expectedStatus);
     }
 
@@ -378,28 +382,30 @@ public final class DeviceRegistryHttpClient {
     /**
      * Adds credentials for a device.
      * <p>
-     * This method simply invokes {@link #addCredentials(String, JsonObject, int)}
+     * This method simply invokes {@link #addCredentials(String, String, JsonObject, int)}
      * with {@link HttpURLConnection#HTTP_CREATED} as the expected status code.
      * 
      * @param tenantId The tenant that the device belongs to.
+     * @param deviceId The device credentials belongs to.
      * @param credentialsSpec The JSON object to be sent in the request body.
      * @return A future indicating the outcome of the operation.
      *         The future will succeed if the credentials have been added successfully.
      *         Otherwise the future will fail with a {@link ServiceInvocationException}.
      * @throws NullPointerException if the tenant is {@code null}.
      */
-    public Future<Void> addCredentials(final String tenantId, final JsonObject credentialsSpec) {
-        return addCredentials(tenantId, credentialsSpec, HttpURLConnection.HTTP_CREATED);
+    public Future<Void> addCredentials(final String tenantId, final String deviceId, final JsonObject credentialsSpec) {
+        return addCredentials(tenantId, deviceId, credentialsSpec, HttpURLConnection.HTTP_NO_CONTENT);
     }
 
     /**
      * Adds credentials for a device.
      * <p>
-     * This method simply invokes {@link #addCredentials(String, JsonObject, String, int)}
+     * This method simply invokes {@link #addCredentials(String, String, JsonObject, String, int)}
      * with <em>application/json</em> as the content type and
      * {@link HttpURLConnection#HTTP_CREATED} as the expected status code.
      * 
      * @param tenantId The tenant that the device belongs to.
+     * @param deviceId The device credentials belongs to.
      * @param credentialsSpec The JSON object to be sent in the request body.
      * @param expectedStatusCode The status code indicating a successful outcome.
      * @return A future indicating the outcome of the operation.
@@ -407,14 +413,15 @@ public final class DeviceRegistryHttpClient {
      *         Otherwise the future will fail with a {@link ServiceInvocationException}.
      * @throws NullPointerException if the tenant is {@code null}.
      */
-    public Future<Void> addCredentials(final String tenantId, final JsonObject credentialsSpec, final int expectedStatusCode) {
-        return addCredentials(tenantId, credentialsSpec, CONTENT_TYPE_APPLICATION_JSON, expectedStatusCode);
+    public Future<Void> addCredentials(final String tenantId, final String deviceId, final JsonObject credentialsSpec, final int expectedStatusCode) {
+        return addCredentials(tenantId, deviceId, credentialsSpec, CONTENT_TYPE_APPLICATION_JSON, expectedStatusCode);
     }
 
     /**
      * Adds credentials for a device.
      * 
      * @param tenantId The tenant that the device belongs to.
+     * @param deviceId The device credentials belongs to.
      * @param credentialsSpec The JSON object to be sent in the request body.
      * @param contentType The content type to set on the request.
      * @param expectedStatusCode The status code indicating a successful outcome.
@@ -425,13 +432,18 @@ public final class DeviceRegistryHttpClient {
      */
     public Future<Void> addCredentials(
             final String tenantId,
+            final String deviceId,
             final JsonObject credentialsSpec,
             final String contentType,
             final int expectedStatusCode) {
 
         Objects.requireNonNull(tenantId);
-        final String uri = String.format("/%s/%s", CredentialsConstants.CREDENTIALS_ENDPOINT, tenantId);
-        return httpClient.create(uri, credentialsSpec, contentType, response -> response.statusCode() == expectedStatusCode);
+        final String uri = String.format("/%s/%s/%s", CredentialsConstants.CREDENTIALS_ENDPOINT, tenantId, deviceId);
+
+        final JsonArray credSet = new JsonArray();
+        credSet.add(credentialsSpec);
+
+        return httpClient.update(uri, credSet, contentType, response -> response == expectedStatusCode);
     }
 
     /**
@@ -492,28 +504,25 @@ public final class DeviceRegistryHttpClient {
     /**
      * Updates credentials of a specific type for a device.
      * <p>
-     * This method simply invokes {@link #updateCredentials(String, String, String, JsonObject, int)}
-     * with {@link HttpURLConnection#HTTP_NO_CONTENT} as the expected status code.
+     * This method simply invokes {@link #updateCredentials(String, String, JsonObject, int)} with
+     * {@link HttpURLConnection#HTTP_NO_CONTENT} as the expected status code.
      * 
      * @param tenantId The tenant that the device belongs to.
-     * @param authId The authentication identifier of the device.
-     * @param type The type of credentials to update.
+     * @param deviceId The identifier of the device.
      * @param credentialsSpec The JSON object to be sent in the request body.
-     * @return A future indicating the outcome of the operation.
-     *         The future will succeed if the credentials have been updated successfully.
-     *         Otherwise the future will fail with a {@link ServiceInvocationException}.
+     * @return A future indicating the outcome of the operation. The future will succeed if the credentials have been
+     *         updated successfully. Otherwise the future will fail with a {@link ServiceInvocationException}.
      * @throws NullPointerException if the tenant is {@code null}.
      */
-    public Future<Void> updateCredentials(final String tenantId, final String authId, final String type, final JsonObject credentialsSpec) {
-        return updateCredentials(tenantId, authId, type, credentialsSpec, HttpURLConnection.HTTP_NO_CONTENT);
+    public Future<Void> updateCredentials(final String tenantId, final String deviceId, final JsonObject credentialsSpec) {
+        return updateCredentials(tenantId, deviceId, credentialsSpec, HttpURLConnection.HTTP_NO_CONTENT);
     }
 
     /**
      * Updates credentials of a specific type for a device.
      * 
      * @param tenantId The tenant that the device belongs to.
-     * @param authId The authentication identifier of the device.
-     * @param type The type of credentials to update.
+     * @param deviceId The identifier of the device.
      * @param credentialsSpec The JSON object to be sent in the request body.
      * @param expectedStatusCode The status code indicating a successful outcome.
      * @return A future indicating the outcome of the operation.
@@ -523,14 +532,64 @@ public final class DeviceRegistryHttpClient {
      */
     public Future<Void> updateCredentials(
             final String tenantId,
-            final String authId,
-            final String type,
+            final String deviceId,
             final JsonObject credentialsSpec,
             final int expectedStatusCode) {
 
         Objects.requireNonNull(tenantId);
-        final String uri = String.format(TEMPLATE_URI_CREDENTIALS_INSTANCE, tenantId, authId, type);
+        final String uri = String.format(TEMPLATE_URI_CREDENTIALS_BY_DEVICE, tenantId, deviceId);
+
         return httpClient.update(uri, credentialsSpec, status -> status == expectedStatusCode);
+    }
+
+    /**
+     * Updates credentials of a specific type for a device.
+     *
+     * @param tenantId The tenant that the device belongs to.
+     * @param deviceId The identifier of the device.
+     * @param credentialsSpec The JSON array to be sent in the request body.
+     * @param expectedStatusCode The status code indicating a successful outcome.
+     * @return A future indicating the outcome of the operation.
+     *         The future will succeed if the response contains the expected status code.
+     *         Otherwise the future will fail with a {@link ServiceInvocationException}.
+     * @throws NullPointerException if the tenant is {@code null}.
+     */
+    public Future<Void> updateCredentials(
+            final String tenantId,
+            final String deviceId,
+            final JsonArray credentialsSpec,
+            final int expectedStatusCode) {
+
+        Objects.requireNonNull(tenantId);
+        final String uri = String.format(TEMPLATE_URI_CREDENTIALS_BY_DEVICE, tenantId, deviceId);
+
+        return httpClient.update(uri, credentialsSpec, status -> status == expectedStatusCode);
+    }
+
+    /**
+     * Updates credentials of a specific type for a device.
+     *
+     * @param tenantId The tenant that the device belongs to.
+     * @param deviceId The identifier of the device.
+     * @param credentialsSpec The JSON array to be sent in the request body.
+     * @param contentType The content type to set on the request.
+     * @param expectedStatusCode The status code indicating a successful outcome.
+     * @return A future indicating the outcome of the operation.
+     *         The future will succeed if the response contains the expected status code.
+     *         Otherwise the future will fail with a {@link ServiceInvocationException}.
+     * @throws NullPointerException if the tenant is {@code null}.
+     */
+    public Future<Void> updateCredentials(
+            final String tenantId,
+            final String deviceId,
+            final JsonArray credentialsSpec,
+            final String contentType,
+            final int expectedStatusCode) {
+
+        Objects.requireNonNull(tenantId);
+        final String uri = String.format(TEMPLATE_URI_CREDENTIALS_BY_DEVICE, tenantId, deviceId);
+
+        return httpClient.update(uri, credentialsSpec, contentType, status -> status == expectedStatusCode);
     }
 
     /**
@@ -631,7 +690,7 @@ public final class DeviceRegistryHttpClient {
 
         return addTenant(JsonObject.mapFrom(tenant))
             .compose(ok -> registerDevice(tenant.getTenantId(), deviceId, data))
-            .compose(ok -> addCredentials(tenant.getTenantId(), JsonObject.mapFrom(credentialsSpec)));
+            .compose(ok -> addCredentials(tenant.getTenantId(), deviceId, JsonObject.mapFrom(credentialsSpec)));
     }
 
     /**
@@ -682,7 +741,7 @@ public final class DeviceRegistryHttpClient {
                 CredentialsObject.fromClearTextPassword(deviceId, deviceId, password, null, null);
 
         return registerDevice(tenantId, deviceId, data)
-            .compose(ok -> addCredentials(tenantId, JsonObject.mapFrom(credentialsSpec)));
+            .compose(ok -> addCredentials(tenantId, deviceId, JsonObject.mapFrom(credentialsSpec)));
     }
 
     /**
@@ -706,7 +765,7 @@ public final class DeviceRegistryHttpClient {
             .compose(ok -> {
                 final CredentialsObject credentialsSpec =
                         CredentialsObject.fromClientCertificate(deviceId, deviceCert, null, null);
-                return addCredentials(tenant.getTenantId(), JsonObject.mapFrom(credentialsSpec));
+                return addCredentials(tenant.getTenantId(), deviceId, JsonObject.mapFrom(credentialsSpec));
             }).map(ok -> {
                 LOG.debug("registered device with client certificate [tenant-id: {}, device-id: {}, auth-id: {}]",
                         tenant.getTenantId(), deviceId, deviceCert.getSubjectX500Principal().getName(X500Principal.RFC2253));
@@ -759,7 +818,7 @@ public final class DeviceRegistryHttpClient {
 
         return addTenant(JsonObject.mapFrom(tenant))
             .compose(ok -> registerDevice(tenant.getTenantId(), deviceId, deviceData))
-            .compose(ok -> addCredentials(tenant.getTenantId(), JsonObject.mapFrom(credentialsSpec)));
+            .compose(ok -> addCredentials(tenant.getTenantId(), deviceId, JsonObject.mapFrom(credentialsSpec)));
 
     }
 
@@ -781,7 +840,7 @@ public final class DeviceRegistryHttpClient {
                 CredentialsObject.fromPresharedKey(deviceId, deviceId, key.getBytes(StandardCharsets.UTF_8), null, null);
 
         return registerDevice(tenant, deviceId)
-                .compose(ok -> addCredentials(tenant, JsonObject.mapFrom(credentialsSpec)));
+                .compose(ok -> addCredentials(tenant, deviceId, JsonObject.mapFrom(credentialsSpec)));
     }
 
 }

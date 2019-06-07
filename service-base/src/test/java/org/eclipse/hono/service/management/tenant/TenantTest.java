@@ -1,0 +1,168 @@
+/*******************************************************************************
+ * Copyright (c) 2019 Contributors to the Eclipse Foundation
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ *******************************************************************************/
+
+package org.eclipse.hono.service.management.tenant;
+
+import io.vertx.core.json.JsonArray;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.*;
+
+import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonObject;
+import org.hamcrest.collection.IsEmptyIterable;
+import org.junit.jupiter.api.Test;
+
+/**
+ * Verifies {@link Tenant}.
+ */
+class TenantTest {
+
+    /**
+     * Decode Tenant with absent "enabled" flag.
+     */
+    @Test
+    public void testDecodeDefault() {
+        final var tenant = Json.decodeValue("{}", Tenant.class);
+        assertNotNull(tenant);
+        assertNull(tenant.getEnabled());
+    }
+
+
+    /**
+     * Decode tenant with "enabled=false".
+     */
+    @Test
+    public void testDecodeDisabled() {
+        final var tenant = Json.decodeValue("{\"enabled\": false}", Tenant.class);
+        assertNotNull(tenant);
+        assertFalse(tenant.getEnabled());
+    }
+
+    /**
+     * Decode tenant with "enabled=true".
+     */
+    @Test
+    public void testDecodeEnabled() {
+        final var tenant = Json.decodeValue("{\"enabled\": true}", Tenant.class);
+        assertNotNull(tenant);
+        assertTrue(tenant.getEnabled());
+    }
+
+    /**
+     * Decode "ext" section.
+     */
+    @Test
+    public void testDecodeExt() {
+        final var tenant = Json.decodeValue("{\"ext\": {\"foo\": \"bar\"}}", Tenant.class);
+        assertNotNull(tenant);
+        assertNull(tenant.getEnabled());
+
+        final var ext = tenant.getExtensions();
+        assertNotNull(ext);
+        assertEquals( "bar", ext.get("foo"));
+    }
+
+    /**
+     * Decode "adapters" section.
+     */
+    @Test
+    public void testDecodeAdapters() {
+        final JsonArray adapterJson = new JsonArray().add(
+                    new JsonObject()
+                            .put("type", "http")
+                            .put("enabled", false)
+                            .put("device-authentication-required", true));
+
+        final var tenant = Json.decodeValue( new JsonObject().put("adapters", adapterJson).toString(), Tenant.class);
+        assertNotNull(tenant);
+        assertNull(tenant.getEnabled());
+
+        final var adapters = tenant.getAdapters();
+        assertNotNull(adapters);
+        assertEquals( "http", adapters.get(0).get("type"));
+    }
+
+    /**
+     * Decode "limits" section.
+     */
+    @Test
+    public void testDecodeLimits() {
+        final JsonObject limit = new JsonObject()
+                        .put("max-connections", 0);
+
+        final var tenant = Json.decodeValue( new JsonObject().put("limits", limit).toString(), Tenant.class);
+        assertNotNull(tenant);
+        assertNull(tenant.getEnabled());
+
+        final var limits = tenant.getLimits();
+        assertNotNull(limits);
+        assertEquals( 0, limits.get("max-connections"));
+    }
+
+    /**
+     * Decode "trusted-ca" section.
+     */
+    @Test
+    public void testDecodeTrustedCA() {
+        final JsonObject ca = new JsonObject()
+                .put("subject-dn", "org.eclipse")
+                .put("public-key", "abc123")
+                .put("cert", "xyz789");
+
+        final var tenant = Json.decodeValue( new JsonObject().put("trusted-ca", ca).toString(), Tenant.class);
+        assertNotNull(tenant);
+        assertNull(tenant.getEnabled());
+
+        final var storedCa = tenant.getTrustedCa();
+        assertNotNull(storedCa);
+        assertEquals( "xyz789", storedCa.get("cert"));
+    }
+
+    /**
+     * Encode with absent "enabled" flag.
+     */
+    @Test
+    public void testEncodeDefault() {
+        final var json = JsonObject.mapFrom(new Tenant());
+        assertNotNull(json);
+        assertNull(json.getBoolean("enabled"));
+        assertNull(json.getJsonObject("ext"));
+        assertThat(json, IsEmptyIterable.emptyIterable());
+    }
+
+    /**
+     * Encode tenant with "enabled=true".
+     */
+    @Test
+    public void testEncodeEnabled() {
+        final var tenant = new Tenant();
+        tenant.setEnabled(true);
+        final var json = JsonObject.mapFrom(tenant);
+        assertNotNull(json);
+        assertTrue(json.getBoolean("enabled"));
+        assertNull(json.getJsonObject("ext"));
+    }
+
+    /**
+     * Encode tenant with "enabled=false".
+     */
+    @Test
+    public void testEncodeDisabled() {
+        final var tenant = new Tenant();
+        tenant.setEnabled(false);
+        final var json = JsonObject.mapFrom(tenant);
+        assertNotNull(json);
+        assertFalse(json.getBoolean("enabled"));
+        assertNull(json.getJsonObject("ext"));
+    }
+}
