@@ -37,6 +37,9 @@ public class Tenant {
     @JsonInclude(value = Include.NON_EMPTY)
     private Map<String, Object> extensions;
 
+    @JsonInclude(value = Include.NON_EMPTY)
+    private Map<String, Object> defaults;
+
     @JsonProperty(TenantConstants.FIELD_ADAPTERS)
     @JsonInclude(value = Include.NON_EMPTY)
     private List<Map<String, Object>> adapters;
@@ -89,6 +92,14 @@ public class Tenant {
 
     public Map<String, Object> getExtensions() {
         return this.extensions;
+    }
+
+    public void setDefaults(final Map<String, Object> defaults) {
+        this.defaults = defaults;
+    }
+
+    public Map<String, Object> getDefaults() {
+        return defaults;
     }
 
     public List<Map<String, Object>> getAdapters() {

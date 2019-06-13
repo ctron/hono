@@ -13,7 +13,9 @@
 
 package org.eclipse.hono.service.management.device;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -33,6 +35,12 @@ public class Device {
     @JsonInclude(value = Include.NON_EMPTY)
     private Map<String, Object> extensions;
 
+    @JsonInclude(value = Include.NON_EMPTY)
+    private Map<String, Object> defaults;
+
+    @JsonInclude(value = Include.NON_EMPTY)
+    private List<String> via;
+
     /**
      * Create new instance.
      */
@@ -49,6 +57,12 @@ public class Device {
         this.enabled = other.enabled;
         if (other.extensions != null) {
             this.extensions = new HashMap<>(other.extensions);
+        }
+        if (other.defaults != null) {
+            this.defaults = new HashMap<>(other.defaults);
+        }
+        if (other.via != null) {
+            this.via = new ArrayList<>(other.via);
         }
     }
 
@@ -83,4 +97,19 @@ public class Device {
         return this.extensions;
     }
 
+    public void setDefaults(final Map<String, Object> defaults) {
+        this.defaults = defaults;
+    }
+
+    public Map<String, Object> getDefaults() {
+        return defaults;
+    }
+
+    public List<String> getVia() {
+        return via;
+    }
+
+    public void setVia(final List<String> via) {
+        this.via = via;
+    }
 }
