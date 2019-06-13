@@ -21,9 +21,9 @@ import io.vertx.core.Verticle;
 import org.eclipse.hono.service.AbstractApplication;
 import org.eclipse.hono.service.HealthCheckProvider;
 import org.eclipse.hono.service.auth.AuthenticationService;
-import org.eclipse.hono.service.credentials.CredentialsService;
-import org.eclipse.hono.service.registration.RegistrationService;
-import org.eclipse.hono.service.tenant.TenantService;
+import org.eclipse.hono.service.credentials.BaseCredentialsService;
+import org.eclipse.hono.service.registration.BaseRegistrationService;
+import org.eclipse.hono.service.tenant.BaseTenantService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
@@ -44,28 +44,10 @@ import io.vertx.core.Future;
 @EnableAutoConfiguration
 public class Application extends AbstractApplication {
 
-    /**
-     * Composite interface of {@link Verticle} and {@link CredentialsService}.
-     */
-    private interface VerticleCredentialsService extends CredentialsService, Verticle {
-    }
-
-    /**
-     * Composite interface of {@link Verticle} and {@link RegistrationService}.
-     */
-    private interface VerticleRegistrationService extends RegistrationService, Verticle {
-    }
-
-    /**
-     * Composite interface of {@link Verticle} and {@link TenantService}.
-     */
-    private interface VerticleTenantService extends TenantService, Verticle {
-    }
-
     private AuthenticationService authenticationService;
-    private VerticleCredentialsService credentialsService;
-    private VerticleRegistrationService registrationService;
-    private VerticleTenantService tenantService;
+    private BaseCredentialsService credentialsService;
+    private BaseRegistrationService registrationService;
+    private BaseTenantService tenantService;
 
     /**
      * Sets the credentials service implementation this server is based on.
@@ -74,7 +56,7 @@ public class Application extends AbstractApplication {
      * @throws NullPointerException if service is {@code null}.
      */
     @Autowired
-    public final void setCredentialsService(final VerticleCredentialsService credentialsService) {
+    public final void setCredentialsService(final BaseCredentialsService credentialsService) {
         this.credentialsService = Objects.requireNonNull(credentialsService);
     }
 
@@ -85,7 +67,7 @@ public class Application extends AbstractApplication {
      * @throws NullPointerException if service is {@code null}.
      */
     @Autowired
-    public final void setRegistrationService(final VerticleRegistrationService registrationService) {
+    public final void setRegistrationService(final BaseRegistrationService registrationService) {
         this.registrationService = Objects.requireNonNull(registrationService);
     }
 
@@ -96,7 +78,7 @@ public class Application extends AbstractApplication {
      * @throws NullPointerException if service is {@code null}.
      */
     @Autowired
-    public final void setTenantService(final VerticleTenantService tenantService) {
+    public final void setTenantService(final BaseTenantService tenantService) {
         this.tenantService = Objects.requireNonNull(tenantService);
     }
 
