@@ -531,7 +531,10 @@ public final class FileBasedCredentialsService extends AbstractVerticle
     }
 
     private static void copyAdditionalField(final GenericSecret secret, final JsonObject secretObject, final String fieldName) {
-        secret.getAdditionalProperties().put(fieldName, secretObject.getString(fieldName));
+        final var value = secretObject.getString(fieldName);
+        if (value != null) {
+            secret.getAdditionalProperties().put(fieldName, value);
+        }
     }
 
     private GenericSecret mapSecret(final JsonObject credentialsObject, final JsonObject secretObject) {
@@ -588,8 +591,7 @@ public final class FileBasedCredentialsService extends AbstractVerticle
                                 secrets,
                                 //TODO check cache directive
                                 Optional.ofNullable(getCacheDirective(CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD)),
-                                //TODO handle version
-                                Optional.ofNullable("1"))));
+                                Optional.empty())));
 
             }
         }
