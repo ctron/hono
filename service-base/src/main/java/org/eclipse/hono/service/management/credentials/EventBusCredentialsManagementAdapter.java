@@ -164,7 +164,7 @@ public abstract class EventBusCredentialsManagementAdapter<T> extends EventBusSe
                     })
                     .orElseGet(ArrayList::new));
         } catch (final IllegalArgumentException e) {
-            return Future.failedFuture(new ClientErrorException(HttpURLConnection.HTTP_BAD_REQUEST));
+            return Future.failedFuture(new ClientErrorException(HttpURLConnection.HTTP_BAD_REQUEST, e));
         }
     }
 

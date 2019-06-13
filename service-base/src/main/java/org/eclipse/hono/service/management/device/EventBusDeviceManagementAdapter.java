@@ -99,7 +99,7 @@ public abstract class EventBusDeviceManagementAdapter<T> extends EventBusService
                     .map(json -> json.mapTo(Device.class))
                     .orElseGet(Device::new));
         } catch (final IllegalArgumentException e) {
-            return Future.failedFuture(new ClientErrorException(HttpURLConnection.HTTP_BAD_REQUEST));
+            return Future.failedFuture(new ClientErrorException(HttpURLConnection.HTTP_BAD_REQUEST, e));
         }
     }
 
