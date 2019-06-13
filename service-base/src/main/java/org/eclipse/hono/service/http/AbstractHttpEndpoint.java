@@ -16,6 +16,7 @@ package org.eclipse.hono.service.http;
 import java.net.HttpURLConnection;
 import java.util.Objects;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 import org.eclipse.hono.client.ClientErrorException;
@@ -108,7 +109,10 @@ public abstract class AbstractHttpEndpoint<T> extends AbstractEndpoint implement
      *
      * @param ctx The routing context to retrieve the JSON request body from.
      */
-    protected void extractRequiredJsonPayload(final RoutingContext ctx) {
+    protected void extractRequiredJson(final RoutingContext ctx, final Function<RoutingContext, Object> payloadExtractor) {
+
+        Objects.requireNonNull(payloadExtractor);
+
         final MIMEHeader contentType = ctx.parsedHeaders().contentType();
         if (contentType == null) {
             ctx.fail(new ClientErrorException(HttpURLConnection.HTTP_BAD_REQUEST, "Missing Content-Type header"));
@@ -117,7 +121,7 @@ public abstract class AbstractHttpEndpoint<T> extends AbstractEndpoint implement
         } else {
             try {
                 if (ctx.getBody() != null) {
-                    ctx.put(KEY_REQUEST_BODY, ctx.getBodyAsJson());
+                    ctx.put(KEY_REQUEST_BODY, payloadExtractor.apply(ctx));
                     ctx.next();
                 } else {
                     ctx.fail(new ClientErrorException(HttpURLConnection.HTTP_BAD_REQUEST, "Empty body"));
@@ -126,6 +130,20 @@ public abstract class AbstractHttpEndpoint<T> extends AbstractEndpoint implement
                 ctx.fail(new ClientErrorException(HttpURLConnection.HTTP_BAD_REQUEST, "Invalid JSON"));
             }
         }
+
+    }
+
+    /**
+     * Check the Content-Type of the request to be 'application/json' and extract the payload if this check was
+     * successful.
+     * <p>
+     * The payload is parsed to ensure it is valid JSON and is put to the RoutingContext ctx with the key
+     * {@link #KEY_REQUEST_BODY}.
+     *
+     * @param ctx The routing context to retrieve the JSON request body from.
+     */
+    protected void extractRequiredJsonPayload(final RoutingContext ctx) {
+        extractRequiredJson(ctx, RoutingContext::getBodyAsJson);
     }
 
     /**
@@ -138,23 +156,7 @@ public abstract class AbstractHttpEndpoint<T> extends AbstractEndpoint implement
      * @param ctx The routing context to retrieve the JSON request body from.
      */
     protected void extractRequiredJsonArrayPayload(final RoutingContext ctx) {
-        final MIMEHeader contentType = ctx.parsedHeaders().contentType();
-        if (contentType == null) {
-            ctx.fail(new ClientErrorException(HttpURLConnection.HTTP_BAD_REQUEST, "Missing Content-Type header"));
-        } else if (!HttpUtils.CONTENT_TYPE_JSON.equalsIgnoreCase(contentType.value())) {
-            ctx.fail(new ClientErrorException(HttpURLConnection.HTTP_BAD_REQUEST, "Unsupported Content-Type"));
-        } else {
-            try {
-                if (ctx.getBody() != null) {
-                    ctx.put(KEY_REQUEST_BODY, ctx.getBodyAsJsonArray());
-                    ctx.next();
-                } else {
-                    ctx.fail(new ClientErrorException(HttpURLConnection.HTTP_BAD_REQUEST, "Empty body"));
-                }
-            } catch (final DecodeException e) {
-                ctx.fail(new ClientErrorException(HttpURLConnection.HTTP_BAD_REQUEST, "Invalid JSON"));
-            }
-        }
+        extractRequiredJson(ctx, RoutingContext::getBodyAsJsonArray);
     }
 
     /**
