@@ -159,9 +159,11 @@ public abstract class AbstractRegistrationService implements RegistrationService
             final RegistrationResult gatewayResult = gatewayInfoTracker.result();
 
             if (!isDeviceEnabled(deviceResult)) {
+                log.debug("device not enabled");
                 TracingHelper.logError(span, "device not enabled");
                 return Future.succeededFuture(RegistrationResult.from(HttpURLConnection.HTTP_NOT_FOUND));
             } else if (!isDeviceEnabled(gatewayResult)) {
+                log.debug("gateway not enabled");
                 TracingHelper.logError(span, "gateway not enabled");
                 return Future.succeededFuture(RegistrationResult.from(HttpURLConnection.HTTP_FORBIDDEN));
             } else {
@@ -179,6 +181,7 @@ public abstract class AbstractRegistrationService implements RegistrationService
                                 RegistrationResult.from(ServiceInvocationException.extractStatusCode(t)));
                     });
                 } else {
+                    log.debug("gateway not authorized");
                     TracingHelper.logError(span, "gateway not authorized");
                     return Future.succeededFuture(RegistrationResult.from(HttpURLConnection.HTTP_FORBIDDEN));
                 }
