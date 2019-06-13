@@ -95,6 +95,7 @@ public class FileBasedDeviceBackend implements DeviceBackend {
     @Override
     public void deleteDevice(final String tenantId, final String deviceId, final Optional<String> resourceVersion,
             final Handler<AsyncResult<Result<Void>>> resultHandler) {
+        // TODO: when deleting a device, also delete credentials
         registrationService.deleteDevice(tenantId, deviceId, resourceVersion, resultHandler);
     }
 
