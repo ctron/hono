@@ -46,7 +46,7 @@ public final class DeviceManagementConstants extends RequestResponseApiConstants
     /**
      * The vert.x event bus address to which inbound registration messages are published.
      */
-    public static final String EVENT_BUS_ADDRESS_DEVICE_IN = "device.in";
+    public static final String EVENT_BUS_ADDRESS_DEVICE_IN = "device.mgmt.in";
 
     private static final Set<String> ACTIONS = new HashSet<>(
             Arrays.asList(ACTION_CREATE, ACTION_GET, ACTION_DELETE, ACTION_UPDATE));

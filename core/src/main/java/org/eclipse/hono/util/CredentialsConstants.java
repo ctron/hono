@@ -113,6 +113,10 @@ public final class CredentialsConstants extends RequestResponseApiConstants {
      * The vert.x event bus address to which inbound credentials messages are published.
      */
     public static final String EVENT_BUS_ADDRESS_CREDENTIALS_IN = "credentials.in";
+    /**
+     * The vert.x event bus address to which inbound credentials management messages are published.
+     */
+    public static final String EVENT_BUS_ADDRESS_CREDENTIALS_MANAGEMENT_IN = "credentials.mgmt.in";
 
     /**
      * Request actions that belong to the Credentials API.

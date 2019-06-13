@@ -46,7 +46,7 @@ public abstract class EventBusCredentialsManagementAdapter<T> extends EventBusSe
 
     @Override
     protected String getEventBusAddress() {
-        return CredentialsConstants.EVENT_BUS_ADDRESS_CREDENTIALS_IN;
+        return CredentialsConstants.EVENT_BUS_ADDRESS_CREDENTIALS_MANAGEMENT_IN;
     }
 
     @Override

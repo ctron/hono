@@ -86,7 +86,7 @@ public final class TenantConstants extends RequestResponseApiConstants {
     /**
      * The vert.x event bus address to which inbound management messages are published.
      */
-    public static final String EVENT_BUS_ADDRESS_TENANT_MANAGEMENT_IN = "tenant.in";
+    public static final String EVENT_BUS_ADDRESS_TENANT_MANAGEMENT_IN = "tenant.mgmt.in";
 
     /**
      * The name of the property that contains the configuration options for the resource limits.
