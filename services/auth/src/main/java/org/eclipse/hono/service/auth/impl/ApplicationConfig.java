@@ -24,11 +24,9 @@ import org.eclipse.hono.service.metric.MetricsTags;
 import org.eclipse.hono.util.AuthenticationConstants;
 import org.eclipse.hono.util.Constants;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.config.ObjectFactoryCreatingFactoryBean;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Scope;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.spring.autoconfigure.MeterRegistryCustomizer;
@@ -67,29 +65,6 @@ public class ApplicationConfig {
     @Bean
     public VertxProperties vertxProperties() {
         return new VertxProperties();
-    }
-
-    /**
-     * Creates a new Authentication Server instance and exposes it as a Spring Bean.
-     * 
-     * @return The new instance.
-     */
-    @Bean(name = BEAN_NAME_SIMPLE_AUTHENTICATION_SERVER)
-    @Scope("prototype")
-    public SimpleAuthenticationServer simpleAuthenticationServer(){
-        return new SimpleAuthenticationServer();
-    }
-
-    /**
-     * Exposes a factory for Authentication Server instances as a Spring bean.
-     * 
-     * @return The factory.
-     */
-    @Bean
-    public ObjectFactoryCreatingFactoryBean authServerFactory() {
-        final ObjectFactoryCreatingFactoryBean factory = new ObjectFactoryCreatingFactoryBean();
-        factory.setTargetBeanName(BEAN_NAME_SIMPLE_AUTHENTICATION_SERVER);
-        return factory;
     }
 
     /**
