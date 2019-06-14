@@ -168,10 +168,15 @@ public abstract class AbstractRegistrationService implements RegistrationService
                 return Future.succeededFuture(RegistrationResult.from(HttpURLConnection.HTTP_FORBIDDEN));
             } else {
 
-                final JsonObject deviceData = deviceResult.getPayload().getJsonObject(RegistrationConstants.FIELD_DATA,
-                        new JsonObject());
+                final JsonObject deviceData = deviceResult.getPayload()
+                        .getJsonObject(RegistrationConstants.FIELD_DATA, new JsonObject());
                 final JsonObject gatewayData = gatewayResult.getPayload()
                         .getJsonObject(RegistrationConstants.FIELD_DATA, new JsonObject());
+
+                if (log.isDebugEnabled()) {
+                    log.debug("Device data: {}", deviceData.encodePrettily());
+                    log.debug("Gateway data: {}", gatewayData.encodePrettily());
+                }
 
                 if (isGatewayAuthorized(gatewayId, gatewayData, deviceId, deviceData)) {
                     return updateDeviceLastViaIfNeeded(tenantId, deviceId, gatewayId, deviceData, span).map(res -> {
@@ -214,11 +219,17 @@ public abstract class AbstractRegistrationService implements RegistrationService
         Objects.requireNonNull(deviceData);
 
         final Object obj = deviceData.getValue(RegistrationConstants.FIELD_VIA);
-        if (obj instanceof String) {
+        if (obj instanceof JsonArray) {
+            // get the first matching entry
+            return ((JsonArray) obj)
+                    .stream()
+                    .filter(String.class::isInstance)
+                    .anyMatch(gatewayId::equals);
+        } else if (obj instanceof String) {
+            // compare the string directly
             return gatewayId.equals(obj);
-        } else if (obj instanceof JsonArray) {
-            return ((JsonArray) obj).stream().filter(o -> o instanceof String).anyMatch(id -> gatewayId.equals(id));
         } else {
+            // wrong type -> not authorized
             return false;
         }
     }
