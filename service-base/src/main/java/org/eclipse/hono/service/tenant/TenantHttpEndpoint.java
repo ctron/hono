@@ -146,12 +146,11 @@ public final class TenantHttpEndpoint extends AbstractHttpEndpoint<ServiceConfig
     private void addTenant(final RoutingContext ctx) {
 
         final String tenantId = getTenantIdFromContext(ctx);
-        final String location = String.format("/%s/", getName());
+        final String location = String.format("/%s/%s", getName(), tenantId);
 
         doTenantHttpRequest(ctx, tenantId, TenantConstants.TenantAction.add,
                 status -> status == HttpURLConnection.HTTP_CREATED,
-                (response, payload) -> response.putHeader(HttpHeaders.LOCATION,
-                        location + payload.getJsonPayload().getString(TenantConstants.FIELD_PAYLOAD_TENANT_ID))
+                (response, payload) -> response.putHeader(HttpHeaders.LOCATION, location)
         );
     }
 
