@@ -62,7 +62,7 @@ public final class TenantHttpEndpoint extends AbstractHttpEndpoint<ServiceConfig
 
     @Override
     public String getName() {
-        return TenantConstants.TENANT_HTTP_ENDPOINT;
+        return TenantConstants.TENANT_ENDPOINT;
     }
 
     @Override
