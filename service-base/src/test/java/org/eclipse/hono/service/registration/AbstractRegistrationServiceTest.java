@@ -12,12 +12,17 @@
  *******************************************************************************/
 package org.eclipse.hono.service.registration;
 
+import static java.net.HttpURLConnection.HTTP_CREATED;
+import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
+import static java.net.HttpURLConnection.HTTP_OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
+import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
+import io.vertx.core.Handler;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.Checkpoint;
@@ -30,6 +35,7 @@ import org.eclipse.hono.service.management.Result;
 import org.eclipse.hono.service.management.device.Device;
 import org.eclipse.hono.service.management.device.DeviceManagementService;
 import org.eclipse.hono.util.Constants;
+import org.eclipse.hono.util.RegistrationResult;
 import org.junit.jupiter.api.Test;
 
 import java.net.HttpURLConnection;
@@ -37,6 +43,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -526,7 +533,7 @@ public abstract class AbstractRegistrationServiceTest {
      * @param deviceId The identifier of the device.
      * @return A succeeded future if the device is registered.
      */
-    protected final Future<OperationResult<Device>> assertReadDevice(final String tenantId, final String deviceId) {
+    protected final Future<?> assertCanReadDevice(final String tenantId, final String deviceId) {
         final Future<OperationResult<Device>> result = Future.future();
         getDeviceManagementService().readDevice(tenantId, deviceId, result);
         return result.map(r -> {
@@ -536,5 +543,115 @@ public abstract class AbstractRegistrationServiceTest {
                 throw new ClientErrorException(HttpURLConnection.HTTP_PRECON_FAILED);
             }
         });
+    }
+
+    /**
+     * Helps asserting device data.
+     * 
+     * @param tenant The tenant.
+     * @param deviceId The device ID.
+     * @param gatewayId The optional gateway ID
+     * @param managementAssertions assertions for the management data.
+     * @param adapterAssertions assertions for the adapter data.
+     * @return A new future that will succeed when the read/get operations succeed and the assertions are valid.
+     *         Otherwise the future must fail.
+     */
+    protected Future<?> assertDevice(final String tenant, final String deviceId, final Optional<String> gatewayId,
+            final Handler<OperationResult<Device>> managementAssertions,
+            final Handler<RegistrationResult> adapterAssertions) {
+
+        // read management data
+
+        final Future<OperationResult<Device>> f1 = Future.future();
+        getDeviceManagementService().readDevice(tenant, deviceId, f1);
+
+        // read adapter data
+
+        final Future<RegistrationResult> f2 = Future.future();
+        if (gatewayId.isPresent()) {
+            getRegistrationService().assertRegistration(tenant, deviceId, gatewayId.get(), f2);
+        } else {
+            getRegistrationService().assertRegistration(tenant, deviceId, f2);
+        }
+
+        return CompositeFuture.all(
+                f1.map(r -> {
+                    managementAssertions.handle(r);
+                    return null;
+                }),
+                f2.map(r -> {
+                    adapterAssertions.handle(r);
+                    return null;
+                }));
+    }
+
+    protected Future<?> assertDevicesNotFound(final Map<String, Device> devices) {
+
+        Future<?> current = Future.succeededFuture();
+
+        for (final Map.Entry<String, Device> entry : devices.entrySet()) {
+            current = current.compose(ok -> assertDevice(TENANT, entry.getKey(), Optional.empty(),
+                    r -> {
+                        assertEquals(HTTP_NOT_FOUND, r.getStatus());
+                    },
+                    r -> {
+                        assertEquals(HTTP_NOT_FOUND, r.getStatus());
+                    }));
+        }
+
+        return current;
+
+    }
+
+    protected Future<?> assertDevices(final Map<String, Device> devices) {
+
+        Future<?> current = Future.succeededFuture();
+
+        for (final Map.Entry<String, Device> entry : devices.entrySet()) {
+            final var device = entry.getValue();
+            current = current.compose(ok -> assertDevice(TENANT, entry.getKey(), Optional.empty(),
+                    r -> {
+                        assertEquals(HTTP_OK, r.getStatus());
+                        assertNotNull(r.getPayload());
+                        assertNotNull(r.getResourceVersion()); // may be empty, but not null
+                        assertNotNull(r.getCacheDirective()); // may be empty, but not null
+                        assertEquals(device.getEnabled(), r.getPayload().getEnabled());
+                        assertEquals(device.getVia(), r.getPayload().getVia());
+                    },
+                    r -> {
+                        if (Boolean.FALSE.equals(device.getEnabled())) {
+                            assertEquals(HTTP_NOT_FOUND, r.getStatus());
+                            assertNull(r.getPayload());
+                        } else {
+                            assertEquals(HTTP_OK, r.getStatus());
+                            assertNotNull(r.getPayload());
+                            assertEquals(device.getVia(), r.getPayload().getJsonArray("via"));
+                        }
+
+                    }));
+        }
+
+        return current;
+
+    }
+
+    protected Future<?> createDevices(final Map<String, Device> devices) {
+
+        Future<?> current = Future.succeededFuture();
+        for (final Map.Entry<String, Device> entry : devices.entrySet()) {
+
+            current = current.compose(ok -> {
+                final Future<OperationResult<Id>> f = Future.future();
+                getDeviceManagementService().createDevice(TENANT, Optional.of(entry.getKey()), entry.getValue(), f);
+                return f.map(r -> {
+                    assertEquals(HTTP_CREATED, r.getStatus());
+                    return null;
+                });
+            });
+
+        }
+
+        return current;
+
     }
 }

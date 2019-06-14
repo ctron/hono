@@ -253,45 +253,45 @@ public class FileBasedRegistrationService extends AbstractVerticle
     }
 
     private int addDevicesForTenant(final JsonObject tenant) {
-        int count = 0;
+
         final String tenantId = tenant.getString(FIELD_TENANT);
-        if (tenantId != null) {
-            log.debug("loading devices for tenant [{}]", tenantId);
-            final Map<String, Versioned<Device>> deviceMap = new HashMap<>();
-            for (final Object deviceObj : tenant.getJsonArray(ARRAY_DEVICES)) {
-                if (deviceObj instanceof JsonObject) {
-                    final JsonObject entry = (JsonObject) deviceObj;
-                    final String deviceId = entry.getString(FIELD_PAYLOAD_DEVICE_ID);
-                    if (deviceId != null) {
-                        log.trace("loading device [{}]", deviceId);
-                        final Device device = mapFromStoredJson(entry.getJsonObject(FIELD_DATA));
-                        deviceMap.put(deviceId, new Versioned<>(UUID.randomUUID().toString(), device));
-                        count++;
-                    }
+        if (tenantId == null) {
+            log.debug("Tenant field missing, skipping!");
+            return 0;
+        }
+
+        int count = 0;
+        log.debug("loading devices for tenant [{}]", tenantId);
+        final Map<String, Versioned<Device>> deviceMap = new HashMap<>();
+        for (final Object deviceObj : tenant.getJsonArray(ARRAY_DEVICES)) {
+            if (deviceObj instanceof JsonObject) {
+                final JsonObject entry = (JsonObject) deviceObj;
+                final String deviceId = entry.getString(FIELD_PAYLOAD_DEVICE_ID);
+                if (deviceId != null) {
+                    log.trace("loading device [{}]", deviceId);
+                    final Device device = mapFromStoredJson(entry.getJsonObject(FIELD_DATA));
+                    deviceMap.put(deviceId, new Versioned<>(device));
+                    count++;
                 }
             }
-            identities.put(tenantId, deviceMap);
         }
+        identities.put(tenantId, deviceMap);
+
         log.debug("Loaded {} devices for tenant {}", count, tenantId);
         return count;
     }
 
     private static Device mapFromStoredJson(final JsonObject json) {
-        final Device device = new Device();
 
-        device.setEnabled(json.getBoolean("enabled"));
-        json.remove("enabled");
-        device.setExtensions(json.getMap());
+        // unsupported field, but used in stored data as explanation
 
+        json.remove("comment");
+        final Device device = json.mapTo(Device.class);
         return device;
     }
 
     private static JsonObject mapToStoredJson(final Device device) {
-        final JsonObject json = new JsonObject();
-        if (device.getExtensions() != null) {
-            json.getMap().putAll(device.getExtensions());
-        }
-        json.put("enabled", device.getEnabled());
+        final JsonObject json = JsonObject.mapFrom(device);
         return json;
     }
 
