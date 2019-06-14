@@ -27,14 +27,19 @@ import org.eclipse.hono.service.credentials.CredentialsAmqpEndpoint;
 import org.eclipse.hono.service.deviceconnection.DeviceConnectionAmqpEndpoint;
 
 import org.eclipse.hono.service.management.credentials.CredentialsManagementHttpEndpoint;
+import org.eclipse.hono.service.management.credentials.CredentialsManagementService;
 import org.eclipse.hono.service.management.device.DeviceManagementHttpEndpoint;
+import org.eclipse.hono.service.management.device.DeviceManagementService;
 import org.eclipse.hono.service.management.tenant.TenantManagementHttpEndpoint;
+
+import org.eclipse.hono.service.management.tenant.TenantManagementService;
 
 import org.eclipse.hono.service.metric.MetricsTags;
 import org.eclipse.hono.service.registration.RegistrationAmqpEndpoint;
 import org.eclipse.hono.service.tenant.TenantAmqpEndpoint;
 import org.eclipse.hono.util.Constants;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -184,6 +189,7 @@ public class ApplicationConfig {
      */
     @Bean
     @Scope("prototype")
+    @ConditionalOnBean(DeviceManagementService.class)
     public DeviceManagementHttpEndpoint registrationHttpEndpoint() {
         return new DeviceManagementHttpEndpoint(vertx());
     }
@@ -195,6 +201,7 @@ public class ApplicationConfig {
      */
     @Bean
     @Scope("prototype")
+    @ConditionalOnBean(CredentialsManagementService.class)
     public CredentialsManagementHttpEndpoint credentialsHttpEndpoint() {
         return new CredentialsManagementHttpEndpoint(vertx());
     }
@@ -206,6 +213,7 @@ public class ApplicationConfig {
      */
     @Bean
     @Scope("prototype")
+    @ConditionalOnBean(TenantManagementService.class)
     public TenantManagementHttpEndpoint tenantHttpEndpoint() {
         return new TenantManagementHttpEndpoint(vertx());
     }
