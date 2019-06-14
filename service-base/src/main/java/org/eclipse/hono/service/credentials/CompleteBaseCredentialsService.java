@@ -113,10 +113,10 @@ public abstract class CompleteBaseCredentialsService<T> extends BaseCredentialsS
             payload.checkValidity(this::checkSecret);
             final Future<CredentialsResult<JsonObject>> result = Future.future();
             add(tenantId, JsonObject.mapFrom(payload), result);
-            return result.map(cr -> {
-                return request.getResponse(cr.getStatus())
+            return result.map(res -> {
+                return request.getResponse(res.getStatus())
                         .setDeviceId(payload.getDeviceId())
-                        .setCacheDirective(cr.getCacheDirective());
+                        .setCacheDirective(res.getCacheDirective());
             });
         } catch (final IllegalStateException e) {
             return Future.failedFuture(new ClientErrorException(

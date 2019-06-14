@@ -325,10 +325,8 @@ public abstract class AbstractHttpEndpoint<T> extends AbstractEndpoint implement
      */
     protected void extractIfMatchVersionParam(final RoutingContext ctx) {
         final String ifMatchHeader = ctx.request().getHeader(HttpHeaders.IF_MATCH);
-        if (ifMatchHeader != null) {
-            if (!ifMatchHeader.isBlank()) {
+        if (! Strings.isNullOrEmpty(ifMatchHeader)) {
                 ctx.put(KEY_RESOURCE_VERSION, ifMatchHeader);
-            }
         }
         ctx.next();
     }

@@ -94,29 +94,6 @@ public final class TenantHttpEndpoint extends AbstractHttpEndpoint<ServiceConfig
     }
 
     /**
-     * Check that the tenantId value is not blank then
-     * update the payload (that was put to the RoutingContext ctx with the
-     * key {@link #KEY_REQUEST_BODY}) with the tenant value retrieved from the RoutingContext.
-     * The tenantId value is associated with the key {@link TenantConstants#FIELD_PAYLOAD_TENANT_ID}.
-     *
-     * @param ctx The routing context to retrieve the JSON request body from.
-     */
-    protected void updatePayloadWithTenantId(final RoutingContext ctx) {
-
-        final JsonObject payload = ctx.get(KEY_REQUEST_BODY);
-        final String tenantId = getTenantIdFromContext(ctx);
-
-        if (tenantId.isBlank()) {
-            ctx.fail(new ClientErrorException(HttpURLConnection.HTTP_BAD_REQUEST,
-                    String.format("'%s' param cannot be empty", TenantConstants.FIELD_PAYLOAD_TENANT_ID)));
-        }
-
-        payload.put(TenantConstants.FIELD_PAYLOAD_TENANT_ID, tenantId);
-        ctx.put(KEY_REQUEST_BODY, payload);
-        ctx.next();
-    }
-
-    /**
      * Check if the payload (that was put to the RoutingContext ctx with the
      * key {@link #KEY_REQUEST_BODY}) contains a value for the key {@link TenantConstants#FIELD_PAYLOAD_TENANT_ID} that is not null.
      *

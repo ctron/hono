@@ -93,7 +93,7 @@ public interface CompleteCredentialsService extends CredentialsService {
     }
 
     /**
-     * Updates or create the set of credentials.
+     * Updates existing device credentials.
      *
      * @param tenantId The tenant the device belongs to.
      * @param credentialsObject A map containing keys and values that fulfill the credentials format of the credentials api.
@@ -110,8 +110,7 @@ public interface CompleteCredentialsService extends CredentialsService {
      * @see <a href="https://github.com/eclipse/hono/blob/1.0-M4/site/content/api/Credentials-API.md#update-credentials">
      *      Credentials API - Update Credentials</a>
      */
-    void update(String tenantId, JsonObject credentialsObject,
-            Handler<AsyncResult<CredentialsResult<JsonObject>>> resultHandler);
+    void update(String tenantId, JsonObject credentialsObject, Handler<AsyncResult<CredentialsResult<JsonObject>>> resultHandler);
 
     /**
      * Removes credentials by authentication identifier and type.
@@ -130,8 +129,7 @@ public interface CompleteCredentialsService extends CredentialsService {
      * @see <a href="https://github.com/eclipse/hono/blob/1.0-M4/site/content/api/Credentials-API.md#remove-credentials">
      *      Credentials API - Remove Credentials</a>
      */
-    void remove(String tenantId, String type, String authId,
-            Handler<AsyncResult<CredentialsResult<JsonObject>>> resultHandler);
+    void remove(String tenantId, String type, String authId, Handler<AsyncResult<CredentialsResult<JsonObject>>> resultHandler);
 
     /**
      * Removes all credentials for a device.

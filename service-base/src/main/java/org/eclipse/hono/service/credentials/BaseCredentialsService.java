@@ -93,5 +93,4 @@ public abstract class BaseCredentialsService<T> extends EventBusCredentialsAdapt
     protected void handleUnimplementedOperation(final Handler<AsyncResult<CredentialsResult<JsonObject>>> resultHandler) {
         resultHandler.handle(Future.succeededFuture(CredentialsResult.from(HttpURLConnection.HTTP_NOT_IMPLEMENTED)));
     }
-
 }

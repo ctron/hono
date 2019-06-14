@@ -81,10 +81,9 @@ public abstract class CompleteBaseTenantService<T> extends BaseTenantService<T> 
 
         final String tenantId = request.getTenant();
 
-        // ID is required for legacy API
-
         if (tenantId == null) {
-            log.debug("request does not contain mandatory property [{}]", MessageHelper.APP_PROPERTY_TENANT_ID);
+            log.debug("request does not contain mandatory property [{}]",
+                    MessageHelper.APP_PROPERTY_TENANT_ID);
             return Future.failedFuture(new ClientErrorException(HttpURLConnection.HTTP_BAD_REQUEST));
         }
 
@@ -94,10 +93,10 @@ public abstract class CompleteBaseTenantService<T> extends BaseTenantService<T> 
             final Future<TenantResult<JsonObject>> addResult = Future.future();
             addNotPresentFieldsWithDefaultValuesForTenant(payload);
             add(tenantId, payload, addResult);
-            return addResult.map(cr -> {
-                return request.getResponse(cr.getStatus())
-                        .setJsonPayload(cr.getPayload())
-                        .setCacheDirective(cr.getCacheDirective());
+            return addResult.map(tr -> {
+                return request.getResponse(tr.getStatus())
+                        .setJsonPayload(tr.getPayload())
+                        .setCacheDirective(tr.getCacheDirective());
             });
         } else {
             log.debug("request contains malformed payload");
