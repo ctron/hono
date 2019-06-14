@@ -17,6 +17,7 @@ import java.net.HttpURLConnection;
 
 import org.eclipse.hono.service.registration.AbstractRegistrationService;
 import org.eclipse.hono.util.RegistrationResult;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
@@ -30,6 +31,7 @@ import io.vertx.core.json.JsonObject;
  * Dummy implementation of the registration service.
  */
 @Service
+@Qualifier("backend")
 @ConditionalOnProperty(name = "hono.app.type", havingValue = "dummy")
 public class DummyRegistrationService extends AbstractRegistrationService {
 

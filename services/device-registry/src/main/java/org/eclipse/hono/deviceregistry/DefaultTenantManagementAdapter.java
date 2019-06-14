@@ -17,6 +17,7 @@ import org.eclipse.hono.service.management.tenant.EventBusTenantManagementAdapte
 import org.eclipse.hono.service.management.tenant.TenantManagementService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Component;
 
 /**
@@ -26,6 +27,7 @@ import org.springframework.stereotype.Component;
  * in a Spring Boot environment.
  */
 @Component
+@ConditionalOnBean(TenantManagementService.class)
 public final class DefaultTenantManagementAdapter extends EventBusTenantManagementAdapter<Void> {
 
     private TenantManagementService service;
