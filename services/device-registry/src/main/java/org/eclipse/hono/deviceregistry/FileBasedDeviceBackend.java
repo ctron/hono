@@ -30,6 +30,9 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Repository;
 
+import com.google.common.base.MoreObjects;
+import com.google.common.base.MoreObjects.ToStringHelper;
+
 import io.opentracing.Span;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.CompositeFuture;
@@ -209,5 +212,16 @@ public class FileBasedDeviceBackend implements DeviceBackend {
     public void clear() {
         registrationService.clear();
         credentialsService.clear();
+    }
+
+    protected ToStringHelper toStringHelper() {
+        return MoreObjects.toStringHelper(this)
+                .add("credentialsService", this.credentialsService)
+                .add("registrationService", this.registrationService);
+    }
+
+    @Override
+    public String toString() {
+        return toStringHelper().toString();
     }
 }
