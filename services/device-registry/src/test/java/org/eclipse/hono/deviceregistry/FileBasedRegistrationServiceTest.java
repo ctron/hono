@@ -297,7 +297,7 @@ public class FileBasedRegistrationServiceTest extends AbstractRegistrationServic
 
         // THEN the result contains a FORBIDDEN status code and the device has not been added to the registry
         assertEquals(HttpURLConnection.HTTP_FORBIDDEN, result.getStatus());
-        assertEquals(HttpURLConnection.HTTP_NOT_FOUND, registrationService.getDevice(TENANT, "newDevice").getStatus());
+        assertEquals(HttpURLConnection.HTTP_NOT_FOUND, registrationService.readDevice(TENANT, "newDevice").getStatus());
     }
 
     /**
@@ -317,7 +317,7 @@ public class FileBasedRegistrationServiceTest extends AbstractRegistrationServic
 
         // THEN the result contains a FORBIDDEN status code and the device has not been updated
         assertEquals(HttpURLConnection.HTTP_FORBIDDEN, result.getStatus());
-        final var device = registrationService.getDevice(TENANT, DEVICE);
+        final var device = registrationService.readDevice(TENANT, DEVICE);
         assertNotNull(device);
         assertNotNull(device.getPayload());
         assertNotNull(device.getPayload().getExtensions());
@@ -340,7 +340,7 @@ public class FileBasedRegistrationServiceTest extends AbstractRegistrationServic
 
         // THEN the result contains a FORBIDDEN status code and the device has not been removed
         assertEquals(HttpURLConnection.HTTP_FORBIDDEN, result.getStatus());
-        assertEquals(HttpURLConnection.HTTP_OK, registrationService.getDevice(TENANT, DEVICE).getStatus());
+        assertEquals(HttpURLConnection.HTTP_OK, registrationService.readDevice(TENANT, DEVICE).getStatus());
     }
 
     /**

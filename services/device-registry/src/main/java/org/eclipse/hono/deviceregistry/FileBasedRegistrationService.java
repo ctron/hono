@@ -374,29 +374,26 @@ public class FileBasedRegistrationService extends AbstractVerticle
         Objects.requireNonNull(deviceId);
         Objects.requireNonNull(resultHandler);
 
-        resultHandler.handle(Future.succeededFuture(convertResult(getDevice(tenantId, deviceId))));
+        resultHandler.handle(Future.succeededFuture(convertResult(deviceId, readDevice(tenantId, deviceId))));
     }
 
-    private RegistrationResult convertResult(final OperationResult<Device> result) {
+    private RegistrationResult convertResult(final String deviceId, final OperationResult<Device> result) {
         return RegistrationResult.from(
                 result.getStatus(),
-                convertDevice(result.getPayload()),
+                convertDevice(deviceId, result.getPayload()),
                 result.getCacheDirective().orElse(null));
     }
 
-    private JsonObject convertDevice(final Device payload) {
+    private JsonObject convertDevice(final String deviceId, final Device payload) {
 
         if (payload == null) {
             return null;
         }
 
-        final JsonObject data = new JsonObject();
-        if ( payload.getExtensions() != null ) {
-            data.getMap().putAll(payload.getExtensions());
-        }
+        final JsonObject data = JsonObject.mapFrom(payload);
 
         return new JsonObject()
-                .put("enabled", payload.getEnabled())
+                .put(RegistrationConstants.FIELD_PAYLOAD_DEVICE_ID, deviceId)
                 .put("data", data);
     }
 
@@ -408,10 +405,10 @@ public class FileBasedRegistrationService extends AbstractVerticle
         Objects.requireNonNull(deviceId);
         Objects.requireNonNull(resultHandler);
 
-        resultHandler.handle(Future.succeededFuture(getDevice(tenantId, deviceId)));
+        resultHandler.handle(Future.succeededFuture(readDevice(tenantId, deviceId)));
     }
 
-    OperationResult<Device> getDevice(final String tenantId, final String deviceId) {
+    OperationResult<Device> readDevice(final String tenantId, final String deviceId) {
         final Versioned<Device> device = getRegistrationData(tenantId, deviceId);
 
         if (device == null) {
@@ -427,6 +424,7 @@ public class FileBasedRegistrationService extends AbstractVerticle
     private Versioned<Device> getRegistrationData(final String tenantId, final String deviceId) {
 
         final Map<String, Versioned<Device>> devices = this.identities.get(tenantId);
+
         if (devices == null) {
             return null;
         }

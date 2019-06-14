@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 import io.vertx.core.Future;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.Checkpoint;
 import io.vertx.junit5.VertxTestContext;
@@ -32,8 +33,13 @@ import org.eclipse.hono.util.Constants;
 import org.junit.jupiter.api.Test;
 
 import java.net.HttpURLConnection;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Abstract class used as a base for verifying behavior of {@link RegistrationService} and the
@@ -135,18 +141,21 @@ public abstract class AbstractRegistrationServiceTest {
 
         final Future<OperationResult<Id>> addResult = Future.future();
 
-        getDeviceManagementService().createDevice(TENANT, Optional.of(DEVICE), new Device(), addResult);
-        addResult.map(r -> ctx.verify(() -> {
-            assertEquals(HttpURLConnection.HTTP_CREATED, r.getStatus());
-        }))
-        .compose(ok -> {
+        getDeviceManagementService()
+                .createDevice(TENANT, Optional.of(DEVICE), new Device(), addResult);
+
+        addResult
+                .map(r -> ctx.verify(() -> {
+                    assertEquals(HttpURLConnection.HTTP_CREATED, r.getStatus());
+                }))
+                .compose(ok -> {
                     final Future<OperationResult<Device>> getResult = Future.future();
                     getDeviceManagementService().readDevice(TENANT, DEVICE, getResult);
                     return getResult;
-        })
-        .setHandler(ctx.succeeding(s -> ctx.verify(() -> {
-            assertEquals(HttpURLConnection.HTTP_OK, s.getStatus());
-            assertNotNull(s.getPayload());
+                })
+                .setHandler(ctx.succeeding(s -> ctx.verify(() -> {
+                    assertEquals(HttpURLConnection.HTTP_OK, s.getStatus());
+                    assertNotNull(s.getPayload());
 
                     getRegistrationService().assertRegistration(TENANT, DEVICE, ctx.succeeding(s2 -> {
                         assertEquals(HttpURLConnection.HTTP_OK, s2.getStatus());
@@ -154,7 +163,55 @@ public abstract class AbstractRegistrationServiceTest {
                         ctx.completeNow();
                     }));
 
-        })));
+                })));
+    }
+
+    /**
+     * Verifies that the registry returns 200 when getting an existing device.
+     *
+     * @param ctx The vert.x test context.
+     */
+    @Test
+    public void testGetSucceedsForRegisteredDeviceWithData(final VertxTestContext ctx) {
+
+        final List<String> vias = Collections.unmodifiableList(Arrays.asList("a", "b", "c"));
+        final String deviceId = UUID.randomUUID().toString();
+        final Device device = new Device();
+        device.setVia(vias);
+
+        final Future<OperationResult<Id>> addResult = Future.future();
+
+        getDeviceManagementService()
+                .createDevice(TENANT, Optional.of(deviceId), device, addResult);
+
+        addResult
+                .map(r -> ctx.verify(() -> {
+                    assertEquals(HttpURLConnection.HTTP_CREATED, r.getStatus());
+                }))
+                .compose(ok -> {
+                    final Future<OperationResult<Device>> getResult = Future.future();
+                    getDeviceManagementService().readDevice(TENANT, deviceId, getResult);
+                    return getResult;
+                })
+                .setHandler(ctx.succeeding(s -> ctx.verify(() -> {
+                    assertEquals(HttpURLConnection.HTTP_OK, s.getStatus());
+
+                    assertNotNull(s.getPayload());
+                    assertEquals(vias, s.getPayload().getVia());
+
+                    getRegistrationService().assertRegistration(TENANT, deviceId, ctx.succeeding(s2 -> {
+                        assertEquals(HttpURLConnection.HTTP_OK, s2.getStatus());
+                        assertNotNull(s2.getPayload());
+
+                        // assert "via"
+                        final JsonArray viaJson = s2.getPayload().getJsonArray("via");
+                        assertNotNull(viaJson);
+                        assertEquals(vias, viaJson.stream().map(Object::toString).collect(Collectors.toList()));
+
+                        ctx.completeNow();
+                    }));
+
+                })));
     }
 
     /**
