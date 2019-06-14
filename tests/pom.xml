@@ -959,6 +959,11 @@ Test cases are run against Docker images of Hono server + (Apache Qpid Dispatch 
                 <!-- javax.net.debug>ssl:handshake</javax.net.debug-->
               </systemProperties>
               <failIfNoSpecifiedTests>false</failIfNoSpecifiedTests>
+              <excludes>
+                <exclude>org.eclipse.hono.tests.registry.legacy.CredentialsHttpIT</exclude>
+                <exclude>org.eclipse.hono.tests.registry.legacy.DeviceRegistrationHttpIT</exclude>
+                <exclude>org.eclipse.hono.tests.registry.legacy.TenantHttpIT</exclude>
+              </excludes>
             </configuration>
             <executions>
               <execution>
@@ -981,6 +986,21 @@ Test cases are run against Docker images of Hono server + (Apache Qpid Dispatch 
       <properties>
         <deviceregistry.image>hono-service-device-registry-legacy</deviceregistry.image>
       </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-failsafe-plugin</artifactId>
+            <configuration>
+              <excludes>
+                <exclude>org.eclipse.hono.tests.registry.CredentialsHttpIT</exclude>
+                <exclude>org.eclipse.hono.tests.registry.DeviceRegistrationHttpIT</exclude>
+                <exclude>org.eclipse.hono.tests.registry.TenantHttpIT</exclude>
+              </excludes>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
     </profile>
   </profiles>
 </project>
