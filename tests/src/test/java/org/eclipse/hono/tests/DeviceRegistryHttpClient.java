@@ -74,38 +74,56 @@ public final class DeviceRegistryHttpClient {
     /**
      * Adds configuration information for a tenant.
      * <p>
-     * This method simply invokes {@link #addTenant(JsonObject, int)} with
+     * This method simply invokes {@link #addTenant(String, JsonObject, int)} with
      * {@link HttpURLConnection#HTTP_CREATED} as the expected status code.
-     * 
+     *
      * @param requestPayload The request payload as specified by the Tenant API.
      * @return A future indicating the outcome of the operation.
      *         The future will succeed if the tenant has been created successfully.
      *         Otherwise the future will fail with a {@link ServiceInvocationException}.
      */
     public Future<MultiMap> addTenant(final JsonObject requestPayload) {
-        return addTenant(requestPayload, HttpURLConnection.HTTP_CREATED);
+        return addTenant(requestPayload.getString(TenantConstants.FIELD_PAYLOAD_TENANT_ID), requestPayload, HttpURLConnection.HTTP_CREATED);
     }
 
     /**
      * Adds configuration information for a tenant.
      * <p>
-     * This method simply invokes {@link #addTenant(JsonObject, String, int)} with
+     * This method simply invokes {@link #addTenant(String, JsonObject, int)} with
+     * {@link HttpURLConnection#HTTP_CREATED} as the expected status code.
+     *
+     * @param tenantId The id of the tenant to add.
+     * @param requestPayload The request payload as specified by the Tenant API.
+     * @return A future indicating the outcome of the operation.
+     *         The future will succeed if the tenant has been created successfully.
+     *         Otherwise the future will fail with a {@link ServiceInvocationException}.
+     */
+    public Future<MultiMap> addTenant(final String tenantId, final JsonObject requestPayload) {
+        return addTenant(tenantId, requestPayload, HttpURLConnection.HTTP_CREATED);
+    }
+
+    /**
+     * Adds configuration information for a tenant.
+     * <p>
+     * This method simply invokes {@link #addTenant(String, JsonObject, String, int)} with
      * <em>application/json</em> as content type and {@link HttpURLConnection#HTTP_CREATED}
      * as the expected status code.
-     * 
+     *
+     * @param tenantId The id of the tenant to add.
      * @param requestPayload The request payload as specified by the Tenant API.
      * @param expectedStatusCode The status code indicating a successful outcome.
      * @return A future indicating the outcome of the operation.
      *         The future will succeed if the response contained the expected status code.
      *         Otherwise the future will fail with a {@link ServiceInvocationException}.
      */
-    public Future<MultiMap> addTenant(final JsonObject requestPayload, final int expectedStatusCode) {
-        return addTenant(requestPayload, CONTENT_TYPE_APPLICATION_JSON, expectedStatusCode);
+    public Future<MultiMap> addTenant(final String tenantId, final JsonObject requestPayload, final int expectedStatusCode) {
+        return addTenant(tenantId, requestPayload, CONTENT_TYPE_APPLICATION_JSON, expectedStatusCode);
     }
 
     /**
      * Adds configuration information for a tenant.
-     * 
+     *
+     * @param tenantId The id of the tenant to add.
      * @param requestPayload The request payload as specified by the Tenant API.
      * @param contentType The content type to set in the request.
      * @param expectedStatusCode The status code indicating a successful outcome.
@@ -113,10 +131,11 @@ public final class DeviceRegistryHttpClient {
      *         The future will succeed if the response contained the expected status code.
      *         Otherwise the future will fail with a {@link ServiceInvocationException}.
      */
-    public Future<MultiMap> addTenant(final JsonObject requestPayload, final String contentType,
+    public Future<MultiMap> addTenant(final String tenantId, final JsonObject requestPayload, final String contentType,
             final int expectedStatusCode) {
 
-        return httpClient.create(URI_ADD_TENANT, requestPayload, contentType, response -> response.statusCode() == expectedStatusCode);
+        final String uri = String.format("%s/%s", URI_ADD_TENANT, tenantId);
+        return httpClient.create(uri, requestPayload, contentType, response -> response.statusCode() == expectedStatusCode);
     }
 
     /**
@@ -684,7 +703,7 @@ public final class DeviceRegistryHttpClient {
         final CredentialsObject credentialsSpec =
                 CredentialsObject.fromClearTextPassword(deviceId, deviceId, password, null, null);
 
-        return addTenant(JsonObject.mapFrom(tenant))
+        return addTenant(tenant.getTenantId(), JsonObject.mapFrom(tenant))
             .compose(ok -> registerDevice(tenant.getTenantId(), deviceId, data))
             .compose(ok -> addCredentials(tenant.getTenantId(), deviceId, JsonObject.mapFrom(credentialsSpec)));
     }
@@ -756,7 +775,7 @@ public final class DeviceRegistryHttpClient {
 
         Objects.requireNonNull(tenant);
 
-        return addTenant(JsonObject.mapFrom(tenant))
+        return addTenant(tenant.getTenantId(), JsonObject.mapFrom(tenant))
             .compose(ok -> registerDevice(tenant.getTenantId(), deviceId))
             .compose(ok -> {
                 final CredentialsObject credentialsSpec =
@@ -812,7 +831,7 @@ public final class DeviceRegistryHttpClient {
         final CredentialsObject credentialsSpec =
                 CredentialsObject.fromPresharedKey(deviceId, deviceId, key.getBytes(StandardCharsets.UTF_8), null, null);
 
-        return addTenant(JsonObject.mapFrom(tenant))
+        return addTenant(tenant.getTenantId(), JsonObject.mapFrom(tenant))
             .compose(ok -> registerDevice(tenant.getTenantId(), deviceId, deviceData))
             .compose(ok -> addCredentials(tenant.getTenantId(), deviceId, JsonObject.mapFrom(credentialsSpec)));
 

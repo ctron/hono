@@ -22,7 +22,7 @@ import java.util.Map;
 import org.eclipse.hono.util.TenantConstants;
 
 /**
- * Device Information.
+ * Tenant Information.
  */
 @JsonInclude(value = Include.NON_NULL)
 public class Tenant {
@@ -38,7 +38,7 @@ public class Tenant {
 
     @JsonProperty(TenantConstants.FIELD_ADAPTERS)
     @JsonInclude(value = Include.NON_EMPTY)
-    private List<Map<String, Object>> adapters;
+    private List<Adapter> adapters;
 
     @JsonProperty("limits")
     @JsonInclude(value = Include.NON_EMPTY)
@@ -86,7 +86,7 @@ public class Tenant {
         return defaults;
     }
 
-    public List<Map<String, Object>> getAdapters() {
+    public List<Adapter> getAdapters() {
         return adapters;
     }
 
@@ -96,7 +96,7 @@ public class Tenant {
      * @param adapters the value to assign
      * @return a reference to this for fluent use.
      */
-    public Tenant setAdapters(final List<Map<String, Object>> adapters) {
+    public Tenant setAdapters(final List<Adapter> adapters) {
         this.adapters = adapters;
         return this;
     }

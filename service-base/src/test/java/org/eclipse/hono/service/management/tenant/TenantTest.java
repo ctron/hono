@@ -13,9 +13,15 @@
 
 package org.eclipse.hono.service.management.tenant;
 
-import io.vertx.core.json.JsonArray;
+import static org.eclipse.hono.util.TenantConstants.FIELD_ADAPTERS_TYPE;
+import static org.eclipse.hono.util.TenantConstants.FIELD_ADAPTERS;
+import static org.eclipse.hono.util.TenantConstants.FIELD_ADAPTERS_DEVICE_AUTHENTICATION_REQUIRED;
+import static org.eclipse.hono.util.TenantConstants.FIELD_ENABLED;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
+
+import io.vertx.core.json.JsonArray;
+import java.util.ArrayList;
 
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
@@ -89,7 +95,7 @@ class TenantTest {
 
         final var adapters = tenant.getAdapters();
         assertNotNull(adapters);
-        assertEquals( "http", adapters.get(0).get("type"));
+        assertEquals( "http", adapters.get(0).getType());
     }
 
     /**
@@ -164,5 +170,37 @@ class TenantTest {
         assertNotNull(json);
         assertFalse(json.getBoolean("enabled"));
         assertNull(json.getJsonObject("ext"));
+    }
+
+    /**
+     * Verify that a Tenant instance containing multiple "adapters" can be serialized to Json.
+     */
+    @Test
+    public void testSerializeAdapters() {
+
+        final Adapter httpAdapter = new Adapter()
+                .setType("http")
+                .setEnabled(false)
+                .setDeviceAuthenticationRequired(true);
+        final Adapter mqttAdapter = new Adapter()
+                .setType("mqtt")
+                .setEnabled(true)
+                .setDeviceAuthenticationRequired(true);
+
+        final ArrayList<Adapter> adapters = new ArrayList<>();
+        adapters.add(httpAdapter);
+        adapters.add(mqttAdapter);
+
+        final Tenant tenant = new Tenant()
+                .setEnabled(true)
+                .setAdapters(adapters);
+
+        //TODO : serialize then verifies the result.
+        final JsonArray result = JsonObject.mapFrom(tenant).getJsonArray(FIELD_ADAPTERS);
+        assertNotNull(result);
+        assertEquals("http", result.getJsonObject(0).getString(FIELD_ADAPTERS_TYPE));
+        assertEquals("mqtt", result.getJsonObject(1).getString(FIELD_ADAPTERS_TYPE));
+        assertEquals(false, result.getJsonObject(0).getBoolean(FIELD_ENABLED));
+        assertEquals(true, result.getJsonObject(0).getBoolean(FIELD_ADAPTERS_DEVICE_AUTHENTICATION_REQUIRED));
     }
 }

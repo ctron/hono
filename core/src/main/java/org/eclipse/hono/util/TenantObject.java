@@ -483,6 +483,22 @@ public final class TenantObject extends JsonBackedValueObject {
     }
 
     /**
+     * Creates a TenantObject from the enabled property.
+     *
+     * @param enabled {@code true} if the tenant shall be enabled.
+     * @return The TenantObject.
+     * @throws NullPointerException if enabled is {@code null}.
+     */
+    public static TenantObject from(final Boolean enabled) {
+
+        Objects.requireNonNull(enabled);
+
+        final TenantObject result = new TenantObject();
+        result.setEnabled(enabled);
+        return result;
+    }
+
+    /**
      * Creates new protocol adapter configuration properties.
      * 
      * @param type The adapter type.
