@@ -16,6 +16,7 @@ package org.eclipse.hono.tests;
 import javax.security.auth.x500.X500Principal;
 
 import io.vertx.core.Future;
+import io.vertx.core.MultiMap;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonObject;
@@ -79,7 +80,7 @@ public final class LegacyDeviceRegistryHttpClient {
      *         The future will succeed if the tenant has been created successfully.
      *         Otherwise the future will fail with a {@link ServiceInvocationException}.
      */
-    public Future<Void> addTenant(final JsonObject requestPayload) {
+    public Future<MultiMap> addTenant(final JsonObject requestPayload) {
         return addTenant(requestPayload, HttpURLConnection.HTTP_CREATED);
     }
 
@@ -96,7 +97,7 @@ public final class LegacyDeviceRegistryHttpClient {
      *         The future will succeed if the response contained the expected status code.
      *         Otherwise the future will fail with a {@link ServiceInvocationException}.
      */
-    public Future<Void> addTenant(final JsonObject requestPayload, final int expectedStatusCode) {
+    public Future<MultiMap> addTenant(final JsonObject requestPayload, final int expectedStatusCode) {
         return addTenant(requestPayload, CONTENT_TYPE_APPLICATION_JSON, expectedStatusCode);
     }
 
@@ -110,7 +111,8 @@ public final class LegacyDeviceRegistryHttpClient {
      *         The future will succeed if the response contained the expected status code.
      *         Otherwise the future will fail with a {@link ServiceInvocationException}.
      */
-    public Future<Void> addTenant(final JsonObject requestPayload, final String contentType, final int expectedStatusCode) {
+    public Future<MultiMap> addTenant(final JsonObject requestPayload, final String contentType,
+            final int expectedStatusCode) {
 
         return httpClient.create(URI_ADD_TENANT, requestPayload, contentType, response -> response.statusCode() == expectedStatusCode);
     }
@@ -210,7 +212,7 @@ public final class LegacyDeviceRegistryHttpClient {
      *         Otherwise the future will fail with a {@link ServiceInvocationException}.
      * @throws NullPointerException if the tenant is {@code null}.
      */
-    public Future<Void> registerDevice(final String tenantId, final String deviceId) {
+    public Future<MultiMap> registerDevice(final String tenantId, final String deviceId) {
         return registerDevice(tenantId, deviceId, new JsonObject());
     }
 
@@ -231,7 +233,7 @@ public final class LegacyDeviceRegistryHttpClient {
      *         Otherwise the future will fail with a {@link ServiceInvocationException}.
      * @throws NullPointerException if the tenant is {@code null}.
      */
-    public Future<Void> registerDevice(final String tenantId, final String deviceId, final JsonObject data) {
+    public Future<MultiMap> registerDevice(final String tenantId, final String deviceId, final JsonObject data) {
         return registerDevice(tenantId, deviceId, data, HttpURLConnection.HTTP_CREATED);
     }
 
@@ -253,7 +255,7 @@ public final class LegacyDeviceRegistryHttpClient {
      *         Otherwise the future will fail with a {@link ServiceInvocationException}.
      * @throws NullPointerException if the tenant is {@code null}.
      */
-    public Future<Void> registerDevice(final String tenantId, final String deviceId, final JsonObject data,
+    public Future<MultiMap> registerDevice(final String tenantId, final String deviceId, final JsonObject data,
             final int expectedStatus) {
         return registerDevice(tenantId, deviceId, data, CONTENT_TYPE_APPLICATION_JSON, expectedStatus);
     }
@@ -274,7 +276,7 @@ public final class LegacyDeviceRegistryHttpClient {
      *         Otherwise the future will fail with a {@link ServiceInvocationException}.
      * @throws NullPointerException if the tenant is {@code null}.
      */
-    public Future<Void> registerDevice(
+    public Future<MultiMap> registerDevice(
             final String tenantId,
             final String deviceId,
             final JsonObject data,
@@ -387,7 +389,7 @@ public final class LegacyDeviceRegistryHttpClient {
      *         Otherwise the future will fail with a {@link ServiceInvocationException}.
      * @throws NullPointerException if the tenant is {@code null}.
      */
-    public Future<Void> addCredentials(final String tenantId, final JsonObject credentialsSpec) {
+    public Future<MultiMap> addCredentials(final String tenantId, final JsonObject credentialsSpec) {
         return addCredentials(tenantId, credentialsSpec, HttpURLConnection.HTTP_CREATED);
     }
 
@@ -406,7 +408,8 @@ public final class LegacyDeviceRegistryHttpClient {
      *         Otherwise the future will fail with a {@link ServiceInvocationException}.
      * @throws NullPointerException if the tenant is {@code null}.
      */
-    public Future<Void> addCredentials(final String tenantId, final JsonObject credentialsSpec, final int expectedStatusCode) {
+    public Future<MultiMap> addCredentials(final String tenantId, final JsonObject credentialsSpec,
+            final int expectedStatusCode) {
         return addCredentials(tenantId, credentialsSpec, CONTENT_TYPE_APPLICATION_JSON, expectedStatusCode);
     }
 
@@ -422,7 +425,7 @@ public final class LegacyDeviceRegistryHttpClient {
      *         Otherwise the future will fail with a {@link ServiceInvocationException}.
      * @throws NullPointerException if the tenant is {@code null}.
      */
-    public Future<Void> addCredentials(
+    public Future<MultiMap> addCredentials(
             final String tenantId,
             final JsonObject credentialsSpec,
             final String contentType,
@@ -600,7 +603,8 @@ public final class LegacyDeviceRegistryHttpClient {
      * @return A future indicating the outcome of the operation.
      * @throws NullPointerException if tenant is {@code null}.
      */
-    public Future<Void> addDeviceForTenant(final TenantObject tenant, final String deviceId, final String password) {
+    public Future<MultiMap> addDeviceForTenant(final TenantObject tenant, final String deviceId,
+            final String password) {
 
         return addDeviceForTenant(tenant, deviceId, new JsonObject(), password);
     }
@@ -618,7 +622,7 @@ public final class LegacyDeviceRegistryHttpClient {
      * @return A future indicating the outcome of the operation.
      * @throws NullPointerException if tenant is {@code null}.
      */
-    public Future<Void> addDeviceForTenant(
+    public Future<MultiMap> addDeviceForTenant(
             final TenantObject tenant,
             final String deviceId,
             final JsonObject data,
@@ -645,7 +649,7 @@ public final class LegacyDeviceRegistryHttpClient {
      * @return A future indicating the outcome of the operation.
      * @throws NullPointerException if any of the parameters are {@code null}.
      */
-    public Future<Void> addDeviceToTenant(
+    public Future<MultiMap> addDeviceToTenant(
             final String tenantId,
             final String deviceId,
             final String password) {
@@ -666,7 +670,7 @@ public final class LegacyDeviceRegistryHttpClient {
      * @return A future indicating the outcome of the operation.
      * @throws NullPointerException if any of the parameters are {@code null}.
      */
-    public Future<Void> addDeviceToTenant(
+    public Future<MultiMap> addDeviceToTenant(
             final String tenantId,
             final String deviceId,
             final JsonObject data,
@@ -696,7 +700,8 @@ public final class LegacyDeviceRegistryHttpClient {
      * @return A future indicating the outcome of the operation.
      * @throws NullPointerException if tenant or certificate are {@code null}.
      */
-    public Future<Void> addDeviceForTenant(final TenantObject tenant, final String deviceId, final X509Certificate deviceCert) {
+    public Future<MultiMap> addDeviceForTenant(final TenantObject tenant, final String deviceId,
+            final X509Certificate deviceCert) {
 
         Objects.requireNonNull(tenant);
 
@@ -725,7 +730,7 @@ public final class LegacyDeviceRegistryHttpClient {
      * @return A future indicating the outcome of the operation.
      * @throws NullPointerException if any of the parameters are are {@code null}.
      */
-    public Future<Void> addPskDeviceForTenant(final TenantObject tenant, final String deviceId, final String key) {
+    public Future<MultiMap> addPskDeviceForTenant(final TenantObject tenant, final String deviceId, final String key) {
         return addPskDeviceForTenant(tenant, deviceId, new JsonObject(), key);
     }
 
@@ -742,7 +747,7 @@ public final class LegacyDeviceRegistryHttpClient {
      * @return A future indicating the outcome of the operation.
      * @throws NullPointerException if any of the parameters are are {@code null}.
      */
-    public Future<Void> addPskDeviceForTenant(
+    public Future<MultiMap> addPskDeviceForTenant(
             final TenantObject tenant,
             final String deviceId,
             final JsonObject deviceData,
@@ -774,7 +779,7 @@ public final class LegacyDeviceRegistryHttpClient {
      * @return A future indicating the outcome of the operation.
      * @throws NullPointerException if any of the parameters are {@code null}.
      */
-    public Future<Void> addPskDeviceToTenant(final String tenant, final String deviceId, final String key) {
+    public Future<MultiMap> addPskDeviceToTenant(final String tenant, final String deviceId, final String key) {
 
         final CredentialsObject credentialsSpec =
                 CredentialsObject.fromPresharedKey(deviceId, deviceId, key.getBytes(StandardCharsets.UTF_8), null, null);

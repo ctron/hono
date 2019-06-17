@@ -31,6 +31,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.vertx.core.Future;
+import io.vertx.core.MultiMap;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonArray;
@@ -81,7 +82,7 @@ public final class DeviceRegistryHttpClient {
      *         The future will succeed if the tenant has been created successfully.
      *         Otherwise the future will fail with a {@link ServiceInvocationException}.
      */
-    public Future<Void> addTenant(final JsonObject requestPayload) {
+    public Future<MultiMap> addTenant(final JsonObject requestPayload) {
         return addTenant(requestPayload, HttpURLConnection.HTTP_CREATED);
     }
 
@@ -98,7 +99,7 @@ public final class DeviceRegistryHttpClient {
      *         The future will succeed if the response contained the expected status code.
      *         Otherwise the future will fail with a {@link ServiceInvocationException}.
      */
-    public Future<Void> addTenant(final JsonObject requestPayload, final int expectedStatusCode) {
+    public Future<MultiMap> addTenant(final JsonObject requestPayload, final int expectedStatusCode) {
         return addTenant(requestPayload, CONTENT_TYPE_APPLICATION_JSON, expectedStatusCode);
     }
 
@@ -112,7 +113,8 @@ public final class DeviceRegistryHttpClient {
      *         The future will succeed if the response contained the expected status code.
      *         Otherwise the future will fail with a {@link ServiceInvocationException}.
      */
-    public Future<Void> addTenant(final JsonObject requestPayload, final String contentType, final int expectedStatusCode) {
+    public Future<MultiMap> addTenant(final JsonObject requestPayload, final String contentType,
+            final int expectedStatusCode) {
 
         return httpClient.create(URI_ADD_TENANT, requestPayload, contentType, response -> response.statusCode() == expectedStatusCode);
     }
@@ -212,7 +214,7 @@ public final class DeviceRegistryHttpClient {
      *         Otherwise the future will fail with a {@link ServiceInvocationException}.
      * @throws NullPointerException if the tenant is {@code null}.
      */
-    public Future<Void> registerDevice(final String tenantId, final String deviceId) {
+    public Future<MultiMap> registerDevice(final String tenantId, final String deviceId) {
         return registerDevice(tenantId, deviceId, new JsonObject());
     }
 
@@ -233,7 +235,7 @@ public final class DeviceRegistryHttpClient {
      *         Otherwise the future will fail with a {@link ServiceInvocationException}.
      * @throws NullPointerException if the tenant is {@code null}.
      */
-    public Future<Void> registerDevice(final String tenantId, final String deviceId, final JsonObject data) {
+    public Future<MultiMap> registerDevice(final String tenantId, final String deviceId, final JsonObject data) {
         return registerDevice(tenantId, deviceId, data, HttpURLConnection.HTTP_CREATED);
     }
 
@@ -255,7 +257,7 @@ public final class DeviceRegistryHttpClient {
      *         Otherwise the future will fail with a {@link ServiceInvocationException}.
      * @throws NullPointerException if the tenant is {@code null}.
      */
-    public Future<Void> registerDevice(final String tenantId, final String deviceId, final JsonObject data,
+    public Future<MultiMap> registerDevice(final String tenantId, final String deviceId, final JsonObject data,
             final int expectedStatus) {
         return registerDevice(tenantId, deviceId, data, CONTENT_TYPE_APPLICATION_JSON, expectedStatus);
     }
@@ -276,20 +278,16 @@ public final class DeviceRegistryHttpClient {
      *         Otherwise the future will fail with a {@link ServiceInvocationException}.
      * @throws NullPointerException if the tenant is {@code null}.
      */
-    public Future<Void> registerDevice(
+    public Future<MultiMap> registerDevice(
             final String tenantId,
             final String deviceId,
             final JsonObject data,
             final String contentType,
-            final int expectedStatus) {
+            final int expectedStatus
+            ) {
 
         Objects.requireNonNull(tenantId);
         final JsonObject requestJson = Optional.ofNullable(data).map(json -> json.copy()).orElse(null);
-        if (deviceId != null && requestJson != null) {
-            // we only add the device ID if the client provided a JSON object
-            // so that we can also test the case where the client POSTs an empty body
-            requestJson.put(RegistrationConstants.FIELD_PAYLOAD_DEVICE_ID, deviceId);
-        }
         String uri = String.format("/%s/%s", RegistrationConstants.REGISTRATION_HTTP_ENDPOINT, tenantId);
         if (deviceId != null) {
             uri = String.format("/%s/%s/%s", RegistrationConstants.REGISTRATION_HTTP_ENDPOINT, tenantId, deviceId);
@@ -338,9 +336,7 @@ public final class DeviceRegistryHttpClient {
 
         Objects.requireNonNull(tenantId);
         final String requestUri = String.format(TEMPLATE_URI_REGISTRATION_INSTANCE, tenantId, deviceId);
-        final JsonObject requestJson = data.copy();
-        requestJson.put(RegistrationConstants.FIELD_PAYLOAD_DEVICE_ID, deviceId);
-        return httpClient.update(requestUri, requestJson, contentType, status -> status == expectedStatus);
+        return httpClient.update(requestUri, data, contentType, status -> status == expectedStatus);
     }
 
     /**
