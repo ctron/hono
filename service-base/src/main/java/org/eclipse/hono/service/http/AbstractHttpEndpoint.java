@@ -127,7 +127,7 @@ public abstract class AbstractHttpEndpoint<T> extends AbstractEndpoint implement
                     ctx.fail(new ClientErrorException(HttpURLConnection.HTTP_BAD_REQUEST, "Empty body"));
                 }
             } catch (final DecodeException e) {
-                ctx.fail(new ClientErrorException(HttpURLConnection.HTTP_BAD_REQUEST, "Invalid JSON"));
+                ctx.fail(new ClientErrorException(HttpURLConnection.HTTP_BAD_REQUEST, "Invalid JSON", e));
             }
         }
 
