@@ -70,7 +70,10 @@ public final class CredentialsConstants extends RequestResponseApiConstants {
      * for authentication.
      */
     public static final String FIELD_SECRETS_NOT_AFTER           = "not-after";
-
+    /**
+     * The name of the field that contains the comment about the secret.
+     */
+    public static final String FIELD_SECRETS_COMMENT           = "comment";
     /**
      * The Credential service's endpoint name.
      */

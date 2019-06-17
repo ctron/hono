@@ -171,6 +171,7 @@ public class FileBasedDeviceBackend implements DeviceBackend {
     @Override
     public void set(final String tenantId, final String deviceId, final Optional<String> resourceVersion,
             final List<CommonSecret> credentials, final Handler<AsyncResult<OperationResult<Void>>> resultHandler) {
+        //TODO check if device exists
         credentialsService.set(tenantId, deviceId, resourceVersion, credentials, resultHandler);
     }
 
@@ -201,7 +202,12 @@ public class FileBasedDeviceBackend implements DeviceBackend {
     @Override
     public void remove(final String tenantId, final String deviceId, final Optional<String> resourceVersion,
             final Handler<AsyncResult<Result<Void>>> resultHandler) {
-        credentialsService.remove(tenantId, deviceId, resourceVersion, resultHandler);
+        final OperationResult<Device> device = registrationService.readDevice(tenantId, deviceId);
+        if (device.getStatus() == HttpURLConnection.HTTP_OK) {
+            credentialsService.remove(tenantId, deviceId, resourceVersion, resultHandler);
+        } else {
+            resultHandler.handle(Future.succeededFuture(OperationResult.from(device.getStatus())));
+        }
     }
 
     Future<?> saveToFile() {

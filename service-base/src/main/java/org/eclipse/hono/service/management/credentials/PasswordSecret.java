@@ -78,9 +78,6 @@ public class PasswordSecret extends CommonSecret {
         if (passwordHash == null || passwordHash.isEmpty()) {
             throw new IllegalStateException(String.format("'%s' must not be empty", FIELD_SECRETS_PWD_HASH));
         }
-        if (salt == null || salt.isEmpty()) {
-            throw new IllegalStateException(String.format("'%s' must not be empty", FIELD_SECRETS_SALT));
-        }
     }
 
 }

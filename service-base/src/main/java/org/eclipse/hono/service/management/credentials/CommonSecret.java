@@ -33,12 +33,14 @@ public abstract class CommonSecret {
 
     @JsonProperty(FIELD_AUTH_ID)
     private String authId;
+    @JsonProperty
     private Boolean enabled;
 
     @JsonProperty(FIELD_SECRETS_NOT_BEFORE)
     private Instant notBefore;
     @JsonProperty(FIELD_SECRETS_NOT_AFTER)
     private Instant notAfter;
+    @JsonProperty
     private String comment;
 
     public String getAuthId() {

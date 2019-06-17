@@ -454,6 +454,7 @@ public final class FileBasedCredentialsService extends AbstractVerticle
                 credentialsJson.put(CredentialsConstants.FIELD_AUTH_ID, authId);
                 credentialsJson.put(CredentialsConstants.FIELD_PAYLOAD_DEVICE_ID, deviceId);
                 credentialsJson.put(CredentialsConstants.FIELD_TYPE, type);
+                credentialsJson.put(CredentialsConstants.FIELD_ENABLED, secret.getEnabled());
                 json.add(credentialsJson);
             }
 
@@ -551,6 +552,7 @@ public final class FileBasedCredentialsService extends AbstractVerticle
         copyAdditionalField(secret, secretObject, CredentialsConstants.FIELD_SECRETS_PWD_HASH);
         copyAdditionalField(secret, secretObject, CredentialsConstants.FIELD_SECRETS_SALT);
         copyAdditionalField(secret, secretObject, CredentialsConstants.FIELD_SECRETS_KEY);
+        copyAdditionalField(secret, secretObject, CredentialsConstants.FIELD_SECRETS_COMMENT);
 
         return secret;
     }
