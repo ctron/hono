@@ -109,16 +109,26 @@ public class FileBasedDeviceBackend implements DeviceBackend {
         final Future<OperationResult<Id>> future = Future.future();
         registrationService.createDevice(tenantId, deviceId, device, future);
 
-        future.compose(r -> {
+        future
+                .compose(r -> {
 
-            // now create the empty credentials set
-            final Future<OperationResult<Void>> f = Future.future();
-            credentialsService.set(tenantId, r.getPayload().getId(), Optional.empty(), Collections.emptyList(), f);
+                    if (r.getStatus() != HttpURLConnection.HTTP_CREATED) {
+                        return Future.succeededFuture(r);
+                    }
 
-            // pass on the original result
-            return f.map(r);
+                    // now create the empty credentials set
+                    final Future<OperationResult<Void>> f = Future.future();
+                    credentialsService.set(
+                            tenantId,
+                            r.getPayload().getId(),
+                            Optional.empty(),
+                            Collections.emptyList(),
+                            f);
 
-        })
+                    // pass on the original result
+                    return f.map(r);
+
+                })
 
                 .setHandler(resultHandler);
 
