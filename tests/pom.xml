@@ -960,9 +960,7 @@ Test cases are run against Docker images of Hono server + (Apache Qpid Dispatch 
               </systemProperties>
               <failIfNoSpecifiedTests>false</failIfNoSpecifiedTests>
               <excludes>
-                <exclude>org.eclipse.hono.tests.registry.legacy.CredentialsHttpIT</exclude>
-                <exclude>org.eclipse.hono.tests.registry.legacy.DeviceRegistrationHttpIT</exclude>
-                <exclude>org.eclipse.hono.tests.registry.legacy.TenantHttpIT</exclude>
+                <exclude>org.eclipse.hono.tests.registry.legacy.*</exclude>
               </excludes>
             </configuration>
             <executions>
