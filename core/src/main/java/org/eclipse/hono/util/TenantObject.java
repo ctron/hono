@@ -98,7 +98,7 @@ public final class TenantObject extends JsonBackedValueObject {
      */
     @JsonIgnore
     public boolean isEnabled() {
-        return (Boolean) getProperty(TenantConstants.FIELD_ENABLED, true);
+        return getProperty(TenantConstants.FIELD_ENABLED, true);
     }
 
     /**
@@ -170,7 +170,7 @@ public final class TenantObject extends JsonBackedValueObject {
             final JsonObject trustedCa = new JsonObject()
                     .put(TenantConstants.FIELD_PAYLOAD_CERT, certificate.getEncoded());
             return setProperty(TenantConstants.FIELD_PAYLOAD_TRUSTED_CA, trustedCa);
-        } catch (CertificateEncodingException e) {
+        } catch (final CertificateEncodingException e) {
             throw new IllegalArgumentException("cannot encode certificate");
         }
     }
@@ -294,7 +294,7 @@ public final class TenantObject extends JsonBackedValueObject {
             return null;
         } else {
             final List<Map<String, Object>> result = new LinkedList<>();
-            adapterConfigurations.values().forEach(config -> result.add(((JsonObject) config).getMap()));
+            adapterConfigurations.values().forEach(config -> result.add(config.getMap()));
             return result;
         }
     }
@@ -313,7 +313,7 @@ public final class TenantObject extends JsonBackedValueObject {
             return null;
         } else {
             final JsonArray result = new JsonArray();
-            adapterConfigurations.values().forEach(config -> result.add((JsonObject) config));
+            adapterConfigurations.values().forEach(config -> result.add(config));
             return result;
         }
     }

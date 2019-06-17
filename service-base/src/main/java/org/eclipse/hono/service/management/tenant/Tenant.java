@@ -13,16 +13,12 @@
 
 package org.eclipse.hono.service.management.tenant;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import io.vertx.core.json.JsonObject;
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import org.eclipse.hono.util.TenantConstants;
 
 /**
@@ -75,18 +71,6 @@ public class Tenant {
      */
     public Tenant setExtensions(final Map<String, Object> extensions) {
         this.extensions = extensions;
-        return this;
-    }
-
-    /**
-     * Set the extension field from a JsonObject.
-     *
-     * @param extensions the value to assign
-     * @return a reference to this for fluent use.
-     */
-    @JsonIgnore
-    public Tenant setExtensions(final JsonObject extensions) {
-        Optional.ofNullable(extensions).ifPresent(ext -> setExtensions(ext.getMap()));
         return this;
     }
 

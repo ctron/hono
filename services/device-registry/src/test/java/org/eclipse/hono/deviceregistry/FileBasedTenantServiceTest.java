@@ -14,6 +14,7 @@
 package org.eclipse.hono.deviceregistry;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -27,10 +28,12 @@ import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
+import org.eclipse.hono.service.management.tenant.Tenant;
 import org.eclipse.hono.service.management.tenant.TenantManagementService;
 import org.eclipse.hono.service.tenant.AbstractTenantServiceTest;
 import org.eclipse.hono.service.tenant.TenantService;
 import org.eclipse.hono.util.Constants;
+import org.eclipse.hono.util.TenantObject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -351,6 +354,26 @@ public class FileBasedTenantServiceTest extends AbstractTenantServiceTest {
             assertEquals(HttpURLConnection.HTTP_FORBIDDEN, s.getStatus());
             ctx.completeNow();
         })));
+    }
+
+    /**
+     * Test that a conversion of {@code null} doesn't throw an exception.
+     */
+    @Test
+    public void testNullConversion() {
+        assertNull(FileBasedTenantService.convertTenantObject(null));
+    }
+
+    /**
+     * Test converting tenant objects.
+     */
+    @Test
+    public void testConversion() {
+        final TenantObject tenantObject = new TenantObject();
+        tenantObject.setEnabled(true);
+
+        final Tenant tenant = FileBasedTenantService.convertTenantObject(tenantObject);
+        assertEquals(Boolean.TRUE, tenant.getEnabled());
     }
 
 }

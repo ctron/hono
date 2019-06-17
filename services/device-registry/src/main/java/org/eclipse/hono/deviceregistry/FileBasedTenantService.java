@@ -460,14 +460,31 @@ public final class FileBasedTenantService extends AbstractVerticle implements Te
         }
     }
 
-    @SuppressWarnings("unchecked")
-    private Tenant convertTenantObject(final TenantObject tenantObject) {
-        return new Tenant()
-                .setEnabled(tenantObject.isEnabled())
-                .setExtensions((JsonObject) tenantObject.getProperty("ext"))
-                .setAdapters(tenantObject.getAdapterConfigurations().getList())
-                .setLimits(tenantObject.getResourceLimits().getMap())
-                .setTrustedCa(tenantObject.getProperty(TenantConstants.FIELD_PAYLOAD_TRUSTED_CA));
+    static Tenant convertTenantObject(final TenantObject tenantObject) {
+
+        if (tenantObject == null) {
+            return null;
+        }
+
+        final var tenant = new Tenant();
+
+        tenant.setEnabled(tenantObject.getProperty(TenantConstants.FIELD_ENABLED, null));
+
+        Optional.ofNullable(tenantObject.getProperty("ext"))
+                .filter(JsonObject.class::isInstance)
+                .map(JsonObject.class::cast)
+                .map(JsonObject::getMap)
+                .ifPresent(tenant::setExtensions);
+        Optional.ofNullable(tenantObject.getAdapterConfigurations())
+                .map(JsonArray::getList)
+                .ifPresent(tenant::setAdapters);
+        Optional.ofNullable(tenantObject.getResourceLimits())
+                .map(JsonObject::getMap)
+                .ifPresent(tenant::setLimits);
+
+        tenant.setTrustedCa(tenantObject.getProperty(TenantConstants.FIELD_PAYLOAD_TRUSTED_CA));
+
+        return tenant;
     }
 
     private Versioned<TenantObject> getByCa(final X500Principal subjectDn) {
