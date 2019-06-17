@@ -41,7 +41,7 @@ public class SecretsTest {
 
         secret.setComment("setec astronomy");
 
-        secret.setPwdHash("2a5d81942494986ce6e23aadfa18cd426a1d7ab90629a0814d244c4cd82cc81f");
+        secret.setPasswordHash("2a5d81942494986ce6e23aadfa18cd426a1d7ab90629a0814d244c4cd82cc81f");
         secret.setSalt("abc");
 
         secret.setHashFunction(CredentialsConstants.HASH_FUNCTION_SHA256);

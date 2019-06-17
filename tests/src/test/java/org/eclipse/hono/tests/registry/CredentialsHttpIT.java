@@ -238,17 +238,11 @@ public class CredentialsHttpIT {
 
         // GIVEN a hashed password using bcrypt with more than the configured max iterations
         final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(IntegrationTestSupport.MAX_BCRYPT_ITERATIONS + 1);
-        final CredentialsObject credentials = CredentialsObject.fromHashedPassword(
-                deviceId,
-                deviceId,
-                encoder.encode("thePassword"),
-                CredentialsConstants.HASH_FUNCTION_BCRYPT,
-                null, null, null);
 
         final PasswordSecret secret = new PasswordSecret();
         secret.setAuthId(authId);
         secret.setHashFunction(CredentialsConstants.HASH_FUNCTION_BCRYPT);
-        secret.setPwdHash(encoder.encode("thePassword"));
+        secret.setPasswordHash(encoder.encode("thePassword"));
 
         // WHEN adding the credentials
         registry.updateCredentials(
@@ -567,7 +561,7 @@ public class CredentialsHttpIT {
         secret.setAuthId(authId);
         secret.setEnabled(true);
         secret.setHashFunction(CredentialsConstants.HASH_FUNCTION_BCRYPT);
-        secret.setPwdHash(ORIG_BCRYPT_PWD);
+        secret.setPasswordHash(ORIG_BCRYPT_PWD);
 
         final JsonArray result = new JsonArray();
         result.add(JsonObject.mapFrom(secret));

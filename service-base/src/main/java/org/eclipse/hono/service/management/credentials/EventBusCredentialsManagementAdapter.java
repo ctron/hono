@@ -211,7 +211,7 @@ public abstract class EventBusCredentialsManagementAdapter<T> extends EventBusSe
             checkHashedPassword(passwordSecret);
             switch (passwordSecret.getHashFunction()) {
             case CredentialsConstants.HASH_FUNCTION_BCRYPT:
-                final String pwdHash = passwordSecret.getPwdHash();
+                final String pwdHash = passwordSecret.getPasswordHash();
                 verifyBcryptPasswordHash(pwdHash);
                 break;
             default:
@@ -243,7 +243,7 @@ public abstract class EventBusCredentialsManagementAdapter<T> extends EventBusSe
             throw new IllegalStateException("missing/invalid hash function");
         }
 
-        if (secret.getPwdHash() == null) {
+        if (secret.getPasswordHash() == null) {
             throw new IllegalStateException("missing/invalid password hash");
         }
     }

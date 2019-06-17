@@ -149,7 +149,7 @@ public abstract class AbstractCredentialsServiceTest {
         final PasswordSecret s = new PasswordSecret();
         s.setAuthId(authId);
         s.setHashFunction(CredentialsConstants.HASH_FUNCTION_BCRYPT);
-        s.setPwdHash(BCrypt.hashpw(password, BCrypt.gensalt()));
+        s.setPasswordHash(BCrypt.hashpw(password, BCrypt.gensalt()));
         return s;
     }
 

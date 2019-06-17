@@ -363,7 +363,7 @@ public class FileBasedCredentialsServiceTest extends AbstractCredentialsServiceT
         // 4700
         final PasswordSecret hashedPassword = new PasswordSecret();
         hashedPassword.setAuthId("bumlux");
-        hashedPassword.setPwdHash("$2a$10$UK9lmSMlYmeXqABkTrDRsu1nlZRnAmGnBdPIWZoDajtjyxX18Dry.");
+        hashedPassword.setPasswordHash("$2a$10$UK9lmSMlYmeXqABkTrDRsu1nlZRnAmGnBdPIWZoDajtjyxX18Dry.");
         hashedPassword.setHashFunction(CredentialsConstants.HASH_FUNCTION_BCRYPT);
 
         // 4711

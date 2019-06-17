@@ -33,7 +33,7 @@ public class PasswordSecret extends CommonSecret {
     @JsonProperty(FIELD_SECRETS_HASH_FUNCTION)
     private String hashFunction;
     @JsonProperty(FIELD_SECRETS_PWD_HASH)
-    private String pwdHash;
+    private String passwordHash;
     @JsonProperty(FIELD_SECRETS_SALT)
     private String salt;
 
@@ -45,12 +45,12 @@ public class PasswordSecret extends CommonSecret {
         this.hashFunction = hashFunction;
     }
 
-    public String getPwdHash() {
-        return pwdHash;
+    public String getPasswordHash() {
+        return passwordHash;
     }
 
-    public void setPwdHash(final String pwdHash) {
-        this.pwdHash = pwdHash;
+    public void setPasswordHash(final String passwordHash) {
+        this.passwordHash = passwordHash;
     }
 
     public String getSalt() {
@@ -65,7 +65,7 @@ public class PasswordSecret extends CommonSecret {
     protected ToStringHelper toStringHelper() {
         return super.toStringHelper()
                 .add("hashFunction", this.hashFunction)
-                .add("pwdHash", this.pwdHash)
+                .add("pwdHash", this.passwordHash)
                 .add("salt", this.salt);
     }
 
@@ -75,7 +75,7 @@ public class PasswordSecret extends CommonSecret {
         if (hashFunction == null || hashFunction.isEmpty()) {
             throw new IllegalStateException(String.format("'%s' must not be empty", FIELD_SECRETS_HASH_FUNCTION));
         }
-        if (pwdHash == null || pwdHash.isEmpty()) {
+        if (passwordHash == null || passwordHash.isEmpty()) {
             throw new IllegalStateException(String.format("'%s' must not be empty", FIELD_SECRETS_PWD_HASH));
         }
         if (salt == null || salt.isEmpty()) {
