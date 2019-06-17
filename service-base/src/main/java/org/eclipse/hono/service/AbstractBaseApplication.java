@@ -35,6 +35,8 @@ import io.vertx.core.Vertx;
 
 /**
  * A base class for implementing Spring Boot applications.
+ * <p>
+ * Compared to the {@link AbstractApplication}, this class has no expectations towards implementations.
  */
 public abstract class AbstractBaseApplication implements ApplicationRunner {
 
@@ -129,7 +131,7 @@ public abstract class AbstractBaseApplication implements ApplicationRunner {
                     Runtime.getRuntime().availableProcessors());
         }
 
-        final Future<?> future = deployRequiredVerticles(config.getMaxInstances())
+        final Future<?> future = deployVerticles()
                 .compose(s -> postRegisterServiceVerticles())
                 .compose(s -> healthCheckServer.start());
 
@@ -161,17 +163,16 @@ public abstract class AbstractBaseApplication implements ApplicationRunner {
     }
 
     /**
-     * Invoked before the service instances are being deployed.
+     * Deploy verticles required by this application.
      * <p>
-     * May be overridden to prepare the environment for the service instances, e.g. deploying additional (prerequisite)
-     * verticles.
+     * This is a generic method, deploying all verticles that should be part of this application.
      * <p>
-     * This default implementation simply returns a succeeded future.
+     * Although the current implementation only returns a succeeded future, overriding this method it is required to
+     * call "super", in order to enable future changes.
      * 
-     * @param maxInstances The number of service verticle instances to deploy.
      * @return A future indicating success. Application start-up fails if the returned future fails.
      */
-    protected Future<?> deployRequiredVerticles(final int maxInstances) {
+    protected Future<?> deployVerticles() {
         return Future.succeededFuture();
     }
 

@@ -18,6 +18,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+
 import org.springframework.beans.factory.ObjectFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import io.vertx.core.CompositeFuture;
@@ -49,17 +50,26 @@ public class AbstractApplication extends AbstractBaseApplication {
      * @param factories The service factories.
      * @throws NullPointerException if factories is {@code null}.
      */
-    @Autowired(required = false)
+    @Autowired
     public final void addServiceFactories(final Set<ObjectFactory<? extends AbstractServiceBase<?>>> factories) {
         Objects.requireNonNull(factories);
         serviceFactories.addAll(factories);
         log.debug("added {} service factories", factories.size());
     }
 
-    @Override
+    /**
+     * Invoked before the service instances are being deployed.
+     * <p>
+     * May be overridden to prepare the environment for the service instances, e.g. deploying additional (prerequisite)
+     * verticles.
+     * <p>
+     * This default implementation simply returns a succeeded future.
+     * 
+     * @param maxInstances The number of service verticle instances to deploy.
+     * @return A future indicating success. Application start-up fails if the returned future fails.
+     */
     protected Future<?> deployRequiredVerticles(final int maxInstances) {
-        return super.deployRequiredVerticles(maxInstances)
-                .compose(s -> deployServiceVerticles(maxInstances));
+        return Future.succeededFuture();
     }
 
     private Future<?> deployServiceVerticles(final int maxInstances) {
@@ -77,6 +87,16 @@ public class AbstractApplication extends AbstractBaseApplication {
         }
 
         return CompositeFuture.all(deploymentTracker);
+    }
+
+    @Override
+    protected Future<?> deployVerticles() {
+        // call into super ...
+        return super.deployVerticles()
+                // ... then deploy service verticles
+                .compose(s -> deployServiceVerticles(getConfig().getMaxInstances()))
+                // ... then deploy the required verticles
+                .compose(s -> deployRequiredVerticles(getConfig().getMaxInstances()));
     }
 
 }

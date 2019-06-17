@@ -65,8 +65,9 @@ public class Application extends AbstractBaseApplication {
     }
 
     @Override
-    protected final Future<?> deployRequiredVerticles(final int maxInstances) {
-        return super.deployRequiredVerticles(maxInstances).compose(s -> {
+    protected final Future<?> deployVerticles() {
+
+        return super.deployVerticles().compose(ok -> {
 
             @SuppressWarnings("rawtypes")
             final List<Future> futures = new LinkedList<>();
@@ -90,8 +91,10 @@ public class Application extends AbstractBaseApplication {
      */
     @Override
     protected Future<Void> postRegisterServiceVerticles() {
-        this.healthCheckProviders.forEach(this::registerHealthchecks);
-        return Future.succeededFuture();
+        return super.postRegisterServiceVerticles().compose(ok -> {
+            this.healthCheckProviders.forEach(this::registerHealthchecks);
+            return Future.succeededFuture();
+        });
     }
 
     /**
