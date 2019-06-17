@@ -18,7 +18,7 @@
     <version>1.0-M5-SNAPSHOT</version>
   </parent>
   <artifactId>hono-service-device-registry-legacy</artifactId>
-  <name>Hono Device Registry</name>
+  <name>Hono Legacy Device Registry</name>
   <description>The legacy device registry for Hono implementing the legacy Device Registration and legacy Credentials APIs.</description>
   <url>https://www.eclipse.org/hono</url>
 
