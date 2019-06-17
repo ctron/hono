@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
+import io.vertx.junit5.Checkpoint;
 import io.vertx.junit5.VertxTestContext;
 import io.vertx.junit5.VertxTestContext.ExecutionBlock;
 
@@ -160,6 +161,21 @@ public abstract class AbstractCredentialsServiceTest {
         assertGet(ctx, tenantId, deviceId, authId, type,
                 r -> {
                     assertEquals(HTTP_NOT_FOUND, r.getStatus());
+                },
+                r -> {
+                    assertEquals(HTTP_NOT_FOUND, r.getStatus());
+                },
+                whenComplete);
+    }
+
+    protected void assertGetEmpty(final VertxTestContext ctx,
+            final String tenantId, final String deviceId, final String authId, final String type,
+            final ExecutionBlock whenComplete) {
+
+        assertGet(ctx, tenantId, deviceId, authId, type,
+                r -> {
+                    assertEquals(HTTP_OK, r.getStatus());
+                    assertTrue(r.getPayload().isEmpty());
                 },
                 r -> {
                     assertEquals(HTTP_NOT_FOUND, r.getStatus());
@@ -321,52 +337,110 @@ public abstract class AbstractCredentialsServiceTest {
         final var authId = UUID.randomUUID().toString();
         final var secret = createPasswordSecret(authId, "bar");
 
+        final Checkpoint checkpoint = ctx.checkpoint(7);
 
-        // phase 1 - initially set credentials
+        // phase 1 - check missing
 
         final Future<?> phase1 = Future.future();
 
-        assertGetMissing(ctx, tenantId, deviceId, authId, CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD, () -> {
+        assertGetMissing(ctx, tenantId, deviceId, authId, CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD,
+                phase1::complete);
 
-            getCredentialsManagementService().set(tenantId, deviceId, Optional.empty(),
-                    Collections.singletonList(secret),
+        // phase 2 - create device
+
+        final Future<?> phase2 = Future.future();
+
+        phase1.setHandler(ctx.succeeding(s1 -> {
+
+            checkpoint.flag();
+            getDeviceManagementService().createDevice(tenantId, Optional.of(deviceId), new Device(),
                     ctx.succeeding(s2 -> {
-
-                        ctx.verify(() -> {
-
-                            assertEquals(HTTP_NO_CONTENT, s2.getStatus());
-
-                            assertGet(ctx, tenantId, deviceId, authId,
-                                    CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD,
-                                    r -> {
-                                        assertEquals(HTTP_OK, r.getStatus());
-                                    },
-                                    r -> {
-                                        assertEquals(HTTP_OK, r.getStatus());
-                                    },
-                                    phase1::complete);
-
-                        });
-
+                        checkpoint.flag();
+                        phase2.complete();
                     }));
-        });
 
-        // phase 2 - delete
+        }));
 
-        phase1.setHandler(ctx.succeeding(v -> {
+        // phase 3 - initially set credentials
+
+        final Future<?> phase3 = Future.future();
+
+        phase2.setHandler(ctx.succeeding(s1 -> {
+
+            assertGetEmpty(ctx, tenantId, deviceId, authId, CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD, () -> {
+
+                getCredentialsManagementService().set(tenantId, deviceId, Optional.empty(),
+                        Collections.singletonList(secret),
+                        ctx.succeeding(s2 -> {
+
+                            checkpoint.flag();
+
+                            ctx.verify(() -> {
+
+                                assertEquals(HTTP_NO_CONTENT, s2.getStatus());
+
+                                assertGet(ctx, tenantId, deviceId, authId,
+                                        CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD,
+                                        r -> {
+                                            assertEquals(HTTP_OK, r.getStatus());
+                                        },
+                                        r -> {
+                                            assertEquals(HTTP_OK, r.getStatus());
+                                        },
+                                        () -> {
+                                            checkpoint.flag();
+                                            phase3.complete();
+                                        });
+
+                            });
+
+                        }));
+            });
+
+        }));
+
+        // phase 4 - delete
+
+        final Future<?> phase4 = Future.future();
+
+        phase3.setHandler(ctx.succeeding(v -> {
 
             getCredentialsManagementService().remove(tenantId, deviceId, Optional.empty(),
                     ctx.succeeding(s -> ctx.verify(() -> {
 
+                        checkpoint.flag();
+
                         assertEquals(HTTP_NO_CONTENT, s.getStatus());
 
-                        assertGetMissing(ctx, tenantId, deviceId, authId,
+                        assertGetEmpty(ctx, tenantId, deviceId, authId,
                                 CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD,
-                                ctx::completeNow);
+                                () -> {
+                                    checkpoint.flag();
+                                    phase4.complete();
+                                });
 
                     })));
 
         }));
+
+        // Phase 5
+
+        final Future<?> phase5 = Future.future();
+
+        phase4.setHandler(ctx.succeeding(v -> {
+            getDeviceManagementService().deleteDevice(tenantId, deviceId, Optional.empty(),
+                    ctx.succeeding(s -> ctx.verify(() -> {
+                        assertGetMissing(ctx, tenantId, deviceId, authId,
+                                CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD, () -> {
+                                    checkpoint.flag();
+                                    phase5.complete();
+                                });
+                    })));
+        }));
+
+        // complete
+
+        phase5.setHandler(ctx.succeeding(s -> ctx.completeNow()));
 
     }
 
