@@ -91,6 +91,8 @@ public class CredentialsHttpIT {
 
     /**
      * Sets up the fixture.
+     * 
+     * @param ctx The test context.
      */
     @Before
     public void setUp(final TestContext ctx) {
