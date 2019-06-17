@@ -166,9 +166,8 @@ public class DeviceRegistrationHttpIT {
     public void testAddDeviceFailsForMissingContentType(final TestContext ctx) {
 
         registry.registerDevice(
-                TENANT,
-                deviceId,
-                new JsonObject().put("ext", new JsonObject().put("key", "value")),
+                TENANT, deviceId,
+                new JsonObject().put("ext", new JsonObject().put("test", "testAddDeviceFailsForMissingContentType")),
                 null,
                 HttpURLConnection.HTTP_BAD_REQUEST).setHandler(ctx.asyncAssertSuccess());
     }
@@ -279,7 +278,9 @@ public class DeviceRegistrationHttpIT {
             .compose(ok -> {
                 // now try to update the device with missing content type
                     final JsonObject requestBody = new JsonObject()
-                            .put("ext", new JsonObject().put("newKey1", "newValue1"));
+                            .put("ext", new JsonObject()
+                                    .put("test", "testUpdateDeviceFailsForMissingContentType")
+                                    .put("newKey1", "newValue1"));
                 return registry.updateDevice(TENANT, deviceId, requestBody, null, HttpURLConnection.HTTP_BAD_REQUEST);
             }).setHandler(context.asyncAssertSuccess());
     }
