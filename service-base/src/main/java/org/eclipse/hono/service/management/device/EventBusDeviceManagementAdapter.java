@@ -95,12 +95,16 @@ public abstract class EventBusDeviceManagementAdapter<T> extends EventBusService
 
     private static Future<Device> deviceFromPayload(final EventBusMessage request) {
         try {
-            return Future.succeededFuture(Optional.ofNullable(request.getJsonPayload())
-                    .map(json -> json.mapTo(Device.class))
-                    .orElseGet(Device::new));
+            return Future.succeededFuture(fromPayload(request));
         } catch (final IllegalArgumentException e) {
             return Future.failedFuture(new ClientErrorException(HttpURLConnection.HTTP_BAD_REQUEST, e));
         }
+    }
+
+    static Device fromPayload(final EventBusMessage request) throws ClientErrorException {
+        return Optional.ofNullable(request.getJsonPayload())
+                .map(json -> json.mapTo(Device.class))
+                .orElseGet(Device::new);
     }
 
     private Future<EventBusMessage> processCreateRequest(final EventBusMessage request) {
