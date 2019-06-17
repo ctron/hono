@@ -34,8 +34,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * A client for accessing the Device Registry's HTTP resources for
- * the Device Registration, Credentials and Tenant API.
+ * A client for accessing the legacy Device Registry's HTTP resources for the Device Registration, Credentials and
+ * Tenant API.
  *
  */
 @Deprecated
