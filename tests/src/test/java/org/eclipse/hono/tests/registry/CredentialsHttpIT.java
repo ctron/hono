@@ -203,13 +203,11 @@ public class CredentialsHttpIT {
      * @param context The vert.x test context.
      */
     @Test
-    @Ignore
     public void testAddCredentialsRejectsDuplicateRegistration(final TestContext context)  {
 
-        registry.addCredentials(TENANT, deviceId, hashedPasswordCredentials).compose(ar -> {
-            // now try to add credentials again
-            //TODO use the same version (1)
-            return registry.addCredentials(TENANT, deviceId, hashedPasswordCredentials, HttpURLConnection.HTTP_PRECON_FAILED);
+        registry.updateCredentials(TENANT, deviceId, hashedPasswordSecrets, HttpURLConnection.HTTP_NO_CONTENT).compose(ar -> {
+            // now try to update credentials with the same version
+            return registry.updateCredentials(TENANT, deviceId, hashedPasswordSecrets, 1, HttpURLConnection.HTTP_PRECON_FAILED);
         }).setHandler(context.asyncAssertSuccess());
     }
 
@@ -356,14 +354,13 @@ public class CredentialsHttpIT {
      * @param context The vert.x test context.
      */
     @Test
-    @Ignore
     public void testUpdateCredentialsFailsForNonExistingCredentials(final TestContext context) {
-        //TODO test with resource version
         registry.updateCredentials(
                 TENANT,
                 deviceId,
-                hashedPasswordCredentials,
-                HttpURLConnection.HTTP_NO_CONTENT)
+                hashedPasswordSecrets,
+                3,
+                HttpURLConnection.HTTP_PRECON_FAILED)
             .setHandler(context.asyncAssertSuccess());
     }
 

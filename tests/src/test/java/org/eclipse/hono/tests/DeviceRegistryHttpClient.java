@@ -34,8 +34,10 @@ import io.vertx.core.Future;
 import io.vertx.core.MultiMap;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
+import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import static org.eclipse.hono.service.http.HttpUtils.CONTENT_TYPE_JSON;
 
 /**
  * A client for accessing the Device Registry's HTTP resources for
@@ -555,6 +557,37 @@ public final class DeviceRegistryHttpClient {
         final String uri = String.format(TEMPLATE_URI_CREDENTIALS_BY_DEVICE, tenantId, deviceId);
 
         return httpClient.update(uri, credentialsSpec, status -> status == expectedStatusCode);
+    }
+
+    /**
+     * Updates credentials of a specific type for a device.
+     *
+     * @param tenantId The tenant that the device belongs to.
+     * @param deviceId The identifier of the device.
+     * @param credentialsSpec The JSON array to be sent in the request body.
+     * @param version The version of credentials to be sent as request header.
+     * @param expectedStatusCode The status code indicating a successful outcome.
+     * @return A future indicating the outcome of the operation.
+     *         The future will succeed if the response contains the expected status code.
+     *         Otherwise the future will fail with a {@link ServiceInvocationException}.
+     * @throws NullPointerException if the tenant is {@code null}.
+     */
+    public Future<Void> updateCredentials(
+            final String tenantId,
+            final String deviceId,
+            final JsonArray credentialsSpec,
+            final int version,
+            final int expectedStatusCode) {
+
+        Objects.requireNonNull(tenantId);
+        final String uri = String.format(TEMPLATE_URI_CREDENTIALS_BY_DEVICE, tenantId, deviceId);
+
+        final MultiMap headers = MultiMap.caseInsensitiveMultiMap()
+                .add(HttpHeaders.IF_MATCH, Integer.toString(version))
+                .add(HttpHeaders.CONTENT_TYPE, CONTENT_TYPE_JSON);
+
+        return httpClient.update(uri, credentialsSpec.toBuffer(), headers, status -> status == expectedStatusCode)
+                .compose(ok -> Future.succeededFuture());
     }
 
     /**
