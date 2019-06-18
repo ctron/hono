@@ -13,6 +13,7 @@
 
 package org.eclipse.hono.deviceregistry;
 
+import io.opentracing.noop.NoopSpan;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
@@ -309,7 +310,7 @@ public class FileBasedTenantServiceTest extends AbstractTenantServiceTest {
         props.setModificationEnabled(false);
 
         // WHEN trying to add a new tenant
-        svc.add(Optional.of("fancy-new-tenant"), new JsonObject(), ctx.succeeding(s -> ctx.verify(() -> {
+        svc.add(Optional.of("fancy-new-tenant"), new JsonObject(), NoopSpan.INSTANCE, ctx.succeeding(s -> ctx.verify(() -> {
             // THEN the request succeeds
             assertEquals(HttpURLConnection.HTTP_CREATED, s.getStatus());
             ctx.completeNow();
@@ -329,7 +330,7 @@ public class FileBasedTenantServiceTest extends AbstractTenantServiceTest {
         props.setModificationEnabled(false);
 
         // WHEN trying to update the tenant
-        svc.remove("tenant", Optional.empty(), ctx.succeeding(s -> ctx.verify(() -> {
+        svc.remove("tenant", Optional.empty(), NoopSpan.INSTANCE, ctx.succeeding(s -> ctx.verify(() -> {
             // THEN the update fails
             assertEquals(HttpURLConnection.HTTP_FORBIDDEN, s.getStatus());
             ctx.completeNow();
@@ -349,7 +350,7 @@ public class FileBasedTenantServiceTest extends AbstractTenantServiceTest {
         props.setModificationEnabled(false);
 
         // WHEN trying to update the tenant
-        svc.update("tenant", new JsonObject(), null, ctx.succeeding(s -> ctx.verify(() -> {
+        svc.update("tenant", new JsonObject(), null, NoopSpan.INSTANCE, ctx.succeeding(s -> ctx.verify(() -> {
             // THEN the update fails
             assertEquals(HttpURLConnection.HTTP_FORBIDDEN, s.getStatus());
             ctx.completeNow();

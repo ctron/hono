@@ -12,6 +12,7 @@
  *******************************************************************************/
 package org.eclipse.hono.service.registration;
 
+import io.opentracing.noop.NoopSpan;
 import static java.net.HttpURLConnection.HTTP_CREATED;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
 import static java.net.HttpURLConnection.HTTP_OK;
@@ -90,7 +91,7 @@ public abstract class AbstractRegistrationServiceTest {
     public void testGetUnknownDeviceReturnsNotFound(final VertxTestContext ctx) {
 
         getDeviceManagementService()
-                .readDevice(TENANT, DEVICE, ctx.succeeding(response -> ctx.verify(() -> {
+                .readDevice(TENANT, DEVICE, NoopSpan.INSTANCE, ctx.succeeding(response -> ctx.verify(() -> {
                     assertEquals(HttpURLConnection.HTTP_NOT_FOUND, response.getStatus());
                     ctx.completeNow();
                 })));
@@ -105,7 +106,7 @@ public abstract class AbstractRegistrationServiceTest {
     public void testDeregisterUnknownDeviceReturnsNotFound(final VertxTestContext ctx) {
 
         getDeviceManagementService()
-                .deleteDevice(TENANT, DEVICE, Optional.empty(), ctx.succeeding(response -> ctx.verify(() -> {
+                .deleteDevice(TENANT, DEVICE, Optional.empty(), NoopSpan.INSTANCE, ctx.succeeding(response -> ctx.verify(() -> {
                             assertEquals(HttpURLConnection.HTTP_NOT_FOUND, response.getStatus());
                             ctx.completeNow();
                         })));
@@ -122,14 +123,14 @@ public abstract class AbstractRegistrationServiceTest {
         final Future<OperationResult<Id>> result = Future.future();
         final Checkpoint register = ctx.checkpoint(2);
 
-        getDeviceManagementService().createDevice(TENANT, Optional.of(DEVICE), new Device(), result);
+        getDeviceManagementService().createDevice(TENANT, Optional.of(DEVICE), new Device(), NoopSpan.INSTANCE, result);
         result.map(response -> {
             assertEquals(HttpURLConnection.HTTP_CREATED, response.getStatus());
             register.flag();
             return response;
         }).compose(ok -> {
             final Future<OperationResult<Id>> addResult = Future.future();
-            getDeviceManagementService().createDevice(TENANT, Optional.of(DEVICE), new Device(), addResult);
+            getDeviceManagementService().createDevice(TENANT, Optional.of(DEVICE), new Device(), NoopSpan.INSTANCE, addResult);
             return addResult;
         }).setHandler(
                 ctx.succeeding(response -> ctx.verify(() -> {
@@ -149,7 +150,7 @@ public abstract class AbstractRegistrationServiceTest {
         final Future<OperationResult<Id>> addResult = Future.future();
 
         getDeviceManagementService()
-                .createDevice(TENANT, Optional.of(DEVICE), new Device(), addResult);
+                .createDevice(TENANT, Optional.of(DEVICE), new Device(), NoopSpan.INSTANCE, addResult);
 
         addResult
                 .map(r -> ctx.verify(() -> {
@@ -157,7 +158,7 @@ public abstract class AbstractRegistrationServiceTest {
                 }))
                 .compose(ok -> {
                     final Future<OperationResult<Device>> getResult = Future.future();
-                    getDeviceManagementService().readDevice(TENANT, DEVICE, getResult);
+                    getDeviceManagementService().readDevice(TENANT, DEVICE, NoopSpan.INSTANCE, getResult);
                     return getResult;
                 })
                 .setHandler(ctx.succeeding(s -> ctx.verify(() -> {
@@ -189,7 +190,7 @@ public abstract class AbstractRegistrationServiceTest {
         final Future<OperationResult<Id>> addResult = Future.future();
 
         getDeviceManagementService()
-                .createDevice(TENANT, Optional.of(deviceId), device, addResult);
+                .createDevice(TENANT, Optional.of(deviceId), device, NoopSpan.INSTANCE, addResult);
 
         addResult
                 .map(r -> ctx.verify(() -> {
@@ -197,7 +198,7 @@ public abstract class AbstractRegistrationServiceTest {
                 }))
                 .compose(ok -> {
                     final Future<OperationResult<Device>> getResult = Future.future();
-                    getDeviceManagementService().readDevice(TENANT, deviceId, getResult);
+                    getDeviceManagementService().readDevice(TENANT, deviceId, NoopSpan.INSTANCE, getResult);
                     return getResult;
                 })
                 .setHandler(ctx.succeeding(s -> ctx.verify(() -> {
@@ -233,11 +234,11 @@ public abstract class AbstractRegistrationServiceTest {
         final Future<OperationResult<Id>> addResult = Future.future();
         final Future<OperationResult<Device>> getResult = Future.future();
 
-        getDeviceManagementService().createDevice(TENANT, Optional.of(DEVICE), new Device(), addResult);
+        getDeviceManagementService().createDevice(TENANT, Optional.of(DEVICE), new Device(), NoopSpan.INSTANCE, addResult);
         addResult
                 .compose(r -> {
                     ctx.verify(() -> assertEquals(HttpURLConnection.HTTP_CREATED, r.getStatus()));
-                    getDeviceManagementService().readDevice(TENANT, DEVICE, getResult);
+                    getDeviceManagementService().readDevice(TENANT, DEVICE, NoopSpan.INSTANCE, getResult);
                     return getResult;
                 })
                 .compose(r -> {
@@ -246,7 +247,7 @@ public abstract class AbstractRegistrationServiceTest {
                     r.getPayload().getExtensions().put("new-prop", true);
 
                     final Future<OperationResult<Device>> secondGetResult = Future.future();
-                    getDeviceManagementService().readDevice(TENANT, DEVICE, secondGetResult);
+                    getDeviceManagementService().readDevice(TENANT, DEVICE, NoopSpan.INSTANCE, secondGetResult);
                     return secondGetResult;
                 })
                 .setHandler(ctx.succeeding(secondGetResult -> {
@@ -272,18 +273,18 @@ public abstract class AbstractRegistrationServiceTest {
         final Future<OperationResult<Id>> result = Future.future();
         final Checkpoint get = ctx.checkpoint(3);
 
-        getDeviceManagementService().createDevice(TENANT, Optional.of(DEVICE), new Device(), result);
+        getDeviceManagementService().createDevice(TENANT, Optional.of(DEVICE), new Device(), NoopSpan.INSTANCE, result);
         result.compose(response -> {
             assertEquals(HttpURLConnection.HTTP_CREATED, response.getStatus());
             get.flag();
             final Future<Result<Void>> deregisterResult = Future.future();
-            getDeviceManagementService().deleteDevice(TENANT, DEVICE, Optional.empty(), deregisterResult);
+            getDeviceManagementService().deleteDevice(TENANT, DEVICE, Optional.empty(), NoopSpan.INSTANCE, deregisterResult);
             return deregisterResult;
         }).compose(response -> {
             assertEquals(HttpURLConnection.HTTP_NO_CONTENT, response.getStatus());
             get.flag();
             final Future<OperationResult<Device>> getResult = Future.future();
-            getDeviceManagementService().readDevice(TENANT, DEVICE, getResult);
+            getDeviceManagementService().readDevice(TENANT, DEVICE, NoopSpan.INSTANCE, getResult);
             return getResult;
         }).setHandler(ctx.succeeding(response -> ctx.verify(() -> {
             assertEquals(HttpURLConnection.HTTP_NOT_FOUND, response.getStatus());
@@ -302,7 +303,7 @@ public abstract class AbstractRegistrationServiceTest {
 
         final Future<OperationResult<Id>> result = Future.future();
 
-        getDeviceManagementService().createDevice(TENANT, Optional.empty(), new Device(), result);
+        getDeviceManagementService().createDevice(TENANT, Optional.empty(), new Device(), NoopSpan.INSTANCE, result);
         result.setHandler(ctx.succeeding(response -> ctx.verify(() -> {
             final String deviceId = response.getPayload().getId();
             assertEquals(HttpURLConnection.HTTP_CREATED, response.getStatus());
@@ -322,7 +323,7 @@ public abstract class AbstractRegistrationServiceTest {
 
         final Future<OperationResult<Id>> result = Future.future();
 
-        getDeviceManagementService().createDevice(TENANT, Optional.of(DEVICE), new Device(), result);
+        getDeviceManagementService().createDevice(TENANT, Optional.of(DEVICE), new Device(), NoopSpan.INSTANCE, result);
         result.setHandler(ctx.succeeding(response -> ctx.verify(() -> {
             final String deviceId = response.getPayload().getId();
             final String resourceVersion = response.getResourceVersion().orElse(null);
@@ -344,7 +345,7 @@ public abstract class AbstractRegistrationServiceTest {
         final Future<OperationResult<Id>> result = Future.future();
         final Checkpoint register = ctx.checkpoint(2);
 
-        getDeviceManagementService().createDevice(TENANT, Optional.of(DEVICE), new Device(), result);
+        getDeviceManagementService().createDevice(TENANT, Optional.of(DEVICE), new Device(), NoopSpan.INSTANCE, result);
         result.map(response -> {
             assertEquals(HttpURLConnection.HTTP_CREATED, response.getStatus());
             register.flag();
@@ -356,7 +357,7 @@ public abstract class AbstractRegistrationServiceTest {
             getDeviceManagementService().updateDevice(
                     TENANT, DEVICE,
                     new JsonObject().put("ext", new JsonObject().put("customKey", "customValue")).mapTo(Device.class),
-                    Optional.of(resourceVersion + "abc"),
+                    Optional.of(resourceVersion + "abc"), NoopSpan.INSTANCE,
                     update);
             return update;
         }).setHandler(
@@ -377,7 +378,7 @@ public abstract class AbstractRegistrationServiceTest {
         final Future<OperationResult<Id>> result = Future.future();
         final Checkpoint register = ctx.checkpoint(2);
 
-        getDeviceManagementService().createDevice(TENANT, Optional.of(DEVICE), new Device(), result);
+        getDeviceManagementService().createDevice(TENANT, Optional.of(DEVICE), new Device(), NoopSpan.INSTANCE, result);
         result.map(response -> {
             assertEquals(HttpURLConnection.HTTP_CREATED, response.getStatus());
             register.flag();
@@ -388,7 +389,7 @@ public abstract class AbstractRegistrationServiceTest {
             getDeviceManagementService().updateDevice(
                     TENANT, DEVICE,
                     new JsonObject().put("ext", new JsonObject().put("customKey", "customValue")).mapTo(Device.class),
-                    Optional.empty(),
+                    Optional.empty(), NoopSpan.INSTANCE,
                     update);
             return update;
         }).setHandler(
@@ -410,7 +411,7 @@ public abstract class AbstractRegistrationServiceTest {
         final Checkpoint register = ctx.checkpoint(2);
         final JsonObject version = new JsonObject();
 
-        getDeviceManagementService().createDevice(TENANT, Optional.of(DEVICE), new Device(), result);
+        getDeviceManagementService().createDevice(TENANT, Optional.of(DEVICE), new Device(), NoopSpan.INSTANCE, result);
         result.map(response -> {
             assertEquals(HttpURLConnection.HTTP_CREATED, response.getStatus());
             register.flag();
@@ -423,7 +424,7 @@ public abstract class AbstractRegistrationServiceTest {
             getDeviceManagementService().updateDevice(
                     TENANT, DEVICE,
                     new JsonObject().put("ext", new JsonObject().put("customKey", "customValue")).mapTo(Device.class),
-                    Optional.of(resourceVersion),
+                    Optional.of(resourceVersion), NoopSpan.INSTANCE,
                     update);
             return update;
         }).setHandler(
@@ -447,7 +448,7 @@ public abstract class AbstractRegistrationServiceTest {
         final Future<OperationResult<Id>> result = Future.future();
         final Checkpoint register = ctx.checkpoint(2);
 
-        getDeviceManagementService().createDevice(TENANT, Optional.of(DEVICE), new Device(), result);
+        getDeviceManagementService().createDevice(TENANT, Optional.of(DEVICE), new Device(), NoopSpan.INSTANCE, result);
         result.map(response -> {
             assertEquals(HttpURLConnection.HTTP_CREATED, response.getStatus());
             register.flag();
@@ -456,7 +457,7 @@ public abstract class AbstractRegistrationServiceTest {
             final Future<Result<Void>> update = Future.future();
 
             getDeviceManagementService().deleteDevice(
-                    TENANT, DEVICE, Optional.empty(), update);
+                    TENANT, DEVICE, Optional.empty(), NoopSpan.INSTANCE, update);
             return update;
         }).setHandler(
                 ctx.succeeding(response -> ctx.verify(() -> {
@@ -476,7 +477,7 @@ public abstract class AbstractRegistrationServiceTest {
         final Future<OperationResult<Id>> result = Future.future();
         final Checkpoint register = ctx.checkpoint(2);
 
-        getDeviceManagementService().createDevice(TENANT, Optional.of(DEVICE), new Device(), result);
+        getDeviceManagementService().createDevice(TENANT, Optional.of(DEVICE), new Device(), NoopSpan.INSTANCE, result);
         result.map(response -> {
             assertEquals(HttpURLConnection.HTTP_CREATED, response.getStatus());
             register.flag();
@@ -486,7 +487,7 @@ public abstract class AbstractRegistrationServiceTest {
             final String resourceVersion = rr.getResourceVersion().orElse(null);
 
             getDeviceManagementService().deleteDevice(
-                    TENANT, DEVICE, Optional.of(resourceVersion), update);
+                    TENANT, DEVICE, Optional.of(resourceVersion), NoopSpan.INSTANCE, update);
             return update;
         }).setHandler(
                 ctx.succeeding(response -> ctx.verify(() -> {
@@ -506,7 +507,7 @@ public abstract class AbstractRegistrationServiceTest {
         final Future<OperationResult<Id>> result = Future.future();
         final Checkpoint register = ctx.checkpoint(2);
 
-        getDeviceManagementService().createDevice(TENANT, Optional.of(DEVICE), new Device(), result);
+        getDeviceManagementService().createDevice(TENANT, Optional.of(DEVICE), new Device(), NoopSpan.INSTANCE, result);
         result.map(response -> {
             assertEquals(HttpURLConnection.HTTP_CREATED, response.getStatus());
             register.flag();
@@ -516,7 +517,7 @@ public abstract class AbstractRegistrationServiceTest {
             final String resourceVersion = rr.getResourceVersion().orElse(null);
 
             getDeviceManagementService().deleteDevice(
-                    TENANT, DEVICE, Optional.of(resourceVersion+10), update);
+                    TENANT, DEVICE, Optional.of(resourceVersion+10), NoopSpan.INSTANCE, update);
             return update;
         }).setHandler(
                 ctx.succeeding(response -> ctx.verify(() -> {
@@ -535,7 +536,7 @@ public abstract class AbstractRegistrationServiceTest {
      */
     protected final Future<?> assertCanReadDevice(final String tenantId, final String deviceId) {
         final Future<OperationResult<Device>> result = Future.future();
-        getDeviceManagementService().readDevice(tenantId, deviceId, result);
+        getDeviceManagementService().readDevice(tenantId, deviceId, NoopSpan.INSTANCE, result);
         return result.map(r -> {
             if (r.getStatus() == HttpURLConnection.HTTP_OK) {
                 return r;
@@ -563,7 +564,7 @@ public abstract class AbstractRegistrationServiceTest {
         // read management data
 
         final Future<OperationResult<Device>> f1 = Future.future();
-        getDeviceManagementService().readDevice(tenant, deviceId, f1);
+        getDeviceManagementService().readDevice(tenant, deviceId, NoopSpan.INSTANCE, f1);
 
         // read adapter data
 
@@ -642,7 +643,7 @@ public abstract class AbstractRegistrationServiceTest {
 
             current = current.compose(ok -> {
                 final Future<OperationResult<Id>> f = Future.future();
-                getDeviceManagementService().createDevice(TENANT, Optional.of(entry.getKey()), entry.getValue(), f);
+                getDeviceManagementService().createDevice(TENANT, Optional.of(entry.getKey()), entry.getValue(), NoopSpan.INSTANCE, f);
                 return f.map(r -> {
                     assertEquals(HTTP_CREATED, r.getStatus());
                     return null;

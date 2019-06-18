@@ -13,6 +13,7 @@
 
 package org.eclipse.hono.service.management.tenant;
 
+import io.opentracing.Span;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.json.JsonObject;
@@ -31,6 +32,9 @@ public interface TenantManagementService {
      *
      * @param tenantId The identifier of the tenant to add.
      * @param tenantObj The configuration information to add for the tenant (may be {@code null}).
+     * @param span The active OpenTracing span for this operation. It is not to be closed in this method!
+     *              An implementation should log (error) events on this span and it may set tags and use this span as the
+     *              parent for any spans created in this method.
      * @param resultHandler The handler to invoke with the result of the operation.
      *             The <em>status</em> will be
      *             <ul>
@@ -41,12 +45,15 @@ public interface TenantManagementService {
      * @see <a href="https://www.eclipse.org/hono/api/tenant-api/#add-tenant">
      *      Tenant API - Add Tenant</a>
      */
-    void add(Optional<String> tenantId, JsonObject tenantObj, Handler<AsyncResult<OperationResult<Id>>> resultHandler);
+    void add(Optional<String> tenantId, JsonObject tenantObj, Span span, Handler<AsyncResult<OperationResult<Id>>> resultHandler);
 
     /**
      * Reads tenant configuration information for a tenant identifier.
      *
      * @param tenantId The identifier of the tenant.
+     * @param span The active OpenTracing span for this operation. It is not to be closed in this method!
+     *            An implementation should log (error) events on this span and it may set tags and use this span as the
+     *            parent for any spans created in this method.
      * @param resultHandler The handler to invoke with the result of the operation. The <em>status</em> will be
      *            <ul>
      *            <li><em>200 OK</em> if a tenant with the given ID is registered. The <em>payload</em> will contain the
@@ -57,7 +64,7 @@ public interface TenantManagementService {
      * @see <a href="https://www.eclipse.org/hono/api/tenant-api/#get-tenant-information"> Tenant API - Get Tenant
      *      Information</a>
      */
-    void read(String tenantId, Handler<AsyncResult<OperationResult<Tenant>>> resultHandler);
+    void read(String tenantId, Span span, Handler<AsyncResult<OperationResult<Tenant>>> resultHandler);
 
     /**
      * Updates configuration information of a tenant.
@@ -65,6 +72,9 @@ public interface TenantManagementService {
      * @param tenantId The identifier of the tenant.
      * @param tenantObj The updated configuration information for the tenant (may be {@code null}).
      * @param resourceVersion The identifier of the resource version to update.
+     * @param span The active OpenTracing span for this operation. It is not to be closed in this method!
+     *             An implementation should log (error) events on this span and it may set tags and use this span as the
+     *             parent for any spans created in this method.
      * @param resultHandler The handler to invoke with the result of the operation.
      *             The <em>status</em> will be
      *             <ul>
@@ -75,13 +85,17 @@ public interface TenantManagementService {
      * @see <a href="https://www.eclipse.org/hono/api/tenant-api/#update-tenant">
      *      Tenant API - Update Tenant</a>
      */
-    void update(String tenantId, JsonObject tenantObj, Optional<String> resourceVersion, Handler<AsyncResult<OperationResult<Void>>> resultHandler);
+    void update(String tenantId, JsonObject tenantObj, Optional<String> resourceVersion,
+            Span span, Handler<AsyncResult<OperationResult<Void>>> resultHandler);
 
     /**
      * Removes a tenant.
      *
      * @param tenantId The identifier of the tenant.
      * @param resourceVersion The identifier of the resource version to delete.
+     * @param span The active OpenTracing span for this operation. It is not to be closed in this method!
+     *              An implementation should log (error) events on this span and it may set tags and use this span as the
+     *              parent for any spans created in this method.
      * @param resultHandler The handler to invoke with the result of the operation.
      *             The <em>status</em> will be
      *             <ul>
@@ -92,5 +106,5 @@ public interface TenantManagementService {
      * @see <a href="https://www.eclipse.org/hono/api/tenant-api/#remove-tenant">
      *      Tenant API - Remove Tenant</a>
      */
-    void remove(String tenantId, Optional<String> resourceVersion, Handler<AsyncResult<Result<Void>>> resultHandler);
+    void remove(String tenantId, Optional<String> resourceVersion, Span span, Handler<AsyncResult<Result<Void>>> resultHandler);
 }

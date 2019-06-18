@@ -13,6 +13,8 @@
 
 package org.eclipse.hono.service.management.tenant;
 
+import io.opentracing.Span;
+import io.opentracing.SpanContext;
 import java.io.ByteArrayInputStream;
 import java.net.HttpURLConnection;
 import java.security.GeneralSecurityException;
@@ -29,6 +31,8 @@ import org.eclipse.hono.service.EventBusService;
 import org.eclipse.hono.service.management.Id;
 import org.eclipse.hono.service.management.OperationResult;
 import org.eclipse.hono.service.management.Result;
+import static org.eclipse.hono.service.management.Util.newChildSpan;
+import org.eclipse.hono.service.management.device.Device;
 import org.eclipse.hono.util.EventBusMessage;
 import org.eclipse.hono.util.MessageHelper;
 import org.eclipse.hono.util.TenantConstants;
@@ -48,7 +52,10 @@ import io.vertx.core.json.JsonObject;
  */
 public abstract class EventBusTenantManagementAdapter<T> extends EventBusService<T> {
 
-    private static final String SPAN_NAME_GET_TENANT = "get Tenant";
+    private static final String SPAN_NAME_GET_TENANT = "get Tenant from management API";
+    private static final String SPAN_NAME_CREATE_TENANT = "create Tenant from management API";
+    private static final String SPAN_NAME_UPDATE_TENANT = "update Tenant from management API";
+    private static final String SPAN_NAME_REMOVE_TENANT= "remove Tenant from management API";
 
     protected abstract TenantManagementService getService();
 
@@ -91,12 +98,16 @@ public abstract class EventBusTenantManagementAdapter<T> extends EventBusService
 
         final Optional<String> tenantId = Optional.ofNullable(request.getTenant());
         final JsonObject payload = getRequestPayload(request.getJsonPayload());
+        final SpanContext spanContext = request.getSpanContext();
+
         if (isValidRequestPayload(payload)) {
             log.debug("creating tenant [{}]", tenantId.orElse("<auto>"));
+
+            final Span span = newChildSpan(SPAN_NAME_CREATE_TENANT, spanContext, tracer, tenantId.orElse("<auto>"), getClass().getSimpleName());
             final Future<OperationResult<Id>> addResult = Future.future();
 
             addNotPresentFieldsWithDefaultValuesForTenant(payload);
-            getService().add(tenantId, payload, addResult);
+            getService().add(tenantId, payload, span, addResult);
             return addResult.map(res -> {
                 final String createdTenantId = Optional.ofNullable(res.getPayload()).map(Id::getId).orElse(null);
                 return res.createResponse(request, JsonObject::mapFrom).setTenant(createdTenantId);
@@ -112,6 +123,7 @@ public abstract class EventBusTenantManagementAdapter<T> extends EventBusService
         final String tenantId = request.getTenant();
         final JsonObject payload = getRequestPayload(request.getJsonPayload());
         final Optional<String> resourceVersion = Optional.ofNullable(request.getResourceVersion());
+        final SpanContext spanContext = request.getSpanContext();
 
         if (tenantId == null) {
             log.debug("request does not contain mandatory property [{}]",
@@ -119,10 +131,12 @@ public abstract class EventBusTenantManagementAdapter<T> extends EventBusService
             return Future.failedFuture(new ClientErrorException(HttpURLConnection.HTTP_BAD_REQUEST));
         } else if (isValidRequestPayload(payload)) {
             log.debug("updating tenant [{}]", tenantId);
+
             final Future<OperationResult<Void>> updateResult = Future.future();
+            final Span span = newChildSpan(SPAN_NAME_UPDATE_TENANT, spanContext, tracer, tenantId, getClass().getSimpleName());
 
             addNotPresentFieldsWithDefaultValuesForTenant(payload);
-            getService().update(tenantId, payload, resourceVersion, updateResult);
+            getService().update(tenantId, payload, resourceVersion, span, updateResult);
             return updateResult.map(res -> {
                 return res.createResponse(request, JsonObject::mapFrom).setTenant(tenantId);
 
@@ -137,6 +151,7 @@ public abstract class EventBusTenantManagementAdapter<T> extends EventBusService
 
         final String tenantId = request.getTenant();
         final Optional<String> resourceVersion = Optional.ofNullable(request.getResourceVersion());
+        final SpanContext spanContext = request.getSpanContext();
 
         if (tenantId == null) {
             log.debug("request does not contain mandatory property [{}]",
@@ -145,8 +160,9 @@ public abstract class EventBusTenantManagementAdapter<T> extends EventBusService
         } else {
             log.debug("deleting tenant [{}]", tenantId);
             final Future<Result<Void>> removeResult = Future.future();
+            final Span span = newChildSpan(SPAN_NAME_REMOVE_TENANT, spanContext, tracer, tenantId, getClass().getSimpleName());
 
-            getService().remove(tenantId, resourceVersion, removeResult);
+            getService().remove(tenantId, resourceVersion, span, removeResult);
             return removeResult.map(res -> {
                 return res.createResponse(request, JsonObject::mapFrom).setTenant(tenantId);
 
@@ -157,6 +173,7 @@ public abstract class EventBusTenantManagementAdapter<T> extends EventBusService
     Future<EventBusMessage> processGetRequest(final EventBusMessage request) {
 
         final String tenantId = request.getTenant();
+        final SpanContext spanContext = request.getSpanContext();
 
         if (tenantId == null ) {
             log.debug("request does not contain any query parameters");
@@ -165,8 +182,9 @@ public abstract class EventBusTenantManagementAdapter<T> extends EventBusService
 
             log.debug("retrieving tenant [id: {}]", tenantId);
             final Future<OperationResult<Tenant>> getResult = Future.future();
+            final Span span = newChildSpan(SPAN_NAME_GET_TENANT, spanContext, tracer, tenantId, getClass().getSimpleName());
 
-            getService().read(tenantId, getResult);
+            getService().read(tenantId, span, getResult);
             return getResult.map(res -> {
                 return res.createResponse(request, JsonObject::mapFrom).setTenant(tenantId);
             });

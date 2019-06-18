@@ -13,6 +13,8 @@
 
 package org.eclipse.hono.service.management.device;
 
+import static org.eclipse.hono.service.management.Util.newChildSpan;
+
 import java.net.HttpURLConnection;
 import java.util.Objects;
 import java.util.Optional;
@@ -25,6 +27,8 @@ import org.eclipse.hono.service.management.Result;
 import org.eclipse.hono.util.DeviceManagementConstants;
 import org.eclipse.hono.util.EventBusMessage;
 
+import io.opentracing.Span;
+import io.opentracing.SpanContext;
 import io.vertx.core.Future;
 import io.vertx.core.Verticle;
 import io.vertx.core.json.JsonObject;
@@ -39,6 +43,11 @@ import io.vertx.core.json.JsonObject;
  */
 public abstract class EventBusDeviceManagementAdapter<T> extends EventBusService<T>
         implements Verticle {
+
+    private static final String SPAN_NAME_CREATE_DEVICE = "create Device from management API";
+    private static final String SPAN_NAME_GET_DEVICE = "get Device from management API";
+    private static final String SPAN_NAME_UPDATE_DEVICE = "update Device from management API";
+    private static final String SPAN_NAME_REMOVE_DEVICE = "remove Device from management API";
 
     protected abstract DeviceManagementService getService();
 
@@ -111,13 +120,15 @@ public abstract class EventBusDeviceManagementAdapter<T> extends EventBusService
 
         final String tenantId = request.getTenant();
         final Optional<String> deviceId = Optional.ofNullable(request.getDeviceId());
+        final SpanContext spanContext = request.getSpanContext();
 
         final Future<Device> deviceFuture = deviceFromPayload(request);
+        final Span span = newChildSpan(SPAN_NAME_CREATE_DEVICE, spanContext, tracer, tenantId, deviceId.orElse("unspecified"), getClass().getSimpleName());
 
         return deviceFuture.compose(device -> {
             log.debug("registering device [{}] for tenant [{}]", deviceId.orElse("<auto>"), tenantId);
             final Future<OperationResult<Id>> result = Future.future();
-            getService().createDevice(tenantId, deviceId, device, result);
+            getService().createDevice(tenantId, deviceId, device, span, result);
             return result.map(res -> {
                 final String createdDeviceId = Optional.ofNullable(res.getPayload()).map(Id::getId).orElse(null);
                 return res.createResponse(request, JsonObject::mapFrom).setDeviceId(createdDeviceId);
@@ -130,6 +141,9 @@ public abstract class EventBusDeviceManagementAdapter<T> extends EventBusService
 
         final String tenantId = request.getTenant();
         final String deviceId = request.getDeviceId();
+        final SpanContext spanContext = request.getSpanContext();
+
+        final Span span = newChildSpan(SPAN_NAME_GET_DEVICE, spanContext, tracer, tenantId, deviceId, getClass().getSimpleName());
 
         if (tenantId == null || deviceId == null) {
             return Future.failedFuture(new ClientErrorException(HttpURLConnection.HTTP_BAD_REQUEST));
@@ -137,7 +151,7 @@ public abstract class EventBusDeviceManagementAdapter<T> extends EventBusService
 
         log.debug("retrieving device [{}] of tenant [{}]", deviceId, tenantId);
         final Future<OperationResult<Device>> result = Future.future();
-        getService().readDevice(tenantId, deviceId, result);
+        getService().readDevice(tenantId, deviceId, span, result);
         return result.map(res -> {
             return res.createResponse(request, JsonObject::mapFrom).setDeviceId(deviceId);
         });
@@ -149,6 +163,9 @@ public abstract class EventBusDeviceManagementAdapter<T> extends EventBusService
         final String tenantId = request.getTenant();
         final String deviceId = request.getDeviceId();
         final Optional<String> resourceVersion = Optional.ofNullable(request.getResourceVersion());
+        final SpanContext spanContext = request.getSpanContext();
+
+        final Span span = newChildSpan(SPAN_NAME_UPDATE_DEVICE, spanContext, tracer, tenantId, deviceId, getClass().getSimpleName());
 
         if (tenantId == null || deviceId == null) {
             return Future.failedFuture(new ClientErrorException(HttpURLConnection.HTTP_BAD_REQUEST));
@@ -160,7 +177,7 @@ public abstract class EventBusDeviceManagementAdapter<T> extends EventBusService
 
             log.debug("updating registration information for device [{}] of tenant [{}]", deviceId, tenantId);
             final Future<OperationResult<Id>> result = Future.future();
-            getService().updateDevice(tenantId, deviceId, device, resourceVersion, result);
+            getService().updateDevice(tenantId, deviceId, device, resourceVersion, span, result);
             return result.map(res -> {
                 return res.createResponse(request, JsonObject::mapFrom).setDeviceId(deviceId);
             });
@@ -173,6 +190,9 @@ public abstract class EventBusDeviceManagementAdapter<T> extends EventBusService
         final String tenantId = request.getTenant();
         final String deviceId = request.getDeviceId();
         final Optional<String> resourceVersion = Optional.ofNullable(request.getResourceVersion());
+        final SpanContext spanContext = request.getSpanContext();
+
+        final Span span = newChildSpan(SPAN_NAME_REMOVE_DEVICE, spanContext, tracer, tenantId, deviceId, getClass().getSimpleName());
 
         if (tenantId == null || deviceId == null) {
             return Future.failedFuture(new ClientErrorException(HttpURLConnection.HTTP_BAD_REQUEST));
@@ -180,7 +200,7 @@ public abstract class EventBusDeviceManagementAdapter<T> extends EventBusService
 
         log.debug("deleting device [{}] of tenant [{}]", deviceId, tenantId);
         final Future<Result<Void>> result = Future.future();
-        getService().deleteDevice(tenantId, deviceId, resourceVersion, result);
+        getService().deleteDevice(tenantId, deviceId, resourceVersion, span, result);
         return result.map(res -> {
             return res.createResponse(request, id -> null).setDeviceId(deviceId);
         });

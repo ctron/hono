@@ -12,6 +12,7 @@
  *******************************************************************************/
 package org.eclipse.hono.service.management.credentials;
 
+import io.opentracing.Span;
 import java.util.List;
 import java.util.Optional;
 
@@ -37,6 +38,9 @@ public interface CredentialsManagementService {
      * @param credentials A list of credentials.
      *                  See <a href="https://www.eclipse.org/hono/api/Credentials-API/#credentials-format">Credentials Format</a> for details.
      * @param resourceVersion The identifier of the resource version to update.
+     * @param span The active OpenTracing span for this operation. It is not to be closed in this method!
+     *          An implementation should log (error) events on this span and it may set tags and use this span as the
+     *          parent for any spans created in this method.
      * @param resultHandler The handler to invoke with the result of the operation.
      *         The <em>status</em> will be
      *         <ul>
@@ -50,13 +54,16 @@ public interface CredentialsManagementService {
      *      Credentials API - Update Credentials</a>
      */
     void set(String tenantId, String deviceId, Optional<String> resourceVersion, List<CommonSecret> credentials,
-            Handler<AsyncResult<OperationResult<Void>>> resultHandler);
+            Span span, Handler<AsyncResult<OperationResult<Void>>> resultHandler);
 
     /**
      * Gets all credentials registered for a device.
      *
      * @param tenantId The tenant the device belongs to.
      * @param deviceId The device to get credentials for.
+     * @param span The active OpenTracing span for this operation. It is not to be closed in this method!
+     *          An implementation should log (error) events on this span and it may set tags and use this span as the
+     *          parent for any spans created in this method.
      * @param resultHandler The handler to invoke with the result of the operation.
      *         The <em>status</em> will be
      *         <ul>
@@ -66,7 +73,8 @@ public interface CredentialsManagementService {
      *         </ul>
      * @throws NullPointerException if any of the parameters is {@code null}.
      */
-    void get(String tenantId, String deviceId, Handler<AsyncResult<OperationResult<List<CommonSecret>>>> resultHandler);
+    void get(String tenantId, String deviceId, Span span,
+            Handler<AsyncResult<OperationResult<List<CommonSecret>>>> resultHandler);
 
     /**
      * Removes all credentials for a device.
@@ -74,6 +82,9 @@ public interface CredentialsManagementService {
      * @param tenantId The tenant the device belongs to.
      * @param deviceId The ID under which the device is registered.
      * @param resultHandler The handler to invoke with the result of the operation.
+     * @param span The active OpenTracing span for this operation. It is not to be closed in this method!
+     *          An implementation should log (error) events on this span and it may set tags and use this span as the
+     *          parent for any spans created in this method.
      * @param resourceVersion The identifier of the resource version to update.
      *         <p>
      *         The <em>status</em> will be
@@ -85,6 +96,6 @@ public interface CredentialsManagementService {
      * @see <a href="https://www.eclipse.org/hono/api/credentials-api/#remove-credentials">
      *      Credentials API - Remove Credentials</a>
      */
-    void remove(String tenantId, String deviceId, Optional<String> resourceVersion, Handler<AsyncResult<Result<Void>>> resultHandler);
-
+    void remove(String tenantId, String deviceId, Optional<String> resourceVersion, Span span,
+            Handler<AsyncResult<Result<Void>>> resultHandler);
 }

@@ -403,8 +403,9 @@ public final class FileBasedCredentialsService extends AbstractVerticle
     }
 
     @Override
+    //TODO do something with the span ?
     public void set(final String tenantId, final String deviceId, final Optional<String> resourceVersion,
-            final List<CommonSecret> secrets, final Handler<AsyncResult<OperationResult<Void>>> resultHandler) {
+            final List<CommonSecret> secrets, final Span span, final Handler<AsyncResult<OperationResult<Void>>> resultHandler) {
 
         resultHandler.handle(Future.succeededFuture(set(tenantId, deviceId, resourceVersion, secrets)));
 
@@ -558,7 +559,8 @@ public final class FileBasedCredentialsService extends AbstractVerticle
     }
 
     @Override
-    public void get(final String tenantId, final String deviceId,
+    //TODO do something with the span ?
+    public void get(final String tenantId, final String deviceId, final Span span,
             final Handler<AsyncResult<OperationResult<List<CommonSecret>>>> resultHandler) {
 
         Objects.requireNonNull(tenantId);
@@ -601,7 +603,9 @@ public final class FileBasedCredentialsService extends AbstractVerticle
 
 
     @Override
-    public void remove(final String tenantId, final String deviceId, final Optional<String> resourceVersion, final Handler<AsyncResult<Result<Void>>> resultHandler) {
+    //TODO do something with the span ?
+    public void remove(final String tenantId, final String deviceId, final Optional<String> resourceVersion,
+            final Span span, final Handler<AsyncResult<Result<Void>>> resultHandler) {
         Objects.requireNonNull(tenantId);
         Objects.requireNonNull(deviceId);
         Objects.requireNonNull(resultHandler);

@@ -65,7 +65,6 @@ import io.vertx.core.json.JsonObject;
  * <p>
  * On startup this adapter loads all registered tenants from a file. On shutdown all tenants kept in memory are written
  * to the file.
- * TODO : double check the Span objects to verify they are properly handled when it's needed
  */
 @Component
 @Qualifier("serviceImpl")
@@ -249,7 +248,8 @@ public final class FileBasedTenantService extends AbstractVerticle implements Te
     }
 
     @Override
-    public void read(final String tenantId, final Handler<AsyncResult<OperationResult<Tenant>>> resultHandler) {
+    // TODO : do something with the Span
+    public void read(final String tenantId, final Span span, final Handler<AsyncResult<OperationResult<Tenant>>> resultHandler) {
         Objects.requireNonNull(tenantId);
         Objects.requireNonNull(resultHandler);
 
@@ -311,7 +311,8 @@ public final class FileBasedTenantService extends AbstractVerticle implements Te
     }
 
     @Override
-    public void remove(final String tenantId, final Optional<String> resourceVersion,
+    //TODO : Do something with the span
+    public void remove(final String tenantId, final Optional<String> resourceVersion, final Span span,
             final Handler<AsyncResult<Result<Void>>> resultHandler) {
 
         Objects.requireNonNull(tenantId);
@@ -344,8 +345,9 @@ public final class FileBasedTenantService extends AbstractVerticle implements Te
     }
 
     @Override
+    // TODO : do something with the Span
     public void add(final Optional<String> tenantId, final JsonObject tenantSpec,
-            final Handler<AsyncResult<OperationResult<Id>>> resultHandler) {
+            final Span span, final Handler<AsyncResult<OperationResult<Id>>> resultHandler) {
 
         Objects.requireNonNull(tenantId);
         Objects.requireNonNull(tenantSpec);
@@ -405,8 +407,9 @@ public final class FileBasedTenantService extends AbstractVerticle implements Te
      * @throws NullPointerException if either of the input parameters is {@code null}.
      */
     @Override
+    // TODO : do something with the Span
     public void update(final String tenantId, final JsonObject tenantSpec, final Optional<String> expectedResourceVersion,
-            final Handler<AsyncResult<OperationResult<Void>>> resultHandler) {
+            final Span span, final Handler<AsyncResult<OperationResult<Void>>> resultHandler) {
         Objects.requireNonNull(tenantId);
         Objects.requireNonNull(tenantSpec);
         Objects.requireNonNull(resultHandler);

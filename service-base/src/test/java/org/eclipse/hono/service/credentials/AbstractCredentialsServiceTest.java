@@ -12,6 +12,7 @@
  *******************************************************************************/
 package org.eclipse.hono.service.credentials;
 
+import io.opentracing.noop.NoopSpan;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
 import static java.net.HttpURLConnection.HTTP_NO_CONTENT;
 import static java.net.HttpURLConnection.HTTP_OK;
@@ -119,7 +120,7 @@ public abstract class AbstractCredentialsServiceTest {
 
         assertGetMissing(ctx, tenantId, deviceId, authId, CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD, () -> {
 
-            getDeviceManagementService().createDevice(tenantId, Optional.of(deviceId), new Device(),
+            getDeviceManagementService().createDevice(tenantId, Optional.of(deviceId), new Device(), NoopSpan.INSTANCE,
                     ctx.succeeding(s -> {
 
                         assertGet(ctx, tenantId, deviceId, authId, CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD,
@@ -191,7 +192,7 @@ public abstract class AbstractCredentialsServiceTest {
             final ThrowingConsumer<CredentialsResult<JsonObject>> adapterValidation,
             final ExecutionBlock whenComplete) {
 
-        getCredentialsManagementService().get(tenantId, deviceId, ctx.succeeding(s3 -> {
+        getCredentialsManagementService().get(tenantId, deviceId, NoopSpan.INSTANCE, ctx.succeeding(s3 -> {
 
             ctx.verify(() -> {
 
@@ -232,7 +233,7 @@ public abstract class AbstractCredentialsServiceTest {
         assertGetMissing(ctx, tenantId, deviceId, authId, CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD, () -> {
 
             getCredentialsManagementService().set(tenantId, deviceId, Optional.empty(),
-                    Collections.singletonList(secret),
+                    Collections.singletonList(secret), NoopSpan.INSTANCE,
                     ctx.succeeding(s2 -> {
 
                         ctx.verify(() -> {
@@ -277,7 +278,7 @@ public abstract class AbstractCredentialsServiceTest {
         assertGetMissing(ctx, tenantId, deviceId, authId, CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD, () -> {
 
             getCredentialsManagementService().set(tenantId, deviceId, Optional.empty(),
-                    Collections.singletonList(secret),
+                    Collections.singletonList(secret), NoopSpan.INSTANCE,
                     ctx.succeeding(s2 -> {
 
                         ctx.verify(() -> {
@@ -307,7 +308,7 @@ public abstract class AbstractCredentialsServiceTest {
             final var newSecret = createPasswordSecret(authId, "baz");
 
             getCredentialsManagementService().set(tenantId, deviceId, Optional.empty(),
-                    Collections.singletonList(newSecret),
+                    Collections.singletonList(newSecret), NoopSpan.INSTANCE,
                     ctx.succeeding(s -> ctx.verify(() -> {
 
                         assertEquals(HTTP_NO_CONTENT, s.getStatus());
@@ -355,7 +356,7 @@ public abstract class AbstractCredentialsServiceTest {
         phase1.setHandler(ctx.succeeding(s1 -> {
 
             checkpoint.flag();
-            getDeviceManagementService().createDevice(tenantId, Optional.of(deviceId), new Device(),
+            getDeviceManagementService().createDevice(tenantId, Optional.of(deviceId), new Device(), NoopSpan.INSTANCE,
                     ctx.succeeding(s2 -> {
                         checkpoint.flag();
                         phase2.complete();
@@ -372,7 +373,7 @@ public abstract class AbstractCredentialsServiceTest {
             assertGetEmpty(ctx, tenantId, deviceId, authId, CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD, () -> {
 
                 getCredentialsManagementService().set(tenantId, deviceId, Optional.empty(),
-                        Collections.singletonList(secret),
+                        Collections.singletonList(secret), NoopSpan.INSTANCE,
                         ctx.succeeding(s2 -> {
 
                             checkpoint.flag();
@@ -407,7 +408,7 @@ public abstract class AbstractCredentialsServiceTest {
 
         phase3.setHandler(ctx.succeeding(v -> {
 
-            getCredentialsManagementService().remove(tenantId, deviceId, Optional.empty(),
+            getCredentialsManagementService().remove(tenantId, deviceId, Optional.empty(), NoopSpan.INSTANCE,
                     ctx.succeeding(s -> ctx.verify(() -> {
 
                         checkpoint.flag();
@@ -430,7 +431,7 @@ public abstract class AbstractCredentialsServiceTest {
         final Future<?> phase5 = Future.future();
 
         phase4.setHandler(ctx.succeeding(v -> {
-            getDeviceManagementService().deleteDevice(tenantId, deviceId, Optional.empty(),
+            getDeviceManagementService().deleteDevice(tenantId, deviceId, Optional.empty(), NoopSpan.INSTANCE,
                     ctx.succeeding(s -> ctx.verify(() -> {
                         assertGetMissing(ctx, tenantId, deviceId, authId,
                                 CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD, () -> {
@@ -461,7 +462,7 @@ public abstract class AbstractCredentialsServiceTest {
             final List<CommonSecret> secrets) {
 
         final Future<OperationResult<Void>> result = Future.future();
-        svc.set(tenantId, deviceId, Optional.empty(), secrets, result);
+        svc.set(tenantId, deviceId, Optional.empty(), secrets, NoopSpan.INSTANCE, result);
         return result.map(r -> {
             if (HttpURLConnection.HTTP_NO_CONTENT == r.getStatus()) {
                 return r;

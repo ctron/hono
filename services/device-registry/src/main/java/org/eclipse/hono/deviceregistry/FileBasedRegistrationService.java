@@ -12,6 +12,8 @@
  *******************************************************************************/
 package org.eclipse.hono.deviceregistry;
 
+import io.opentracing.Span;
+import io.opentracing.noop.NoopSpan;
 import static org.eclipse.hono.util.Constants.JSON_FIELD_DEVICE_ID;
 
 import io.vertx.core.AbstractVerticle;
@@ -116,7 +118,7 @@ public class FileBasedRegistrationService extends AbstractVerticle
 
             final Future<Void> resultFuture = Future.future();
             deviceData.put(RegistrationConstants.FIELD_LAST_VIA, createLastViaObject(gatewayId));
-            FileBasedRegistrationService.this.updateDevice(tenantId, deviceId, device, Optional.empty(), res -> {
+            FileBasedRegistrationService.this.updateDevice(tenantId, deviceId, device, Optional.empty(), NoopSpan.INSTANCE, res -> {
                 if (res.failed() || res.result() == null) {
                     resultFuture.fail(res.cause());
                 } else if (res.result().isError()) {
@@ -398,7 +400,8 @@ public class FileBasedRegistrationService extends AbstractVerticle
     }
 
     @Override
-    public void readDevice(final String tenantId, final String deviceId,
+    //TODO: Do something with the Span
+    public void readDevice(final String tenantId, final String deviceId, final Span span,
             final Handler<AsyncResult<OperationResult<Device>>> resultHandler) {
 
         Objects.requireNonNull(tenantId);
@@ -434,8 +437,9 @@ public class FileBasedRegistrationService extends AbstractVerticle
     }
 
     @Override
+    //TODO : do something with the span
     public void deleteDevice(final String tenantId, final String deviceId, final Optional<String> resourceVersion,
-            final Handler<AsyncResult<Result<Void>>> resultHandler) {
+            final Span span, final Handler<AsyncResult<Result<Void>>> resultHandler) {
 
         Objects.requireNonNull(tenantId);
         Objects.requireNonNull(deviceId);
@@ -475,8 +479,9 @@ public class FileBasedRegistrationService extends AbstractVerticle
     }
 
     @Override
+    //TODO: Do something with the Span
     public void createDevice(final String tenantId, final Optional<String> deviceId, final Device device,
-            final Handler<AsyncResult<OperationResult<Id>>> resultHandler) {
+           final Span span, final Handler<AsyncResult<OperationResult<Id>>> resultHandler) {
 
         Objects.requireNonNull(tenantId);
         Objects.requireNonNull(deviceId);
@@ -516,8 +521,9 @@ public class FileBasedRegistrationService extends AbstractVerticle
     }
 
     @Override
+    //TODO: Do something with the Span
     public void updateDevice(final String tenantId, final String deviceId, final Device device,
-            final Optional<String> resourceVersion,
+            final Optional<String> resourceVersion, final Span span,
             final Handler<AsyncResult<OperationResult<Id>>> resultHandler) {
 
         Objects.requireNonNull(tenantId);

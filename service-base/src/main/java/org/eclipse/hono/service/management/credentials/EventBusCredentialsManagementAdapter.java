@@ -12,6 +12,8 @@
  *******************************************************************************/
 package org.eclipse.hono.service.management.credentials;
 
+import static org.eclipse.hono.service.management.Util.newChildSpan;
+
 import java.net.HttpURLConnection;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,6 +29,8 @@ import org.eclipse.hono.service.management.Result;
 import org.eclipse.hono.util.CredentialsConstants;
 import org.eclipse.hono.util.EventBusMessage;
 
+import io.opentracing.Span;
+import io.opentracing.SpanContext;
 import io.vertx.core.Future;
 import io.vertx.core.Verticle;
 import io.vertx.core.json.JsonArray;
@@ -39,6 +43,10 @@ import io.vertx.core.json.JsonObject;
  */
 public abstract class EventBusCredentialsManagementAdapter<T> extends EventBusService<T>
         implements Verticle {
+
+    private static final String SPAN_NAME_GET_CREDENTIAL = "get Credential from management API";
+    private static final String SPAN_NAME_UPDATE_CREDENTIAL = "update Credential from management API";
+    private static final String SPAN_NAME_REMOVE_CREDENTIAL = "remove Credential from management API";
 
     private static final int DEFAULT_MAX_BCRYPT_ITERATIONS = 10;
 
@@ -90,6 +98,7 @@ public abstract class EventBusCredentialsManagementAdapter<T> extends EventBusSe
         final String deviceId = request.getDeviceId();
         final Optional<String> resourceVersion = Optional.ofNullable(request.getResourceVersion());
         final JsonObject payload = request.getJsonPayload();
+        final SpanContext spanContext = request.getSpanContext();
 
         if (tenantId == null) {
             return Future.failedFuture(new ClientErrorException(
@@ -103,10 +112,11 @@ public abstract class EventBusCredentialsManagementAdapter<T> extends EventBusSe
         try {
             final Future<List<CommonSecret>> secretsFuture = secretsFromPayload(request);
 
+            final Span span = newChildSpan(SPAN_NAME_UPDATE_CREDENTIAL, spanContext, tracer, tenantId, deviceId, getClass().getSimpleName());
             final Future<OperationResult<Void>> result = Future.future();
 
             return secretsFuture.compose(secrets -> {
-                getService().set(tenantId, deviceId, resourceVersion, secrets, result);
+                getService().set(tenantId, deviceId, resourceVersion, secrets, span, result);
                         return result.map(res -> {
                             return res.createResponse(request, id -> null).setDeviceId(deviceId);
                         });
@@ -173,10 +183,12 @@ public abstract class EventBusCredentialsManagementAdapter<T> extends EventBusSe
         final String tenantId = request.getTenant();
         final String deviceId = request.getDeviceId();
         final Optional<String> resourceVersion = Optional.ofNullable(request.getResourceVersion());
+        final SpanContext spanContext = request.getSpanContext();
 
+        final Span span = newChildSpan(SPAN_NAME_REMOVE_CREDENTIAL, spanContext, tracer, tenantId, deviceId, getClass().getSimpleName());
         final Future<Result<Void>> result = Future.future();
 
-        getService().remove(tenantId, deviceId, resourceVersion, result);
+        getService().remove(tenantId, deviceId, resourceVersion, span, result);
 
         return result.map(res -> {
             return res.createResponse(request, id -> null).setDeviceId(deviceId);
@@ -186,10 +198,12 @@ public abstract class EventBusCredentialsManagementAdapter<T> extends EventBusSe
     private Future<EventBusMessage> processGetRequest(final EventBusMessage request) {
         final String tenantId = request.getTenant();
         final String deviceId = request.getDeviceId();
+        final SpanContext spanContext = request.getSpanContext();
 
+        final Span span = newChildSpan(SPAN_NAME_GET_CREDENTIAL, spanContext, tracer, tenantId, deviceId, getClass().getSimpleName());
         final Future<OperationResult<List<CommonSecret>>> result = Future.future();
 
-        getService().get(tenantId, deviceId, result);
+        getService().get(tenantId, deviceId, span, result);
 
         return result.map(res -> {
             return res.createResponse(request, secrets -> {
@@ -262,7 +276,5 @@ public abstract class EventBusCredentialsManagementAdapter<T> extends EventBusSe
     protected int getMaxBcryptIterations() {
         return DEFAULT_MAX_BCRYPT_ITERATIONS;
     }
-
-
 
 }

@@ -13,6 +13,7 @@
 
 package org.eclipse.hono.deviceregistry;
 
+import io.opentracing.noop.NoopSpan;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -466,6 +467,7 @@ public class FileBasedCredentialsServiceTest extends AbstractCredentialsServiceT
                     svc.set("tenant", "device",
                             Optional.empty(),
                             Collections.singletonList(newSecret),
+                            NoopSpan.INSTANCE,
                             result);
                     return result;
                 })

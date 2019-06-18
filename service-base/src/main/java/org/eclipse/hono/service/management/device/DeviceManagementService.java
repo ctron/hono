@@ -13,6 +13,7 @@
 
 package org.eclipse.hono.service.management.device;
 
+import io.opentracing.Span;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import java.util.Optional;
@@ -35,6 +36,9 @@ public interface DeviceManagementService {
      * @param tenantId The tenant that the device belongs to.
      * @param deviceId The ID the device should be registered under.
      * @param device Device information, must not be {@code null}.
+     * @param span The active OpenTracing span for this operation. It is not to be closed in this method!
+     *          An implementation should log (error) events on this span and it may set tags and use this span as the
+     *          parent for any spans created in this method.
      * @param resultHandler The handler to invoke with the result of the operation. The <em>status</em> will be
      *            <ul>
      *            <li><em>201 Created</em> if the device has been registered successfully.</li>
@@ -44,7 +48,7 @@ public interface DeviceManagementService {
      * @see <a href="https://www.eclipse.org/hono/api/device-registration-api/#register-device"> Device Registration API
      *      - Register Device</a>
      */
-    void createDevice(String tenantId, Optional<String> deviceId, Device device,
+    void createDevice(String tenantId, Optional<String> deviceId, Device device, Span span,
             Handler<AsyncResult<OperationResult<Id>>> resultHandler);
 
     /**
@@ -52,6 +56,9 @@ public interface DeviceManagementService {
      *
      * @param tenantId The tenant the device belongs to.
      * @param deviceId The ID of the device to get registration data for.
+     * @param span The active OpenTracing span for this operation. It is not to be closed in this method!
+     *          An implementation should log (error) events on this span and it may set tags and use this span as the
+     *          parent for any spans created in this method.
      * @param resultHandler The handler to invoke with the result of the operation. The <em>status</em> will be
      *            <ul>
      *            <li><em>200 OK</em> if a device with the given ID is registered for the tenant. The <em>payload</em>
@@ -62,7 +69,8 @@ public interface DeviceManagementService {
      * @see <a href="https://www.eclipse.org/hono/api/device-registration-api/#get-registration-information"> Device
      *      Registration API - Get Registration Information</a>
      */
-    void readDevice(String tenantId, String deviceId, Handler<AsyncResult<OperationResult<Device>>> resultHandler);
+    void readDevice(String tenantId, String deviceId, Span span,
+            Handler<AsyncResult<OperationResult<Device>>> resultHandler);
 
     /**
      * Updates device registration data.
@@ -71,6 +79,9 @@ public interface DeviceManagementService {
      * @param deviceId The ID of the device to update the registration for.
      * @param device Device information, must not be {@code null}.
      * @param resourceVersion The identifier of the resource version to update.
+     * @param span The active OpenTracing span for this operation. It is not to be closed in this method!
+     *          An implementation should log (error) events on this span and it may set tags and use this span as the
+     *          parent for any spans created in this method.
      * @param resultHandler The handler to invoke with the result of the operation. The <em>status</em> will be
      *            <ul>
      *            <li><em>204 No Content</em> if the registration information has been updated successfully.</li>
@@ -80,7 +91,7 @@ public interface DeviceManagementService {
      * @see <a href="https://www.eclipse.org/hono/api/device-registration-api/#update-device-registration"> Device
      *      Registration API - Update Device Registration</a>
      */
-    void updateDevice(String tenantId, String deviceId, Device device, Optional<String> resourceVersion,
+    void updateDevice(String tenantId, String deviceId, Device device, Optional<String> resourceVersion, Span span,
             Handler<AsyncResult<OperationResult<Id>>> resultHandler);
 
     /**
@@ -89,6 +100,9 @@ public interface DeviceManagementService {
      * @param tenantId The tenant the device belongs to.
      * @param deviceId The ID of the device to remove.
      * @param resourceVersion The identifier of the resource version to remove.
+     * @param span The active OpenTracing span for this operation. It is not to be closed in this method!
+     *          An implementation should log (error) events on this span and it may set tags and use this span as the
+     *          parent for any spans created in this method.
      * @param resultHandler The handler to invoke with the result of the operation.
      *             The <em>status</em> will be
      *             <ul>
@@ -100,8 +114,7 @@ public interface DeviceManagementService {
      * @see <a href="https://www.eclipse.org/hono/api/device-registration-api/#deregister-device">
      *      Device Registration API - Deregister Device</a>
      */
-    void deleteDevice(String tenantId, String deviceId, Optional<String> resourceVersion,
+    void deleteDevice(String tenantId, String deviceId, Optional<String> resourceVersion, Span span,
             Handler<AsyncResult<Result<Void>>> resultHandler);
-
 
 }

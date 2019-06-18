@@ -90,24 +90,27 @@ public class FileBasedDeviceBackend implements DeviceBackend {
     }
 
     @Override
-    public void readDevice(final String tenantId, final String deviceId,
+    //TODO: Do something with the Span
+    public void readDevice(final String tenantId, final String deviceId, final Span span,
             final Handler<AsyncResult<OperationResult<Device>>> resultHandler) {
-        registrationService.readDevice(tenantId, deviceId, resultHandler);
+        registrationService.readDevice(tenantId, deviceId, span, resultHandler);
     }
 
     @Override
+    //TODO : do something with the span
     public void deleteDevice(final String tenantId, final String deviceId, final Optional<String> resourceVersion,
-            final Handler<AsyncResult<Result<Void>>> resultHandler) {
+            final Span span, final Handler<AsyncResult<Result<Void>>> resultHandler) {
         // TODO: when deleting a device, also delete credentials
-        registrationService.deleteDevice(tenantId, deviceId, resourceVersion, resultHandler);
+        registrationService.deleteDevice(tenantId, deviceId, resourceVersion, span, resultHandler);
     }
 
     @Override
+    //TODO: Do something with the Span
     public void createDevice(final String tenantId, final Optional<String> deviceId, final Device device,
-            final Handler<AsyncResult<OperationResult<Id>>> resultHandler) {
+           final Span span, final Handler<AsyncResult<OperationResult<Id>>> resultHandler) {
 
         final Future<OperationResult<Id>> future = Future.future();
-        registrationService.createDevice(tenantId, deviceId, device, future);
+        registrationService.createDevice(tenantId, deviceId, device, span, future);
 
         future
                 .compose(r -> {
@@ -123,6 +126,7 @@ public class FileBasedDeviceBackend implements DeviceBackend {
                             r.getPayload().getId(),
                             Optional.empty(),
                             Collections.emptyList(),
+                            span,
                             f);
 
                     // pass on the original result
@@ -135,10 +139,11 @@ public class FileBasedDeviceBackend implements DeviceBackend {
     }
 
     @Override
+    //TODO: Do something with the Span
     public void updateDevice(final String tenantId, final String deviceId, final Device device,
-            final Optional<String> resourceVersion,
+            final Optional<String> resourceVersion, final Span span,
             final Handler<AsyncResult<OperationResult<Id>>> resultHandler) {
-        registrationService.updateDevice(tenantId, deviceId, device, resourceVersion, resultHandler);
+        registrationService.updateDevice(tenantId, deviceId, device, resourceVersion, span, resultHandler);
     }
 
     // CREDENTIALS
@@ -169,22 +174,24 @@ public class FileBasedDeviceBackend implements DeviceBackend {
     }
 
     @Override
+    //TODO do something with the span ?
     public void set(final String tenantId, final String deviceId, final Optional<String> resourceVersion,
-            final List<CommonSecret> credentials, final Handler<AsyncResult<OperationResult<Void>>> resultHandler) {
+            final List<CommonSecret> credentials, final Span span, final Handler<AsyncResult<OperationResult<Void>>> resultHandler) {
         //TODO check if device exists
-        credentialsService.set(tenantId, deviceId, resourceVersion, credentials, resultHandler);
+        credentialsService.set(tenantId, deviceId, resourceVersion, credentials, span, resultHandler);
     }
 
     @Override
-    public void get(final String tenantId, final String deviceId,
+    //TODO do something with the span ?
+    public void get(final String tenantId, final String deviceId, final Span span,
             final Handler<AsyncResult<OperationResult<List<CommonSecret>>>> resultHandler) {
 
         final Future<OperationResult<List<CommonSecret>>> f = Future.future();
-        credentialsService.get(tenantId, deviceId, f);
+        credentialsService.get(tenantId, deviceId, span, f);
         f.compose(r -> {
             if (r.getStatus() == HttpURLConnection.HTTP_NOT_FOUND) {
                 final Future<OperationResult<Device>> readFuture = Future.future();
-                registrationService.readDevice(tenantId, deviceId, readFuture);
+                registrationService.readDevice(tenantId, deviceId, span, readFuture);
                 return readFuture.map(d -> {
                     if (d.getStatus() == 200) {
                         return OperationResult.ok(200, Collections.<CommonSecret> emptyList(), r.getCacheDirective(),
@@ -200,11 +207,12 @@ public class FileBasedDeviceBackend implements DeviceBackend {
     }
 
     @Override
+    //TODO do something with the span ?
     public void remove(final String tenantId, final String deviceId, final Optional<String> resourceVersion,
-            final Handler<AsyncResult<Result<Void>>> resultHandler) {
+           final Span span, final Handler<AsyncResult<Result<Void>>> resultHandler) {
         final OperationResult<Device> device = registrationService.readDevice(tenantId, deviceId);
         if (device.getStatus() == HttpURLConnection.HTTP_OK) {
-            credentialsService.remove(tenantId, deviceId, resourceVersion, resultHandler);
+            credentialsService.remove(tenantId, deviceId, resourceVersion, span, resultHandler);
         } else {
             resultHandler.handle(Future.succeededFuture(OperationResult.from(device.getStatus())));
         }
