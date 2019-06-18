@@ -13,20 +13,29 @@
 
 package org.eclipse.hono.service.management;
 
+import java.util.Objects;
+
 import io.opentracing.References;
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
 import io.opentracing.tag.Tags;
-import java.util.Objects;
 import org.eclipse.hono.util.MessageHelper;
 
+/**
+ * Utility class for the management HTTP API.
+ */
 public class Util {
 
     /**
-     * Creates a new <em>OpenTracing</em> span for tracing the execution of a credential service operation.
+     * Prevent instantiation.
+     */
+    private Util(){}
+
+    /**
+     * Creates a new <em>OpenTracing</em> span for tracing the execution of a service operation.
      * <p>
-     * The returned span will already contain tags for the given tenant, device ids (if either is not {code null}).
+     * The returned span will already contain tags for the given tenant and device ids (if either is not {code null}).
      *
      * @param operationName The operation name that the span should be created for.
      * @param spanContext Existing span context.
@@ -57,12 +66,13 @@ public class Util {
     }
 
     /**
-     * Creates a new <em>OpenTracing</em> span for tracing the execution of a credential service operation.
+     * Creates a new <em>OpenTracing</em> span for tracing the execution of a tenant service operation.
      * <p>
-     * The returned span will already contain tags for the given tenant, device ids (if either is not {code null}).
+     * The returned span will already contain tags for the given tenant id (if not {code null}).
      *
      * @param operationName The operation name that the span should be created for.
      * @param spanContext Existing span context.
+     * @param tracer the Tracer instance.
      * @param tenantId The tenant id.
      * @param className The class name to insert in the Span.
      * @return The new {@code Span}.

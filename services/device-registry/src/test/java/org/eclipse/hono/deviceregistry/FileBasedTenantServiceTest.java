@@ -13,7 +13,6 @@
 
 package org.eclipse.hono.deviceregistry;
 
-import io.opentracing.noop.NoopSpan;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
@@ -40,6 +39,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 
+import io.opentracing.noop.NoopSpan;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
@@ -51,8 +51,6 @@ import io.vertx.core.file.FileSystem;
 import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
-
-import org.eclipse.hono.deviceregistry.DeviceRegistryTestUtils;
 
 /**
  * Tests verifying behavior of {@link FileBasedTenantService}.

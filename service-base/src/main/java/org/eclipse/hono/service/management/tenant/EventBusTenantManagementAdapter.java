@@ -13,8 +13,8 @@
 
 package org.eclipse.hono.service.management.tenant;
 
-import io.opentracing.Span;
-import io.opentracing.SpanContext;
+import static org.eclipse.hono.service.management.Util.newChildSpan;
+
 import java.io.ByteArrayInputStream;
 import java.net.HttpURLConnection;
 import java.security.GeneralSecurityException;
@@ -31,12 +31,12 @@ import org.eclipse.hono.service.EventBusService;
 import org.eclipse.hono.service.management.Id;
 import org.eclipse.hono.service.management.OperationResult;
 import org.eclipse.hono.service.management.Result;
-import static org.eclipse.hono.service.management.Util.newChildSpan;
-import org.eclipse.hono.service.management.device.Device;
 import org.eclipse.hono.util.EventBusMessage;
 import org.eclipse.hono.util.MessageHelper;
 import org.eclipse.hono.util.TenantConstants;
 
+import io.opentracing.Span;
+import io.opentracing.SpanContext;
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
