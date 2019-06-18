@@ -16,18 +16,14 @@ import static org.eclipse.hono.util.CredentialsConstants.FIELD_SECRETS_HASH_FUNC
 import static org.eclipse.hono.util.CredentialsConstants.FIELD_SECRETS_PWD_HASH;
 import static org.eclipse.hono.util.CredentialsConstants.FIELD_SECRETS_SALT;
 
-import org.eclipse.hono.util.CredentialsConstants;
-
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.google.common.base.MoreObjects.ToStringHelper;
 
 /**
  * Secret Information.
  */
 @JsonInclude(value = JsonInclude.Include.NON_NULL)
-@JsonTypeName(CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD)
 public class PasswordSecret extends CommonSecret {
 
     @JsonProperty(FIELD_SECRETS_HASH_FUNCTION)

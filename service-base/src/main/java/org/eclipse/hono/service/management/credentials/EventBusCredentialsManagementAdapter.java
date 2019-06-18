@@ -152,10 +152,6 @@ public abstract class EventBusCredentialsManagementAdapter<T> extends EventBusSe
         }
     }
 
-    protected PasswordSecret decodePasswordSecret(final JsonObject object) {
-        return object.mapTo(PasswordSecret.class);
-    }
-
     protected List<CommonSecret> decodeSecrets(final JsonArray objects) {
         return objects
                 .stream()

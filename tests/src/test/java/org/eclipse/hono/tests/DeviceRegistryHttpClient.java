@@ -16,7 +16,6 @@ package org.eclipse.hono.tests;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
 import java.security.cert.X509Certificate;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -26,7 +25,6 @@ import javax.security.auth.x500.X500Principal;
 import org.eclipse.hono.client.ServiceInvocationException;
 import org.eclipse.hono.service.credentials.AbstractCredentialsServiceTest;
 import org.eclipse.hono.service.management.credentials.CommonSecret;
-import org.eclipse.hono.service.management.credentials.GenericSecret;
 import org.eclipse.hono.service.management.credentials.PasswordSecret;
 import org.eclipse.hono.service.management.credentials.PskSecret;
 import org.eclipse.hono.service.management.credentials.X509CertificateSecret;
@@ -59,7 +57,7 @@ public final class DeviceRegistryHttpClient {
 
     private static final Logger LOG = LoggerFactory.getLogger(DeviceRegistryHttpClient.class);
 
-    private static final TypeReference<List<GenericSecret>> SECRETS_TYPE_REF = new TypeReference<>() {
+    private static final TypeReference<List<CommonSecret>> SECRETS_TYPE_REF = new TypeReference<>() {
     };
 
     private static final String CONTENT_TYPE_APPLICATION_JSON = "application/json";
@@ -461,12 +459,13 @@ public final class DeviceRegistryHttpClient {
 
                     // new list of secrets
 
-                    final List<CommonSecret> currentSecrets = new ArrayList<>(Json.decodeValue(body, SECRETS_TYPE_REF));
+                    final List<CommonSecret> currentSecrets = Json.decodeValue(body, SECRETS_TYPE_REF);
                     currentSecrets.addAll(secrets);
 
                     // update
 
-                    return httpClient.update(uri, Json.encodeToBuffer(secrets), contentType,
+                    return httpClient.update(uri, Json.encodeToBuffer(currentSecrets.toArray(CommonSecret[]::new)),
+                            contentType,
                             response -> response == expectedStatusCode);
                 });
 

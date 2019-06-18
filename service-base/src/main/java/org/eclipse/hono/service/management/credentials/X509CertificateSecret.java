@@ -12,13 +12,8 @@
  *******************************************************************************/
 package org.eclipse.hono.service.management.credentials;
 
-import org.eclipse.hono.util.CredentialsConstants;
-
-import com.fasterxml.jackson.annotation.JsonTypeName;
-
 /**
  * X509 certificate secret.
  */
-@JsonTypeName(CredentialsConstants.SECRETS_TYPE_X509_CERT)
 public class X509CertificateSecret extends CommonSecret {
 }

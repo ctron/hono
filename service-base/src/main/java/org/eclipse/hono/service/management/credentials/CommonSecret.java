@@ -21,6 +21,7 @@ import java.time.Instant;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.databind.annotation.JsonTypeIdResolver;
 import com.google.common.base.MoreObjects;
 import com.google.common.base.MoreObjects.ToStringHelper;
 
@@ -29,6 +30,7 @@ import com.google.common.base.MoreObjects.ToStringHelper;
  */
 @JsonInclude(value = JsonInclude.Include.NON_NULL)
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
+@JsonTypeIdResolver(SecretTypeResolver.class)
 public abstract class CommonSecret {
 
     @JsonProperty(FIELD_AUTH_ID)

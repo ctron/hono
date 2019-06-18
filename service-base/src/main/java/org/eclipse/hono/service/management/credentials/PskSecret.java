@@ -14,18 +14,14 @@ package org.eclipse.hono.service.management.credentials;
 
 import static org.eclipse.hono.util.CredentialsConstants.FIELD_SECRETS_KEY;
 
-import org.eclipse.hono.util.CredentialsConstants;
-
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.google.common.base.MoreObjects.ToStringHelper;
 
 /**
  * Secret Information.
  */
 @JsonInclude(value = JsonInclude.Include.NON_NULL)
-@JsonTypeName(CredentialsConstants.SECRETS_TYPE_PRESHARED_KEY)
 public class PskSecret extends CommonSecret {
 
     @JsonProperty(FIELD_SECRETS_KEY)
