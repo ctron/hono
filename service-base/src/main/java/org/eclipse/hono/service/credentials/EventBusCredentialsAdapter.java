@@ -122,7 +122,7 @@ public abstract class EventBusCredentialsAdapter<T> extends EventBusService<T> i
 
     protected Future<EventBusMessage> processGetByDeviceIdRequest(final EventBusMessage request, final String tenantId,
             final String type, final String deviceId, final Span span) {
-        return Future.failedFuture(new ClientErrorException(HttpURLConnection.HTTP_BAD_REQUEST));
+        return Future.failedFuture(new ClientErrorException(HttpURLConnection.HTTP_NOT_IMPLEMENTED));
     }
 
     private Future<EventBusMessage> processGetByAuthIdRequest(final EventBusMessage request, final String tenantId,
