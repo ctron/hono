@@ -161,7 +161,7 @@ public final class LegacyDeviceRegistryHttpClient {
     public Future<Void> updateTenant(final String tenantId, final JsonObject requestPayload, final int expectedStatusCode) {
 
         final String uri = String.format(TEMPLATE_URI_TENANT_INSTANCE, tenantId);
-        return httpClient.update(uri, requestPayload, status -> status == expectedStatusCode);
+        return httpClient.update(uri, requestPayload, status -> status == expectedStatusCode).mapEmpty();
     }
 
     /**
@@ -337,7 +337,7 @@ public final class LegacyDeviceRegistryHttpClient {
         final String requestUri = String.format(TEMPLATE_URI_REGISTRATION_INSTANCE, tenantId, deviceId);
         final JsonObject requestJson = data.copy();
         requestJson.put(RegistrationConstants.FIELD_PAYLOAD_DEVICE_ID, deviceId);
-        return httpClient.update(requestUri, requestJson, contentType, status -> status == expectedStatus);
+        return httpClient.update(requestUri, requestJson, contentType, status -> status == expectedStatus).mapEmpty();
     }
 
     /**
@@ -532,7 +532,7 @@ public final class LegacyDeviceRegistryHttpClient {
 
         Objects.requireNonNull(tenantId);
         final String uri = String.format(TEMPLATE_URI_CREDENTIALS_INSTANCE, tenantId, authId, type);
-        return httpClient.update(uri, credentialsSpec, status -> status == expectedStatusCode);
+        return httpClient.update(uri, credentialsSpec, status -> status == expectedStatusCode).mapEmpty();
     }
 
     /**

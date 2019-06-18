@@ -194,7 +194,7 @@ public final class DeviceRegistryHttpClient {
      * @return A future indicating the outcome of the operation. The future will succeed if the response contained the
      *         expected status code. Otherwise the future will fail with a {@link ServiceInvocationException}.
      */
-    public Future<Void> updateTenant(final String tenantId, final JsonObject requestPayload,
+    public Future<MultiMap> updateTenant(final String tenantId, final JsonObject requestPayload,
             final int expectedStatusCode) {
 
         final String uri = String.format(TEMPLATE_URI_TENANT_INSTANCE, tenantId);
@@ -334,7 +334,7 @@ public final class DeviceRegistryHttpClient {
      *         has been updated successfully. Otherwise the future will fail with a {@link ServiceInvocationException}.
      * @throws NullPointerException if the tenant is {@code null}.
      */
-    public Future<Void> updateDevice(final String tenantId, final String deviceId, final JsonObject data) {
+    public Future<MultiMap> updateDevice(final String tenantId, final String deviceId, final JsonObject data) {
         return updateDevice(tenantId, deviceId, data, CONTENT_TYPE_APPLICATION_JSON, HttpURLConnection.HTTP_NO_CONTENT);
     }
 
@@ -350,7 +350,7 @@ public final class DeviceRegistryHttpClient {
      *         expected status code. Otherwise the future will fail with a {@link ServiceInvocationException}.
      * @throws NullPointerException if the tenant is {@code null}.
      */
-    public Future<Void> updateDevice(
+    public Future<MultiMap> updateDevice(
             final String tenantId,
             final String deviceId,
             final JsonObject data,
@@ -409,7 +409,7 @@ public final class DeviceRegistryHttpClient {
      *         added successfully. Otherwise the future will fail with a {@link ServiceInvocationException}.
      * @throws NullPointerException if the tenant is {@code null}.
      */
-    public Future<Void> addCredentials(final String tenantId, final String deviceId,
+    public Future<MultiMap> addCredentials(final String tenantId, final String deviceId,
             final Collection<CommonSecret> secrets) {
         return addCredentials(tenantId, deviceId, secrets, HttpURLConnection.HTTP_NO_CONTENT);
     }
@@ -429,7 +429,7 @@ public final class DeviceRegistryHttpClient {
      *         expected status code. Otherwise the future will fail with a {@link ServiceInvocationException}.
      * @throws NullPointerException if the tenant is {@code null}.
      */
-    public Future<Void> addCredentials(final String tenantId, final String deviceId,
+    public Future<MultiMap> addCredentials(final String tenantId, final String deviceId,
             final Collection<CommonSecret> secrets, final int expectedStatusCode) {
         return addCredentials(tenantId, deviceId, secrets, CONTENT_TYPE_APPLICATION_JSON, expectedStatusCode);
     }
@@ -446,7 +446,7 @@ public final class DeviceRegistryHttpClient {
      *         expected status code. Otherwise the future will fail with a {@link ServiceInvocationException}.
      * @throws NullPointerException if the tenant is {@code null}.
      */
-    public Future<Void> addCredentials(
+    public Future<MultiMap> addCredentials(
             final String tenantId,
             final String deviceId,
             final Collection<CommonSecret> secrets,
@@ -538,7 +538,7 @@ public final class DeviceRegistryHttpClient {
      *         updated successfully. Otherwise the future will fail with a {@link ServiceInvocationException}.
      * @throws NullPointerException if the tenant is {@code null}.
      */
-    public Future<Void> updateCredentials(final String tenantId, final String deviceId,
+    public Future<MultiMap> updateCredentials(final String tenantId, final String deviceId,
             final CommonSecret credentialsSpec) {
         return updateCredentials(tenantId, deviceId, Collections.singleton(credentialsSpec),
                 HttpURLConnection.HTTP_NO_CONTENT);
@@ -557,18 +557,18 @@ public final class DeviceRegistryHttpClient {
      *         Otherwise the future will fail with a {@link ServiceInvocationException}.
      * @throws NullPointerException if the tenant is {@code null}.
      */
-    public Future<Void> updateCredentials(
+    public Future<Void> updateCredentialsWithVersion(
             final String tenantId,
             final String deviceId,
             final Collection<CommonSecret> credentialsSpec,
-            final int version,
+            final String version,
             final int expectedStatusCode) {
 
         Objects.requireNonNull(tenantId);
         final String uri = String.format(TEMPLATE_URI_CREDENTIALS_BY_DEVICE, tenantId, deviceId);
 
         final MultiMap headers = MultiMap.caseInsensitiveMultiMap()
-                .add(HttpHeaders.IF_MATCH, Integer.toString(version))
+                .add(HttpHeaders.IF_MATCH, version)
                 .add(HttpHeaders.CONTENT_TYPE, CONTENT_TYPE_JSON);
 
         return httpClient
@@ -587,7 +587,7 @@ public final class DeviceRegistryHttpClient {
      *         expected status code. Otherwise the future will fail with a {@link ServiceInvocationException}.
      * @throws NullPointerException if the tenant is {@code null}.
      */
-    public Future<Void> updateCredentials(
+    public Future<MultiMap> updateCredentials(
             final String tenantId,
             final String deviceId,
             final Collection<CommonSecret> credentialsSpec,
@@ -609,7 +609,7 @@ public final class DeviceRegistryHttpClient {
      *         expected status code. Otherwise the future will fail with a {@link ServiceInvocationException}.
      * @throws NullPointerException if the tenant is {@code null}.
      */
-    public Future<Void> updateCredentials(
+    public Future<MultiMap> updateCredentials(
             final String tenantId,
             final String deviceId,
             final Collection<CommonSecret> credentialsSpec,
@@ -632,7 +632,7 @@ public final class DeviceRegistryHttpClient {
      *         expected status code. Otherwise the future will fail with a {@link ServiceInvocationException}.
      * @throws NullPointerException if the tenant is {@code null}.
      */
-    public Future<Void> updateCredentialsRaw(
+    public Future<MultiMap> updateCredentialsRaw(
             final String tenantId,
             final String deviceId,
             final Buffer payload,
@@ -713,7 +713,7 @@ public final class DeviceRegistryHttpClient {
      * @return A future indicating the outcome of the operation.
      * @throws NullPointerException if tenant is {@code null}.
      */
-    public Future<Void> addDeviceForTenant(final String tenantId, final Tenant tenant, final String deviceId,
+    public Future<MultiMap> addDeviceForTenant(final String tenantId, final Tenant tenant, final String deviceId,
             final String password) {
 
         return addDeviceForTenant(tenantId, tenant, deviceId, new Device(), password);
@@ -732,7 +732,7 @@ public final class DeviceRegistryHttpClient {
      * @return A future indicating the outcome of the operation.
      * @throws NullPointerException if tenant is {@code null}.
      */
-    public Future<Void> addDeviceForTenant(
+    public Future<MultiMap> addDeviceForTenant(
             final String tenantId,
             final Tenant tenant,
             final String deviceId,
@@ -760,7 +760,7 @@ public final class DeviceRegistryHttpClient {
      * @return A future indicating the outcome of the operation.
      * @throws NullPointerException if any of the parameters are {@code null}.
      */
-    public Future<Void> addDeviceToTenant(
+    public Future<MultiMap> addDeviceToTenant(
             final String tenantId,
             final String deviceId,
             final String password) {
@@ -780,7 +780,7 @@ public final class DeviceRegistryHttpClient {
      * @return A future indicating the outcome of the operation.
      * @throws NullPointerException if any of the parameters are {@code null}.
      */
-    public Future<Void> addDeviceToTenant(
+    public Future<MultiMap> addDeviceToTenant(
             final String tenantId,
             final String deviceId,
             final Device data,
@@ -844,7 +844,7 @@ public final class DeviceRegistryHttpClient {
      * @return A future indicating the outcome of the operation.
      * @throws NullPointerException if any of the parameters are are {@code null}.
      */
-    public Future<Void> addPskDeviceForTenant(final String tenantId, final Tenant tenant, final String deviceId,
+    public Future<MultiMap> addPskDeviceForTenant(final String tenantId, final Tenant tenant, final String deviceId,
             final String key) {
         return addPskDeviceForTenant(tenantId, tenant, deviceId, new Device(), key);
     }
@@ -863,7 +863,7 @@ public final class DeviceRegistryHttpClient {
      * @return A future indicating the outcome of the operation.
      * @throws NullPointerException if any of the parameters are are {@code null}.
      */
-    public Future<Void> addPskDeviceForTenant(
+    public Future<MultiMap> addPskDeviceForTenant(
             final String tenantId,
             final Tenant tenant,
             final String deviceId,
@@ -897,7 +897,7 @@ public final class DeviceRegistryHttpClient {
      * @return A future indicating the outcome of the operation.
      * @throws NullPointerException if any of the parameters are {@code null}.
      */
-    public Future<Void> addPskDeviceToTenant(final String tenantId, final String deviceId, final String key) {
+    public Future<MultiMap> addPskDeviceToTenant(final String tenantId, final String deviceId, final String key) {
 
         final PskSecret secret = new PskSecret();
         secret.setKey(key.getBytes(StandardCharsets.UTF_8));

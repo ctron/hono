@@ -31,6 +31,7 @@ import org.eclipse.hono.util.CredentialsConstants;
 import org.eclipse.hono.util.CredentialsObject;
 import org.junit.After;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
@@ -214,9 +215,11 @@ public class CredentialsHttpIT {
                         TENANT, deviceId, Collections.singleton(hashedPasswordSecret),
                         HttpURLConnection.HTTP_NO_CONTENT)
                 .compose(ar -> {
+                    final var etag = ar.get("etag");
+                    Assert.assertNotNull(etag);
                     // now try to update credentials with the same version
-                    return registry.updateCredentials(TENANT, deviceId,
-                            Collections.singleton(hashedPasswordSecret), "1", HttpURLConnection.HTTP_PRECON_FAILED);
+                    return registry.updateCredentialsWithVersion(TENANT, deviceId,
+                            Collections.singleton(hashedPasswordSecret), etag, HttpURLConnection.HTTP_PRECON_FAILED);
                 })
                 .setHandler(context.asyncAssertSuccess());
 
@@ -350,7 +353,7 @@ public class CredentialsHttpIT {
     @Test
     public void testUpdateCredentialsFailsForNonExistingCredentials(final TestContext context) {
         registry
-                .updateCredentials(
+                .updateCredentialsWithVersion(
                         TENANT,
                         deviceId,
                         Collections.singleton(hashedPasswordSecret),

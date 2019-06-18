@@ -273,7 +273,7 @@ public final class CrudHttpClient {
      * @return A future that will succeed if the predicate evaluates to {@code true}.
      * @throws NullPointerException if URI or predicate are {@code null}.
      */
-    public Future<Void> update(final String uri, final JsonObject body, final Predicate<Integer> successPredicate) {
+    public Future<MultiMap> update(final String uri, final JsonObject body, final Predicate<Integer> successPredicate) {
         return update(uri, body, CONTENT_TYPE_JSON, successPredicate);
     }
 
@@ -288,7 +288,7 @@ public final class CrudHttpClient {
      * @return A future that will succeed if the predicate evaluates to {@code true}.
      * @throws NullPointerException if URI or predicate are {@code null}.
      */
-    public Future<Void> update(final String uri, final JsonArray body, final Predicate<Integer> successPredicate) {
+    public Future<MultiMap> update(final String uri, final JsonArray body, final Predicate<Integer> successPredicate) {
         return update(uri, body, CONTENT_TYPE_JSON, successPredicate);
     }
 
@@ -302,7 +302,8 @@ public final class CrudHttpClient {
      * @return A future that will succeed if the predicate evaluates to {@code true}.
      * @throws NullPointerException if URI or predicate are {@code null}.
      */
-    public Future<Void> update(final String uri, final JsonObject body, final String contentType, final Predicate<Integer> successPredicate) {
+    public Future<MultiMap> update(final String uri, final JsonObject body, final String contentType,
+            final Predicate<Integer> successPredicate) {
         return update(uri, Optional.ofNullable(body).map(json -> json.toBuffer()).orElse(null), contentType, successPredicate);
     }
 
@@ -316,7 +317,8 @@ public final class CrudHttpClient {
      * @return A future that will succeed if the predicate evaluates to {@code true}.
      * @throws NullPointerException if URI or predicate are {@code null}.
      */
-    public Future<Void> update(final String uri, final JsonArray body, final String contentType, final Predicate<Integer> successPredicate) {
+    public Future<MultiMap> update(final String uri, final JsonArray body, final String contentType,
+            final Predicate<Integer> successPredicate) {
         return update(uri, Optional.ofNullable(body).map(json -> json.toBuffer()).orElse(null), contentType, successPredicate);
     }
 
@@ -330,13 +332,14 @@ public final class CrudHttpClient {
      * @return A future that will succeed if the predicate evaluates to {@code true}.
      * @throws NullPointerException if URI or predicate are {@code null}.
      */
-    public Future<Void> update(final String uri, final Buffer body, final String contentType, final Predicate<Integer> successPredicate) {
+    public Future<MultiMap> update(final String uri, final Buffer body, final String contentType,
+            final Predicate<Integer> successPredicate) {
 
         final MultiMap headers = Optional.ofNullable(contentType)
                 .map(ct -> MultiMap.caseInsensitiveMultiMap().add(HttpHeaders.CONTENT_TYPE, ct))
                 .orElse(null);
 
-        return update(uri, body, headers, successPredicate).compose(ok -> Future.succeededFuture());
+        return update(uri, body, headers, successPredicate);
     }
 
     /**
