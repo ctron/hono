@@ -84,6 +84,14 @@ Test cases are run against Docker images of Hono server + (Apache Qpid Dispatch 
       <scope>test</scope>
     </dependency>
     <dependency>
+      <groupId>org.eclipse.hono</groupId>
+      <artifactId>hono-service-base</artifactId>
+      <version>${project.version}</version>
+      <classifier>tests</classifier>
+      <type>test-jar</type>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-core</artifactId>
       <scope>test</scope>

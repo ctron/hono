@@ -146,11 +146,13 @@ public abstract class AbstractCredentialsServiceTest {
      * @param password The password to use.
      * @return The fully populated secret.
      */
-    protected static PasswordSecret createPasswordSecret(final String authId, final String password) {
+    public static PasswordSecret createPasswordSecret(final String authId, final String password) {
         final PasswordSecret s = new PasswordSecret();
         s.setAuthId(authId);
         s.setHashFunction(CredentialsConstants.HASH_FUNCTION_BCRYPT);
-        s.setPasswordHash(BCrypt.hashpw(password, BCrypt.gensalt()));
+        final String salt = BCrypt.gensalt();
+        s.setSalt(salt);
+        s.setPasswordHash(BCrypt.hashpw(password, salt));
         return s;
     }
 

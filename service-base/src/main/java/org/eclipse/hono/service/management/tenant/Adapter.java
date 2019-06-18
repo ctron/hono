@@ -26,13 +26,14 @@ public class Adapter {
 
     private Boolean enabled;
 
+    @JsonProperty(required = true)
     private String type;
 
     @JsonProperty(TenantConstants.FIELD_ADAPTERS_DEVICE_AUTHENTICATION_REQUIRED)
     private Boolean deviceAuthenticationRequired;
 
     @JsonProperty("ext")
-    @JsonInclude(value = JsonInclude.Include.NON_EMPTY)
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
     private Map<String, Object> extensions;
 
     /**

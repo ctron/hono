@@ -30,48 +30,32 @@ public class Tenant {
     private Boolean enabled;
 
     @JsonProperty("ext")
-    @JsonInclude(value = Include.NON_EMPTY)
+    @JsonInclude(Include.NON_EMPTY)
     private Map<String, Object> extensions;
 
-    @JsonInclude(value = Include.NON_EMPTY)
+    @JsonInclude(Include.NON_EMPTY)
     private Map<String, Object> defaults;
 
     @JsonProperty(TenantConstants.FIELD_ADAPTERS)
-    @JsonInclude(value = Include.NON_EMPTY)
+    @JsonInclude(Include.NON_EMPTY)
     private List<Adapter> adapters;
 
-    @JsonProperty("limits")
-    @JsonInclude(value = Include.NON_EMPTY)
-    private Map<String, Object> limits;
+    @JsonInclude(Include.NON_DEFAULT)
+    private ResourceLimits limits;
 
     @JsonProperty(TenantConstants.FIELD_PAYLOAD_TRUSTED_CA)
-    @JsonInclude(value = Include.NON_EMPTY)
-    private Map<String, Object> trustedCa;
+    private TrustedCertificateAuthority trustedCertificateAuthority;
 
-    /**
-     * Set the enabled property.
-     *
-     * @param enabled the value to assign
-     * @return a reference to this for fluent use.
-     */
-    public Tenant setEnabled(final Boolean enabled) {
+    public void setEnabled(final Boolean enabled) {
         this.enabled = enabled;
-        return this;
     }
 
     public Boolean getEnabled() {
         return enabled;
     }
 
-    /**
-     * Set the extension field.
-     *
-     * @param extensions the value to assign
-     * @return a reference to this for fluent use.
-     */
-    public Tenant setExtensions(final Map<String, Object> extensions) {
+    public void setExtensions(final Map<String, Object> extensions) {
         this.extensions = extensions;
-        return this;
     }
 
     public Map<String, Object> getExtensions() {
@@ -90,45 +74,24 @@ public class Tenant {
         return adapters;
     }
 
-    /**
-     * Set the adapters field.
-     *
-     * @param adapters the value to assign
-     * @return a reference to this for fluent use.
-     */
-    public Tenant setAdapters(final List<Adapter> adapters) {
+    public void setAdapters(final List<Adapter> adapters) {
         this.adapters = adapters;
-        return this;
     }
 
-    public Map<String, Object> getLimits() {
+    public ResourceLimits getLimits() {
         return limits;
     }
 
-    /**
-     * Set the resources limits field.
-     *
-     * @param limits the value to assign
-     * @return a reference to this for fluent use.
-     */
-    public Tenant setLimits(final Map<String, Object> limits) {
+    public void setLimits(final ResourceLimits limits) {
         this.limits = limits;
-        return this;
     }
 
-    public Map<String, Object> getTrustedCa() {
-        return trustedCa;
+    public TrustedCertificateAuthority getTrustedCertificateAuthority() {
+        return trustedCertificateAuthority;
     }
 
-    /**
-     * Set the trusted-ca field.
-     *
-     * @param trustedCa the value to assign
-     * @return a reference to this for fluent use.
-     */
-    public Tenant setTrustedCa(final Map<String, Object> trustedCa) {
-        this.trustedCa = trustedCa;
-        return this;
+    public void setTrustedCertificateAuthority(final TrustedCertificateAuthority trustedCertificateAuthority) {
+        this.trustedCertificateAuthority = trustedCertificateAuthority;
     }
 
     /**

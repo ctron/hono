@@ -22,8 +22,8 @@ import org.eclipse.californium.core.coap.CoAP.Type;
 import org.eclipse.californium.core.coap.OptionSet;
 import org.eclipse.californium.core.coap.Request;
 import org.eclipse.hono.client.MessageConsumer;
+import org.eclipse.hono.service.management.tenant.Tenant;
 import org.eclipse.hono.util.TelemetryConstants;
-import org.eclipse.hono.util.TenantObject;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -75,9 +75,9 @@ public class TelemetryCoapIT extends CoapTestBase {
     public void testUploadUsingQoS1(final TestContext ctx) throws InterruptedException {
 
         final Async setup = ctx.async();
-        final TenantObject tenant = TenantObject.from(tenantId, true);
+        final Tenant tenant = new Tenant();
 
-        helper.registry.addPskDeviceForTenant(tenant, deviceId, SECRET)
+        helper.registry.addPskDeviceForTenant(tenantId, tenant, deviceId, SECRET)
         .setHandler(ctx.asyncAssertSuccess(ok -> setup.complete()));
         setup.await();
 

@@ -21,6 +21,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 import io.vertx.core.json.JsonArray;
+
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 
 import io.vertx.core.json.Json;
@@ -112,7 +114,7 @@ class TenantTest {
 
         final var limits = tenant.getLimits();
         assertNotNull(limits);
-        assertEquals( 0, limits.get("max-connections"));
+        assertEquals(0, limits.getMaxConnections());
     }
 
     /**
@@ -122,16 +124,20 @@ class TenantTest {
     public void testDecodeTrustedCA() {
         final JsonObject ca = new JsonObject()
                 .put("subject-dn", "org.eclipse")
-                .put("public-key", "abc123")
-                .put("cert", "xyz789");
+                .put("public-key", "abc123".getBytes(StandardCharsets.UTF_8))
+                .put("algorithm", "def456")
+                .put("cert", "xyz789".getBytes(StandardCharsets.UTF_8));
 
         final var tenant = Json.decodeValue( new JsonObject().put("trusted-ca", ca).toString(), Tenant.class);
         assertNotNull(tenant);
         assertNull(tenant.getEnabled());
 
-        final var storedCa = tenant.getTrustedCa();
+        final var storedCa = tenant.getTrustedCertificateAuthority();
         assertNotNull(storedCa);
-        assertEquals( "xyz789", storedCa.get("cert"));
+        assertEquals("org.eclipse", storedCa.getSubjectDn());
+        assertArrayEquals("abc123".getBytes(StandardCharsets.UTF_8), storedCa.getPublicKey());
+        assertArrayEquals("xyz789".getBytes(StandardCharsets.UTF_8), storedCa.getCertificate());
+        assertEquals("def456", storedCa.getKeyAlgorithm());
     }
 
     /**
@@ -191,9 +197,9 @@ class TenantTest {
         adapters.add(httpAdapter);
         adapters.add(mqttAdapter);
 
-        final Tenant tenant = new Tenant()
-                .setEnabled(true)
-                .setAdapters(adapters);
+        final Tenant tenant = new Tenant();
+        tenant.setEnabled(true);
+        tenant.setAdapters(adapters);
 
         //TODO : serialize then verifies the result.
         final JsonArray result = JsonObject.mapFrom(tenant).getJsonArray(FIELD_ADAPTERS);

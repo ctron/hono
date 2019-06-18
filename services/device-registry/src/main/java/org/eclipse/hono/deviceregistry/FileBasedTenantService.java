@@ -34,8 +34,10 @@ import javax.security.auth.x500.X500Principal;
 import org.eclipse.hono.service.management.Id;
 import org.eclipse.hono.service.management.OperationResult;
 import org.eclipse.hono.service.management.Result;
+import org.eclipse.hono.service.management.tenant.ResourceLimits;
 import org.eclipse.hono.service.management.tenant.Tenant;
 import org.eclipse.hono.service.management.tenant.TenantManagementService;
+import org.eclipse.hono.service.management.tenant.TrustedCertificateAuthority;
 import org.eclipse.hono.service.tenant.TenantService;
 import org.eclipse.hono.tracing.TracingHelper;
 import org.eclipse.hono.util.CacheDirective;
@@ -475,14 +477,22 @@ public final class FileBasedTenantService extends AbstractVerticle implements Te
                 .map(JsonObject.class::cast)
                 .map(JsonObject::getMap)
                 .ifPresent(tenant::setExtensions);
+
         Optional.ofNullable(tenantObject.getAdapterConfigurations())
                 .map(JsonArray::getList)
                 .ifPresent(tenant::setAdapters);
+
         Optional.ofNullable(tenantObject.getResourceLimits())
-                .map(JsonObject::getMap)
+                .filter(JsonObject.class::isInstance)
+                .map(JsonObject.class::cast)
+                .map(json -> json.mapTo(ResourceLimits.class))
                 .ifPresent(tenant::setLimits);
 
-        tenant.setTrustedCa(tenantObject.getProperty(TenantConstants.FIELD_PAYLOAD_TRUSTED_CA));
+        Optional.ofNullable(tenantObject.getProperty(TenantConstants.FIELD_PAYLOAD_TRUSTED_CA))
+                .filter(JsonObject.class::isInstance)
+                .map(JsonObject.class::cast)
+                .map(json -> json.mapTo(TrustedCertificateAuthority.class))
+                .ifPresent(tenant::setTrustedCertificateAuthority);
 
         return tenant;
     }

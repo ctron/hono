@@ -19,7 +19,9 @@ import java.net.HttpURLConnection;
 import java.util.List;
 import java.util.UUID;
 
+import org.assertj.core.api.Assertions;
 import org.eclipse.hono.client.ServiceInvocationException;
+import org.eclipse.hono.service.management.device.Device;
 import org.eclipse.hono.tests.DeviceRegistryHttpClient;
 import org.eclipse.hono.tests.IntegrationTestSupport;
 import org.eclipse.hono.util.Constants;
@@ -32,7 +34,6 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
-
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
@@ -113,11 +114,10 @@ public class DeviceRegistrationHttpIT {
     @Test
     public void testAddDeviceSucceeds(final TestContext ctx) {
 
-        final JsonObject requestBody = new JsonObject()
-                .put("ext", new JsonObject()
-                        .put("test", "test"));
+        final Device device = new Device();
+        device.putExtension("test", "test");
 
-        registry.registerDevice(TENANT, deviceId, requestBody).setHandler(ctx.asyncAssertSuccess());
+        registry.registerDevice(TENANT, deviceId, device).setHandler(ctx.asyncAssertSuccess());
     }
 
     /**
@@ -128,7 +128,10 @@ public class DeviceRegistrationHttpIT {
     @Test
     public void testAddDeviceSucceedsWithoutDeviceId(final TestContext ctx) {
 
-        registry.registerDevice(TENANT, null, new JsonObject().put("ext", new JsonObject().put("test", "test")))
+        final Device device = new Device();
+        device.putExtension("test", "test");
+
+        registry.registerDevice(TENANT, null, device)
                 .setHandler(ctx.asyncAssertSuccess(s -> ctx.verify(v -> {
                     final List<String> locations = s.getAll("location");
                     assertNotNull(locations);
@@ -148,28 +151,31 @@ public class DeviceRegistrationHttpIT {
     @Test
     public void testAddDeviceFailsForDuplicateDevice(final TestContext ctx) {
 
-        final JsonObject data = new JsonObject();
+        final Device device = new Device();
         // add the device
-        registry.registerDevice(TENANT, deviceId, data).setHandler(ctx.asyncAssertSuccess(s -> {
+        registry.registerDevice(TENANT, deviceId, device).setHandler(ctx.asyncAssertSuccess(s -> {
             // now try to add the device again
-            registry.registerDevice(TENANT, deviceId, data, HttpURLConnection.HTTP_CONFLICT).setHandler(ctx.asyncAssertSuccess());
+            registry.registerDevice(TENANT, deviceId, device, HttpURLConnection.HTTP_CONFLICT)
+                    .setHandler(ctx.asyncAssertSuccess());
         }));
     }
 
     /**
-     * Verifies that a device cannot be registered if the request
-     * does not contain a content type.
+     * Verifies that a device cannot be registered if the request does not contain a content type.
      * 
      * @param ctx The vert.x test context
      */
     @Test
     public void testAddDeviceFailsForMissingContentType(final TestContext ctx) {
 
-        registry.registerDevice(
-                TENANT, deviceId,
-                new JsonObject().put("ext", new JsonObject().put("test", "testAddDeviceFailsForMissingContentType")),
-                null,
-                HttpURLConnection.HTTP_BAD_REQUEST).setHandler(ctx.asyncAssertSuccess());
+        final Device device = new Device();
+        device.putExtension("test", "testAddDeviceFailsForMissingContentType");
+
+        registry
+                .registerDevice(
+                        TENANT, deviceId, device, null,
+                        HttpURLConnection.HTTP_BAD_REQUEST)
+                .setHandler(ctx.asyncAssertSuccess());
     }
 
     /**
@@ -194,16 +200,15 @@ public class DeviceRegistrationHttpIT {
     @Test
     public void testGetDeviceContainsRegisteredInfo(final TestContext ctx) {
 
-        final JsonObject data = new JsonObject()
-                .put("ext", new JsonObject()
-                        .put("testString", "testValue")
-                        .put("testBoolean", Boolean.FALSE))
-                .put(RegistrationConstants.FIELD_ENABLED, Boolean.TRUE);
+        final Device device = new Device();
+        device.putExtension("testString", "testValue");
+        device.putExtension("testBoolean", false);
+        device.setEnabled(false);
 
-        registry.registerDevice(TENANT, deviceId, data)
+        registry.registerDevice(TENANT, deviceId, device)
             .compose(ok -> registry.getRegistrationInfo(TENANT, deviceId))
             .compose(info -> {
-                assertRegistrationInformation(ctx, info.toJsonObject(), deviceId, data);
+                    assertRegistrationInformation(ctx, info.toJsonObject().mapTo(Device.class), deviceId, device);
                 return Future.succeededFuture();
             }).setHandler(ctx.asyncAssertSuccess());
     }
@@ -241,11 +246,12 @@ public class DeviceRegistrationHttpIT {
                         .put("newKey1", "newValue1"))
                 .put(RegistrationConstants.FIELD_ENABLED, Boolean.FALSE);
 
-        registry.registerDevice(TENANT, deviceId, originalData)
+        registry.registerDevice(TENANT, deviceId, originalData.mapTo(Device.class))
             .compose(ok -> registry.updateDevice(TENANT, deviceId, updatedData))
             .compose(ok -> registry.getRegistrationInfo(TENANT, deviceId))
             .compose(info -> {
-                assertRegistrationInformation(ctx, info.toJsonObject(), deviceId, updatedData);
+                    assertRegistrationInformation(ctx, info.toJsonObject().mapTo(Device.class), deviceId,
+                            updatedData.mapTo(Device.class));
                 return Future.succeededFuture();
             }).setHandler(ctx.asyncAssertSuccess());
     }
@@ -274,7 +280,7 @@ public class DeviceRegistrationHttpIT {
     @Test
     public void testUpdateDeviceFailsForMissingContentType(final TestContext context) {
 
-        registry.registerDevice(TENANT, deviceId, new JsonObject())
+        registry.registerDevice(TENANT, deviceId, new Device())
             .compose(ok -> {
                 // now try to update the device with missing content type
                     final JsonObject requestBody = new JsonObject()
@@ -294,7 +300,7 @@ public class DeviceRegistrationHttpIT {
     @Test
     public void testDeregisterDeviceSucceeds(final TestContext ctx) {
 
-        registry.registerDevice(TENANT, deviceId, new JsonObject())
+        registry.registerDevice(TENANT, deviceId, new Device())
             .compose(ok -> registry.deregisterDevice(TENANT, deviceId))
             .compose(ok -> {
                 return registry.getRegistrationInfo(TENANT, deviceId)
@@ -321,15 +327,10 @@ public class DeviceRegistrationHttpIT {
 
     private static void assertRegistrationInformation(
             final TestContext ctx,
-            final JsonObject response,
+            final Device response,
             final String expectedDeviceId,
-            final JsonObject expectedData) {
+            final Device expectedData) {
 
-        //ctx.assertEquals(expectedDeviceId, response.getString(RegistrationConstants.FIELD_PAYLOAD_DEVICE_ID));
-        //final JsonObject registeredData = response.getJsonObject(RegistrationConstants.FIELD_DATA);
-        //TODO test for proper response format, e.g. ext property
-        expectedData.forEach(entry -> {
-            ctx.assertEquals(response.getValue(entry.getKey()), entry.getValue());
-        });
+        Assertions.assertThat(response).isEqualToComparingFieldByFieldRecursively(expectedData);
     }
 }

@@ -17,7 +17,9 @@ import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.KeyPair;
+import java.util.Arrays;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -30,14 +32,15 @@ import javax.security.auth.x500.X500Principal;
 import org.apache.qpid.proton.message.Message;
 import org.eclipse.hono.client.MessageConsumer;
 import org.eclipse.hono.client.ServiceInvocationException;
+import org.eclipse.hono.service.management.device.Device;
+import org.eclipse.hono.service.management.tenant.Tenant;
+import org.eclipse.hono.service.management.tenant.TrustedCertificateAuthority;
 import org.eclipse.hono.tests.CrudHttpClient;
 import org.eclipse.hono.tests.IntegrationTestSupport;
+import org.eclipse.hono.tests.Tenants;
 import org.eclipse.hono.util.CommandConstants;
 import org.eclipse.hono.util.Constants;
 import org.eclipse.hono.util.MessageHelper;
-import org.eclipse.hono.util.RegistrationConstants;
-import org.eclipse.hono.util.TenantConstants;
-import org.eclipse.hono.util.TenantObject;
 import org.eclipse.hono.util.TimeUntilDisconnectNotification;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -57,7 +60,6 @@ import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.http.HttpHeaders;
-import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.net.PemTrustOptions;
 import io.vertx.core.net.SelfSignedCertificate;
@@ -237,14 +239,14 @@ public abstract class HttpTestBase {
     public void testUploadMessagesUsingBasicAuth(final TestContext ctx) throws InterruptedException {
 
         final Async setup = ctx.async();
-        final TenantObject tenant = TenantObject.from(tenantId, true);
+        final Tenant tenant = new Tenant();
         final MultiMap requestHeaders = MultiMap.caseInsensitiveMultiMap()
                 .add(HttpHeaders.CONTENT_TYPE, "text/plain")
                 .add(HttpHeaders.AUTHORIZATION, authorization)
                 .add(HttpHeaders.ORIGIN, ORIGIN_URI);
 
         helper.registry
-            .addDeviceForTenant(tenant, deviceId, PWD)
+            .addDeviceForTenant(tenantId, tenant, deviceId, PWD)
             .setHandler(ctx.asyncAssertSuccess(ok -> setup.complete()));
         setup.await();
 
@@ -260,8 +262,8 @@ public abstract class HttpTestBase {
     }
 
     /**
-     * Verifies that a number of messages uploaded to the HTTP adapter via a gateway
-     * using HTTP Basic auth can be successfully consumed via the AMQP Messaging Network.
+     * Verifies that a number of messages uploaded to the HTTP adapter via a gateway using HTTP Basic auth can be
+     * successfully consumed via the AMQP Messaging Network.
      * 
      * @param ctx The test context.
      * @throws InterruptedException if the test fails.
@@ -270,17 +272,17 @@ public abstract class HttpTestBase {
     public void testUploadMessagesViaGateway(final TestContext ctx) throws InterruptedException {
 
         // GIVEN a device that is connected via two gateways
-        final TenantObject tenant = TenantObject.from(tenantId, true);
+        final Tenant tenant = new Tenant();
         final String gatewayOneId = helper.getRandomDeviceId(tenantId);
         final String gatewayTwoId = helper.getRandomDeviceId(tenantId);
-        final JsonObject deviceData = new JsonObject()
-                .put("via", new JsonArray().add(gatewayOneId).add(gatewayTwoId));
+        final Device device = new Device();
+        device.setVia(Arrays.asList(gatewayOneId, gatewayTwoId));
 
         final Async setup = ctx.async();
-        helper.registry.addDeviceForTenant(tenant, gatewayOneId, PWD)
-        .compose(ok -> helper.registry.addDeviceToTenant(tenantId, gatewayTwoId, PWD))
-        .compose(ok -> helper.registry.registerDevice(tenantId, deviceId, deviceData))
-        .setHandler(ctx.asyncAssertSuccess(ok -> setup.complete()));
+        helper.registry.addDeviceForTenant(tenantId, tenant, gatewayOneId, PWD)
+                .compose(ok -> helper.registry.addDeviceToTenant(tenantId, gatewayTwoId, PWD))
+                .compose(ok -> helper.registry.registerDevice(tenantId, deviceId, device))
+                .setHandler(ctx.asyncAssertSuccess(ok -> setup.complete()));
         setup.await();
 
         final MultiMap requestHeadersOne = MultiMap.caseInsensitiveMultiMap()
@@ -309,9 +311,8 @@ public abstract class HttpTestBase {
     }
 
     /**
-     * Verifies that a number of messages uploaded to Hono's HTTP adapter
-     * using client certificate based authentication can be successfully
-     * consumed via the AMQP Messaging Network.
+     * Verifies that a number of messages uploaded to Hono's HTTP adapter using client certificate based authentication
+     * can be successfully consumed via the AMQP Messaging Network.
      * 
      * @param ctx The test context.
      * @throws InterruptedException if the test fails.
@@ -324,11 +325,14 @@ public abstract class HttpTestBase {
                 .add(HttpHeaders.CONTENT_TYPE, "text/plain")
                 .add(HttpHeaders.ORIGIN, ORIGIN_URI);
 
-        helper.getCertificate(deviceCert.certificatePath()).compose(cert -> {
-            final TenantObject tenant = TenantObject.from(tenantId, true);
-            tenant.setTrustAnchor(cert.getPublicKey(), cert.getSubjectX500Principal());
-            return helper.registry.addDeviceForTenant(tenant, deviceId, cert);
-        }).setHandler(ctx.asyncAssertSuccess(ok -> setup.complete()));
+        helper.getCertificate(deviceCert.certificatePath())
+                .compose(cert -> {
+
+                    final var tenant = Tenants.createTenantForTrustAnchor(cert);
+                    return helper.registry.addDeviceForTenant(tenantId, tenant, deviceId, cert);
+
+                })
+                .setHandler(ctx.asyncAssertSuccess(ok -> setup.complete()));
 
         setup.await();
 
@@ -444,9 +448,8 @@ public abstract class HttpTestBase {
     }
 
     /**
-     * Verifies that the adapter fails to authenticate a device if the device's client
-     * certificate's signature cannot be validated using the trust anchor that is registered
-     * for the tenant that the device belongs to.
+     * Verifies that the adapter fails to authenticate a device if the device's client certificate's signature cannot be
+     * validated using the trust anchor that is registered for the tenant that the device belongs to.
      * 
      * @param ctx The vert.x test context.
      * @throws GeneralSecurityException if the tenant's trust anchor cannot be generated
@@ -455,7 +458,8 @@ public abstract class HttpTestBase {
     public void testUploadFailsForNonMatchingTrustAnchor(final TestContext ctx) throws GeneralSecurityException {
 
         final Async setup = ctx.async();
-        final TenantObject tenant = TenantObject.from(tenantId, true);
+        final Tenant tenant = new Tenant();
+
         final MultiMap requestHeaders = MultiMap.caseInsensitiveMultiMap()
                 .add(HttpHeaders.CONTENT_TYPE, "text/plain")
                 .add(HttpHeaders.ORIGIN, ORIGIN_URI);
@@ -464,15 +468,18 @@ public abstract class HttpTestBase {
 
         // GIVEN a tenant configured with a trust anchor
         helper.getCertificate(deviceCert.certificatePath())
-        .compose(cert -> {
-            tenant.setProperty(TenantConstants.FIELD_PAYLOAD_TRUSTED_CA,
-                       new JsonObject()
-                        .put(TenantConstants.FIELD_PAYLOAD_SUBJECT_DN, cert.getIssuerX500Principal().getName(X500Principal.RFC2253))
-                        .put(TenantConstants.FIELD_ADAPTERS_TYPE, "EC")
-                        .put(TenantConstants.FIELD_PAYLOAD_PUBLIC_KEY, Base64.getEncoder().encodeToString(keyPair.getPublic().getEncoded())));
-            return helper.registry.addDeviceForTenant(tenant, deviceId, cert);
-        })
-        .setHandler(ctx.asyncAssertSuccess(ok -> setup.complete()));
+                .compose(cert -> {
+
+                    final TrustedCertificateAuthority trustedCertificateAuthority = new TrustedCertificateAuthority();
+                    trustedCertificateAuthority
+                            .setSubjectDn(cert.getIssuerX500Principal().getName(X500Principal.RFC2253));
+                    trustedCertificateAuthority.setCertificate(keyPair.getPublic().getEncoded());
+                    tenant.setTrustedCertificateAuthority(trustedCertificateAuthority);
+                    // TODO: why "type=EC"?
+
+                    return helper.registry.addDeviceForTenant(tenantId, tenant, deviceId, cert);
+                })
+                .setHandler(ctx.asyncAssertSuccess(ok -> setup.complete()));
         setup.await();
 
         // WHEN a device tries to upload data and authenticate with a client
@@ -481,10 +488,12 @@ public abstract class HttpTestBase {
                 getEndpointUri(),
                 Buffer.buffer("hello"),
                 requestHeaders,
-                response -> response.statusCode() == HttpURLConnection.HTTP_ACCEPTED).setHandler(ctx.asyncAssertFailure(t -> {
+                response -> response.statusCode() == HttpURLConnection.HTTP_ACCEPTED)
+                .setHandler(ctx.asyncAssertFailure(t -> {
                     // THEN the request fails with a 401
                     ctx.assertTrue(t instanceof ServiceInvocationException);
-                    ctx.assertEquals(HttpURLConnection.HTTP_UNAUTHORIZED, ((ServiceInvocationException) t).getErrorCode());
+                    ctx.assertEquals(HttpURLConnection.HTTP_UNAUTHORIZED,
+                            ((ServiceInvocationException) t).getErrorCode());
                 }));
     }
 
@@ -499,13 +508,10 @@ public abstract class HttpTestBase {
     public void testUploadMessageFailsForDisabledTenant(final TestContext ctx) {
 
         // GIVEN a tenant for which the HTTP adapter is disabled
-        final JsonObject adapterDetailsHttp = new JsonObject()
-                .put(TenantConstants.FIELD_ADAPTERS_TYPE, Constants.PROTOCOL_ADAPTER_TYPE_HTTP)
-                .put(TenantConstants.FIELD_ENABLED, Boolean.FALSE);
-        final TenantObject tenant = TenantObject.from(tenantId, true);
-        tenant.addAdapterConfiguration(adapterDetailsHttp);
+        final Tenant tenant = new Tenant();
+        Tenants.setAdapterEnabled(tenant, Constants.PROTOCOL_ADAPTER_TYPE_HTTP, false);
 
-        helper.registry.addDeviceForTenant(tenant, deviceId, PWD).compose(ok -> {
+        helper.registry.addDeviceForTenant(tenantId, tenant, deviceId, PWD).compose(ok -> {
 
             // WHEN a device that belongs to the tenant uploads a message
             final MultiMap requestHeaders = MultiMap.caseInsensitiveMultiMap()
@@ -536,11 +542,11 @@ public abstract class HttpTestBase {
     public void testUploadMessageFailsForDisabledDevice(final TestContext ctx) {
 
         // GIVEN a disabled device
-        final TenantObject tenant = TenantObject.from(tenantId, true);
-        final JsonObject deviceData = new JsonObject()
-                .put(RegistrationConstants.FIELD_ENABLED, Boolean.FALSE);
+        final Tenant tenant = new Tenant();
+        final Device device = new Device();
+        device.setEnabled(Boolean.FALSE);
 
-        helper.registry.addDeviceForTenant(tenant, deviceId, deviceData, PWD).compose(ok -> {
+        helper.registry.addDeviceForTenant(tenantId, tenant, deviceId, device, PWD).compose(ok -> {
 
             // WHEN the device tries to upload a message
             final MultiMap requestHeaders = MultiMap.caseInsensitiveMultiMap()
@@ -563,8 +569,7 @@ public abstract class HttpTestBase {
     }
 
     /**
-     * Verifies that the HTTP adapter rejects messages from a disabled gateway
-     * for an enabled device with a 403.
+     * Verifies that the HTTP adapter rejects messages from a disabled gateway for an enabled device with a 403.
      *
      * @param ctx The test context
      */
@@ -572,35 +577,36 @@ public abstract class HttpTestBase {
     public void testUploadMessageFailsForDisabledGateway(final TestContext ctx) {
 
         // GIVEN a device that is connected via a disabled gateway
-        final TenantObject tenant = TenantObject.from(tenantId, true);
+        final Tenant tenant = new Tenant();
         final String gatewayId = helper.getRandomDeviceId(tenantId);
-        final JsonObject gatewayData = new JsonObject()
-                .put(RegistrationConstants.FIELD_ENABLED, Boolean.FALSE);
-        final JsonObject deviceData = new JsonObject()
-                .put("via", gatewayId);
 
-        helper.registry.addDeviceForTenant(tenant, gatewayId, gatewayData, PWD)
-        .compose(ok -> helper.registry.registerDevice(tenantId, deviceId, deviceData))
-        .compose(ok -> {
+        final Device gateway = new Device();
+        gateway.setEnabled(Boolean.FALSE);
+        final Device device = new Device();
+        device.setVia(Collections.singletonList(gatewayId));
 
-            // WHEN the gateway tries to upload a message for the device
-            final MultiMap requestHeaders = MultiMap.caseInsensitiveMultiMap()
-                    .add(HttpHeaders.CONTENT_TYPE, "text/plain")
-                    .add(HttpHeaders.AUTHORIZATION, getBasicAuth(tenantId, gatewayId, PWD));
+        helper.registry.addDeviceForTenant(tenantId, tenant, gatewayId, gateway, PWD)
+                .compose(ok -> helper.registry.registerDevice(tenantId, deviceId, device))
+                .compose(ok -> {
 
-            return httpClient.update(
-                    String.format("%s/%s/%s", getEndpointUri(), tenantId, deviceId),
-                    Buffer.buffer("hello"),
-                    requestHeaders,
-                    statusCode -> statusCode == HttpURLConnection.HTTP_ACCEPTED);
+                    // WHEN the gateway tries to upload a message for the device
+                    final MultiMap requestHeaders = MultiMap.caseInsensitiveMultiMap()
+                            .add(HttpHeaders.CONTENT_TYPE, "text/plain")
+                            .add(HttpHeaders.AUTHORIZATION, getBasicAuth(tenantId, gatewayId, PWD));
 
-        }).setHandler(ctx.asyncAssertFailure(t -> {
+                    return httpClient.update(
+                            String.format("%s/%s/%s", getEndpointUri(), tenantId, deviceId),
+                            Buffer.buffer("hello"),
+                            requestHeaders,
+                            statusCode -> statusCode == HttpURLConnection.HTTP_ACCEPTED);
 
-            // THEN the message gets rejected by the HTTP adapter with a 403
-            logger.info("could not publish message for disabled gateway [tenant-id: {}, gateway-id: {}]",
-                    tenantId, gatewayId);
-            ctx.assertEquals(HttpURLConnection.HTTP_FORBIDDEN, ((ServiceInvocationException) t).getErrorCode());
-        }));
+                }).setHandler(ctx.asyncAssertFailure(t -> {
+
+                    // THEN the message gets rejected by the HTTP adapter with a 403
+                    logger.info("could not publish message for disabled gateway [tenant-id: {}, gateway-id: {}]",
+                            tenantId, gatewayId);
+                    ctx.assertEquals(HttpURLConnection.HTTP_FORBIDDEN, ((ServiceInvocationException) t).getErrorCode());
+                }));
     }
 
     /**
@@ -613,12 +619,12 @@ public abstract class HttpTestBase {
     public void testUploadMessageFailsForUnauthorizedGateway(final TestContext ctx) {
 
         // GIVEN a device that is connected via gateway "not-the-created-gateway"
-        final TenantObject tenant = TenantObject.from(tenantId, true);
+        final Tenant tenant = new Tenant();
         final String gatewayId = helper.getRandomDeviceId(tenantId);
-        final JsonObject deviceData = new JsonObject()
-                .put("via", "not-the-created-gateway");
+        final Device deviceData = new Device();
+        deviceData.setVia(Collections.singletonList("not-the-created-gateway"));
 
-        helper.registry.addDeviceForTenant(tenant, gatewayId, PWD)
+        helper.registry.addDeviceForTenant(tenantId, tenant, gatewayId, PWD)
         .compose(ok -> helper.registry.registerDevice(tenantId, deviceId, deviceData))
         .compose(ok -> {
 
@@ -652,13 +658,13 @@ public abstract class HttpTestBase {
     @Test
     public void testHandleConcurrentUploadWithTtd(final TestContext ctx) {
 
-        final TenantObject tenant = TenantObject.from(tenantId, true);
+        final Tenant tenant = new Tenant();
 
         // GIVEN a registered device
         final Async setup = ctx.async();
         final Async firstMessageReceived = ctx.async();
         final Async secondMessageReceived = ctx.async();
-        helper.registry.addDeviceForTenant(tenant, deviceId, PWD)
+        helper.registry.addDeviceForTenant(tenantId, tenant, deviceId, PWD)
         .compose(ok -> createConsumer(tenantId, msg -> {
             logger.trace("received message: {}", msg);
             TimeUntilDisconnectNotification.fromMessage(msg).ifPresent(notification -> {
@@ -762,14 +768,14 @@ public abstract class HttpTestBase {
     public void testUploadMessagesWithTtdThatDoNotReplyWithCommand(final TestContext ctx) throws InterruptedException {
 
         final Async setup = ctx.async();
-        final TenantObject tenant = TenantObject.from(tenantId, true);
+        final Tenant tenant = new Tenant();
         final MultiMap requestHeaders = MultiMap.caseInsensitiveMultiMap()
                 .add(HttpHeaders.CONTENT_TYPE, "text/plain")
                 .add(HttpHeaders.AUTHORIZATION, authorization)
                 .add(HttpHeaders.ORIGIN, ORIGIN_URI)
                 .add(Constants.HEADER_TIME_TIL_DISCONNECT, "2");
 
-        helper.registry.addDeviceForTenant(tenant, deviceId, PWD).setHandler(ctx.asyncAssertSuccess(ok -> setup.complete()));
+        helper.registry.addDeviceForTenant(tenantId, tenant, deviceId, PWD).setHandler(ctx.asyncAssertSuccess(ok -> setup.complete()));
         setup.await();
 
         testUploadMessages(ctx, tenantId,
@@ -810,7 +816,7 @@ public abstract class HttpTestBase {
     public void testUploadMessagesWithTtdThatReplyWithCommand(final TestContext ctx) throws InterruptedException {
 
         final Async setup = ctx.async();
-        final TenantObject tenant = TenantObject.from(tenantId, true);
+        final Tenant tenant = new Tenant();
 
         final MultiMap requestHeaders = MultiMap.caseInsensitiveMultiMap()
                 .add(HttpHeaders.CONTENT_TYPE, "text/plain")
@@ -824,7 +830,8 @@ public abstract class HttpTestBase {
                 .add(HttpHeaders.ORIGIN, ORIGIN_URI)
                 .add(Constants.HEADER_COMMAND_RESPONSE_STATUS, "200");
 
-        helper.registry.addDeviceForTenant(tenant, deviceId, PWD).setHandler(ctx.asyncAssertSuccess(ok -> setup.complete()));
+        helper.registry.addDeviceForTenant(tenantId, tenant, deviceId, PWD)
+                .setHandler(ctx.asyncAssertSuccess(ok -> setup.complete()));
         setup.await();
 
         testUploadMessages(ctx, tenantId,
@@ -887,7 +894,7 @@ public abstract class HttpTestBase {
     public void testUploadMessagesWithTtdThatReplyWithOneWayCommand(final TestContext ctx) throws InterruptedException {
 
         final Async setup = ctx.async();
-        final TenantObject tenant = TenantObject.from(tenantId, true);
+        final Tenant tenant = new Tenant();
 
         final MultiMap requestHeaders = MultiMap.caseInsensitiveMultiMap()
                 .add(HttpHeaders.CONTENT_TYPE, "text/plain")
@@ -895,7 +902,8 @@ public abstract class HttpTestBase {
                 .add(HttpHeaders.ORIGIN, ORIGIN_URI)
                 .add(Constants.HEADER_TIME_TIL_DISCONNECT, "2");
 
-        helper.registry.addDeviceForTenant(tenant, deviceId, PWD).setHandler(ctx.asyncAssertSuccess(ok -> setup.complete()));
+        helper.registry.addDeviceForTenant(tenantId, tenant, deviceId, PWD)
+                .setHandler(ctx.asyncAssertSuccess(ok -> setup.complete()));
         setup.await();
 
         testUploadMessages(ctx, tenantId,

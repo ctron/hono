@@ -16,46 +16,64 @@ package org.eclipse.hono.tests;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
 import java.security.cert.X509Certificate;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
-
 import javax.security.auth.x500.X500Principal;
 
 import org.eclipse.hono.client.ServiceInvocationException;
+import org.eclipse.hono.service.credentials.AbstractCredentialsServiceTest;
+import org.eclipse.hono.service.management.credentials.CommonSecret;
+import org.eclipse.hono.service.management.credentials.GenericSecret;
+import org.eclipse.hono.service.management.credentials.PasswordSecret;
+import org.eclipse.hono.service.management.credentials.PskSecret;
+import org.eclipse.hono.service.management.credentials.X509CertificateSecret;
+import org.eclipse.hono.service.management.device.Device;
+import org.eclipse.hono.service.management.tenant.Tenant;
 import org.eclipse.hono.util.CredentialsConstants;
-import org.eclipse.hono.util.CredentialsObject;
 import org.eclipse.hono.util.RegistrationConstants;
 import org.eclipse.hono.util.TenantConstants;
-import org.eclipse.hono.util.TenantObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.fasterxml.jackson.core.type.TypeReference;
 
 import io.vertx.core.Future;
 import io.vertx.core.MultiMap;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
+
 import io.vertx.core.http.HttpHeaders;
-import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.Json;
+
 import io.vertx.core.json.JsonObject;
 import static org.eclipse.hono.service.http.HttpUtils.CONTENT_TYPE_JSON;
 
 /**
- * A client for accessing the Device Registry's HTTP resources for
- * the Device Registration, Credentials and Tenant API.
+ * A client for accessing the Device Registry's HTTP resources for the Device Registration, Credentials and Tenant API.
  *
  */
 public final class DeviceRegistryHttpClient {
 
     private static final Logger LOG = LoggerFactory.getLogger(DeviceRegistryHttpClient.class);
 
+    private static final TypeReference<List<GenericSecret>> SECRETS_TYPE_REF = new TypeReference<>() {
+    };
+
     private static final String CONTENT_TYPE_APPLICATION_JSON = "application/json";
     private static final String URI_ADD_TENANT = "/" + TenantConstants.TENANT_HTTP_ENDPOINT;
-    private static final String TEMPLATE_URI_TENANT_INSTANCE = String.format("/%s/%%s", TenantConstants.TENANT_HTTP_ENDPOINT);
+    private static final String TEMPLATE_URI_TENANT_INSTANCE = String.format("/%s/%%s",
+            TenantConstants.TENANT_HTTP_ENDPOINT);
 
-    private static final String TEMPLATE_URI_REGISTRATION_INSTANCE = String.format("/%s/%%s/%%s", RegistrationConstants.REGISTRATION_HTTP_ENDPOINT);
+    private static final String TEMPLATE_URI_REGISTRATION_INSTANCE = String.format("/%s/%%s/%%s",
+            RegistrationConstants.REGISTRATION_HTTP_ENDPOINT);
 
-    private static final String TEMPLATE_URI_CREDENTIALS_INSTANCE = String.format("/%s/%%s/%%s/%%s", CredentialsConstants.CREDENTIALS_ENDPOINT);
-    private static final String TEMPLATE_URI_CREDENTIALS_BY_DEVICE = String.format("/%s/%%s/%%s", CredentialsConstants.CREDENTIALS_ENDPOINT);
+    private static final String TEMPLATE_URI_CREDENTIALS_INSTANCE = String.format("/%s/%%s/%%s/%%s",
+            CredentialsConstants.CREDENTIALS_ENDPOINT);
+    private static final String TEMPLATE_URI_CREDENTIALS_BY_DEVICE = String.format("/%s/%%s/%%s",
+            CredentialsConstants.CREDENTIALS_ENDPOINT);
 
     private final CrudHttpClient httpClient;
 
@@ -80,12 +98,12 @@ public final class DeviceRegistryHttpClient {
      * {@link HttpURLConnection#HTTP_CREATED} as the expected status code.
      *
      * @param requestPayload The request payload as specified by the Tenant API.
-     * @return A future indicating the outcome of the operation.
-     *         The future will succeed if the tenant has been created successfully.
-     *         Otherwise the future will fail with a {@link ServiceInvocationException}.
+     * @return A future indicating the outcome of the operation. The future will succeed if the tenant has been created
+     *         successfully. Otherwise the future will fail with a {@link ServiceInvocationException}.
      */
     public Future<MultiMap> addTenant(final JsonObject requestPayload) {
-        return addTenant(requestPayload.getString(TenantConstants.FIELD_PAYLOAD_TENANT_ID), requestPayload, HttpURLConnection.HTTP_CREATED);
+        return addTenant(requestPayload.getString(TenantConstants.FIELD_PAYLOAD_TENANT_ID), requestPayload,
+                HttpURLConnection.HTTP_CREATED);
     }
 
     /**
@@ -96,9 +114,8 @@ public final class DeviceRegistryHttpClient {
      *
      * @param tenantId The id of the tenant to add.
      * @param requestPayload The request payload as specified by the Tenant API.
-     * @return A future indicating the outcome of the operation.
-     *         The future will succeed if the tenant has been created successfully.
-     *         Otherwise the future will fail with a {@link ServiceInvocationException}.
+     * @return A future indicating the outcome of the operation. The future will succeed if the tenant has been created
+     *         successfully. Otherwise the future will fail with a {@link ServiceInvocationException}.
      */
     public Future<MultiMap> addTenant(final String tenantId, final JsonObject requestPayload) {
         return addTenant(tenantId, requestPayload, HttpURLConnection.HTTP_CREATED);
@@ -107,18 +124,17 @@ public final class DeviceRegistryHttpClient {
     /**
      * Adds configuration information for a tenant.
      * <p>
-     * This method simply invokes {@link #addTenant(String, JsonObject, String, int)} with
-     * <em>application/json</em> as content type and {@link HttpURLConnection#HTTP_CREATED}
-     * as the expected status code.
+     * This method simply invokes {@link #addTenant(String, JsonObject, String, int)} with <em>application/json</em> as
+     * content type and {@link HttpURLConnection#HTTP_CREATED} as the expected status code.
      *
      * @param tenantId The id of the tenant to add.
      * @param requestPayload The request payload as specified by the Tenant API.
      * @param expectedStatusCode The status code indicating a successful outcome.
-     * @return A future indicating the outcome of the operation.
-     *         The future will succeed if the response contained the expected status code.
-     *         Otherwise the future will fail with a {@link ServiceInvocationException}.
+     * @return A future indicating the outcome of the operation. The future will succeed if the response contained the
+     *         expected status code. Otherwise the future will fail with a {@link ServiceInvocationException}.
      */
-    public Future<MultiMap> addTenant(final String tenantId, final JsonObject requestPayload, final int expectedStatusCode) {
+    public Future<MultiMap> addTenant(final String tenantId, final JsonObject requestPayload,
+            final int expectedStatusCode) {
         return addTenant(tenantId, requestPayload, CONTENT_TYPE_APPLICATION_JSON, expectedStatusCode);
     }
 
@@ -129,27 +145,26 @@ public final class DeviceRegistryHttpClient {
      * @param requestPayload The request payload as specified by the Tenant API.
      * @param contentType The content type to set in the request.
      * @param expectedStatusCode The status code indicating a successful outcome.
-     * @return A future indicating the outcome of the operation.
-     *         The future will succeed if the response contained the expected status code.
-     *         Otherwise the future will fail with a {@link ServiceInvocationException}.
+     * @return A future indicating the outcome of the operation. The future will succeed if the response contained the
+     *         expected status code. Otherwise the future will fail with a {@link ServiceInvocationException}.
      */
     public Future<MultiMap> addTenant(final String tenantId, final JsonObject requestPayload, final String contentType,
             final int expectedStatusCode) {
 
         final String uri = String.format("%s/%s", URI_ADD_TENANT, tenantId);
-        return httpClient.create(uri, requestPayload, contentType, response -> response.statusCode() == expectedStatusCode);
+        return httpClient.create(uri, requestPayload, contentType,
+                response -> response.statusCode() == expectedStatusCode);
     }
 
     /**
      * Gets configuration information for a tenant.
      * <p>
-     * This method simply invokes {@link #getTenant(String, int)} with
-     * {@link HttpURLConnection#HTTP_OK} as the expected status code.
+     * This method simply invokes {@link #getTenant(String, int)} with {@link HttpURLConnection#HTTP_OK} as the expected
+     * status code.
      * 
      * @param tenantId The tenant to get information for.
-     * @return A future indicating the outcome of the operation.
-     *         The future will contain the response payload if the request succeeded.
-     *         Otherwise the future will fail with a {@link ServiceInvocationException}.
+     * @return A future indicating the outcome of the operation. The future will contain the response payload if the
+     *         request succeeded. Otherwise the future will fail with a {@link ServiceInvocationException}.
      */
     public Future<Buffer> getTenant(final String tenantId) {
         return getTenant(tenantId, HttpURLConnection.HTTP_OK);
@@ -160,10 +175,9 @@ public final class DeviceRegistryHttpClient {
      * 
      * @param tenantId The tenant to get information for.
      * @param expectedStatusCode The status code indicating a successful outcome.
-     * @return A future indicating the outcome of the operation.
-     *         The future will contain the response payload if the response
-     *         contained the expected status code.
-     *         Otherwise the future will fail with a {@link ServiceInvocationException}.
+     * @return A future indicating the outcome of the operation. The future will contain the response payload if the
+     *         response contained the expected status code. Otherwise the future will fail with a
+     *         {@link ServiceInvocationException}.
      */
     public Future<Buffer> getTenant(final String tenantId, final int expectedStatusCode) {
 
@@ -177,11 +191,11 @@ public final class DeviceRegistryHttpClient {
      * @param tenantId The tenant to update information for.
      * @param requestPayload The configuration information to set.
      * @param expectedStatusCode The status code indicating a successful outcome.
-     * @return A future indicating the outcome of the operation.
-     *         The future will succeed if the response contained the expected status code.
-     *         Otherwise the future will fail with a {@link ServiceInvocationException}.
+     * @return A future indicating the outcome of the operation. The future will succeed if the response contained the
+     *         expected status code. Otherwise the future will fail with a {@link ServiceInvocationException}.
      */
-    public Future<Void> updateTenant(final String tenantId, final JsonObject requestPayload, final int expectedStatusCode) {
+    public Future<Void> updateTenant(final String tenantId, final JsonObject requestPayload,
+            final int expectedStatusCode) {
 
         final String uri = String.format(TEMPLATE_URI_TENANT_INSTANCE, tenantId);
         return httpClient.update(uri, requestPayload, status -> status == expectedStatusCode);
@@ -190,12 +204,11 @@ public final class DeviceRegistryHttpClient {
     /**
      * Removes configuration information for a tenant.
      * <p>
-     * This method simply invokes {@link #removeTenant(String, int)} with
-     * {@link HttpURLConnection#HTTP_NO_CONTENT} as the expected status code.
+     * This method simply invokes {@link #removeTenant(String, int)} with {@link HttpURLConnection#HTTP_NO_CONTENT} as
+     * the expected status code.
      * 
      * @param tenantId The tenant to remove.
-     * @return A future indicating the outcome of the operation.
-     *         The future will succeed if the tenant has been removed.
+     * @return A future indicating the outcome of the operation. The future will succeed if the tenant has been removed.
      *         Otherwise the future will fail with a {@link ServiceInvocationException}.
      */
     public Future<Void> removeTenant(final String tenantId) {
@@ -208,9 +221,8 @@ public final class DeviceRegistryHttpClient {
      * 
      * @param tenantId The tenant to remove.
      * @param expectedStatusCode The status code indicating a successful outcome.
-     * @return A future indicating the outcome of the operation.
-     *         The future will succeed if the response contained the expected status code.
-     *         Otherwise the future will fail with a {@link ServiceInvocationException}.
+     * @return A future indicating the outcome of the operation. The future will succeed if the response contained the
+     *         expected status code. Otherwise the future will fail with a {@link ServiceInvocationException}.
      */
     public Future<Void> removeTenant(final String tenantId, final int expectedStatusCode) {
 
@@ -225,60 +237,55 @@ public final class DeviceRegistryHttpClient {
      * <p>
      * The device will be enabled by default.
      * <p>
-     * This method simply invokes {@link #registerDevice(String, String, JsonObject)}
-     * with an empty JSON object as additional data.
+     * This method simply invokes {@link #registerDevice(String, String, Device)} with an empty JSON object as
+     * additional data.
      * 
      * @param tenantId The tenant that the device belongs to.
      * @param deviceId The identifier of the device.
-     * @return A future indicating the outcome of the operation.
-     *         The future will succeed if the registration information has been added successfully.
-     *         Otherwise the future will fail with a {@link ServiceInvocationException}.
+     * @return A future indicating the outcome of the operation. The future will succeed if the registration information
+     *         has been added successfully. Otherwise the future will fail with a {@link ServiceInvocationException}.
      * @throws NullPointerException if the tenant is {@code null}.
      */
     public Future<MultiMap> registerDevice(final String tenantId, final String deviceId) {
-        return registerDevice(tenantId, deviceId, new JsonObject());
+        return registerDevice(tenantId, deviceId, new Device());
     }
 
     /**
      * Adds registration information for a device.
      * <p>
-     * The device will be enabled by default if not specified otherwise
-     * in the additional data.
+     * The device will be enabled by default if not specified otherwise in the additional data.
      * <p>
-     * This method simply invokes {@link #registerDevice(String, String, JsonObject, int)}
-     * with {@link HttpURLConnection#HTTP_CREATED} as the expected status code.
+     * This method simply invokes {@link #registerDevice(String, String, Device, int)} with
+     * {@link HttpURLConnection#HTTP_CREATED} as the expected status code.
      * 
      * @param tenantId The tenant that the device belongs to.
      * @param deviceId The identifier of the device.
-     * @param data Additional properties to register with the device.
-     * @return A future indicating the outcome of the operation.
-     *         The future will succeed if the registration information has been added successfully.
-     *         Otherwise the future will fail with a {@link ServiceInvocationException}.
+     * @param device Additional properties to register with the device.
+     * @return A future indicating the outcome of the operation. The future will succeed if the registration information
+     *         has been added successfully. Otherwise the future will fail with a {@link ServiceInvocationException}.
      * @throws NullPointerException if the tenant is {@code null}.
      */
-    public Future<MultiMap> registerDevice(final String tenantId, final String deviceId, final JsonObject data) {
-        return registerDevice(tenantId, deviceId, data, HttpURLConnection.HTTP_CREATED);
+    public Future<MultiMap> registerDevice(final String tenantId, final String deviceId, final Device device) {
+        return registerDevice(tenantId, deviceId, device, HttpURLConnection.HTTP_CREATED);
     }
 
     /**
      * Adds registration information for a device.
      * <p>
-     * The device will be enabled by default if not specified otherwise
-     * in the additional data.
+     * The device will be enabled by default if not specified otherwise in the additional data.
      * <p>
-     * This method simply invokes {@link #registerDevice(String, String, JsonObject, String, int)}
-     * with <em>application/json</em> as the content type.
+     * This method simply invokes {@link #registerDevice(String, String, Device, String, int)} with
+     * <em>application/json</em> as the content type.
      * 
      * @param tenantId The tenant that the device belongs to.
      * @param deviceId The identifier of the device.
      * @param data Additional properties to register with the device.
      * @param expectedStatus The status code indicating a successful outcome.
-     * @return A future indicating the outcome of the operation.
-     *         The future will succeed if the response contained the expected status code.
-     *         Otherwise the future will fail with a {@link ServiceInvocationException}.
+     * @return A future indicating the outcome of the operation. The future will succeed if the response contained the
+     *         expected status code. Otherwise the future will fail with a {@link ServiceInvocationException}.
      * @throws NullPointerException if the tenant is {@code null}.
      */
-    public Future<MultiMap> registerDevice(final String tenantId, final String deviceId, final JsonObject data,
+    public Future<MultiMap> registerDevice(final String tenantId, final String deviceId, final Device data,
             final int expectedStatus) {
         return registerDevice(tenantId, deviceId, data, CONTENT_TYPE_APPLICATION_JSON, expectedStatus);
     }
@@ -286,49 +293,45 @@ public final class DeviceRegistryHttpClient {
     /**
      * Adds registration information for a device.
      * <p>
-     * The device will be enabled by default if not specified otherwise
-     * in the additional data.
+     * The device will be enabled by default if not specified otherwise in the additional data.
      * 
      * @param tenantId The tenant that the device belongs to.
      * @param deviceId The identifier of the device.
-     * @param data Additional properties to register with the device.
+     * @param device Additional properties to register with the device.
      * @param contentType The content type to set on the request.
      * @param expectedStatus The status code indicating a successful outcome.
-     * @return A future indicating the outcome of the operation.
-     *         The future will succeed if the response contained the expected status code.
-     *         Otherwise the future will fail with a {@link ServiceInvocationException}.
+     * @return A future indicating the outcome of the operation. The future will succeed if the response contained the
+     *         expected status code. Otherwise the future will fail with a {@link ServiceInvocationException}.
      * @throws NullPointerException if the tenant is {@code null}.
      */
     public Future<MultiMap> registerDevice(
             final String tenantId,
             final String deviceId,
-            final JsonObject data,
+            final Device device,
             final String contentType,
-            final int expectedStatus
-            ) {
+            final int expectedStatus) {
 
         Objects.requireNonNull(tenantId);
-        final JsonObject requestJson = Optional.ofNullable(data).map(json -> json.copy()).orElse(null);
         String uri = String.format("/%s/%s", RegistrationConstants.REGISTRATION_HTTP_ENDPOINT, tenantId);
         if (deviceId != null) {
             uri = String.format("/%s/%s/%s", RegistrationConstants.REGISTRATION_HTTP_ENDPOINT, tenantId, deviceId);
         }
-        return httpClient.create(uri, requestJson, contentType, response -> response.statusCode() == expectedStatus);
+        return httpClient.create(uri, JsonObject.mapFrom(device), contentType,
+                response -> response.statusCode() == expectedStatus);
     }
 
     /**
      * Updates registration information for a device.
      * <p>
-     * This method simply invokes {@link #updateDevice(String, String, JsonObject, String, int)}
-     * with <em>application/json</em> as the content type and
-     * {@link HttpURLConnection#HTTP_NO_CONTENT} as the expected status code.
+     * This method simply invokes {@link #updateDevice(String, String, JsonObject, String, int)} with
+     * <em>application/json</em> as the content type and {@link HttpURLConnection#HTTP_NO_CONTENT} as the expected
+     * status code.
      * 
      * @param tenantId The tenant that the device belongs to.
      * @param deviceId The identifier of the device.
      * @param data Additional properties to register with the device.
-     * @return A future indicating the outcome of the operation.
-     *         The future will succeed if the registration information has been updated successfully.
-     *         Otherwise the future will fail with a {@link ServiceInvocationException}.
+     * @return A future indicating the outcome of the operation. The future will succeed if the registration information
+     *         has been updated successfully. Otherwise the future will fail with a {@link ServiceInvocationException}.
      * @throws NullPointerException if the tenant is {@code null}.
      */
     public Future<Void> updateDevice(final String tenantId, final String deviceId, final JsonObject data) {
@@ -343,9 +346,8 @@ public final class DeviceRegistryHttpClient {
      * @param data Additional properties to register with the device.
      * @param contentType The content type to set on the request.
      * @param expectedStatus The status code indicating a successful outcome.
-     * @return A future indicating the outcome of the operation.
-     *         The future will succeed if the response contained the expected status code.
-     *         Otherwise the future will fail with a {@link ServiceInvocationException}.
+     * @return A future indicating the outcome of the operation. The future will succeed if the response contained the
+     *         expected status code. Otherwise the future will fail with a {@link ServiceInvocationException}.
      * @throws NullPointerException if the tenant is {@code null}.
      */
     public Future<Void> updateDevice(
@@ -365,9 +367,8 @@ public final class DeviceRegistryHttpClient {
      * 
      * @param tenantId The tenant that the device belongs to.
      * @param deviceId The identifier of the device.
-     * @return A future indicating the outcome of the operation.
-     *         The future will contain the response payload if the request succeeded.
-     *         Otherwise the future will fail with a {@link ServiceInvocationException}.
+     * @return A future indicating the outcome of the operation. The future will contain the response payload if the
+     *         request succeeded. Otherwise the future will fail with a {@link ServiceInvocationException}.
      * @throws NullPointerException if the tenant is {@code null}.
      */
     public Future<Buffer> getRegistrationInfo(final String tenantId, final String deviceId) {
@@ -382,9 +383,8 @@ public final class DeviceRegistryHttpClient {
      * 
      * @param tenantId The tenant that the device belongs to.
      * @param deviceId The identifier of the device.
-     * @return A future indicating the outcome of the operation.
-     *         The future will succeed if the registration information has been removed.
-     *         Otherwise the future will fail with a {@link ServiceInvocationException}.
+     * @return A future indicating the outcome of the operation. The future will succeed if the registration information
+     *         has been removed. Otherwise the future will fail with a {@link ServiceInvocationException}.
      * @throws NullPointerException if the tenant is {@code null}.
      */
     public Future<Void> deregisterDevice(final String tenantId, final String deviceId) {
@@ -397,70 +397,79 @@ public final class DeviceRegistryHttpClient {
     // credentials management
 
     /**
-     * Adds credentials for a device.
+     * Add credentials for a device.
      * <p>
-     * This method simply invokes {@link #addCredentials(String, String, JsonObject, int)}
-     * with {@link HttpURLConnection#HTTP_CREATED} as the expected status code.
-     * 
-     * @param tenantId The tenant that the device belongs to.
-     * @param deviceId The device credentials belongs to.
-     * @param credentialsSpec The JSON object to be sent in the request body.
-     * @return A future indicating the outcome of the operation.
-     *         The future will succeed if the credentials have been added successfully.
-     *         Otherwise the future will fail with a {@link ServiceInvocationException}.
-     * @throws NullPointerException if the tenant is {@code null}.
-     */
-    public Future<Void> addCredentials(final String tenantId, final String deviceId, final JsonObject credentialsSpec) {
-        return addCredentials(tenantId, deviceId, credentialsSpec, HttpURLConnection.HTTP_NO_CONTENT);
-    }
-
-    /**
-     * Adds credentials for a device.
-     * <p>
-     * This method simply invokes {@link #addCredentials(String, String, JsonObject, String, int)}
-     * with <em>application/json</em> as the content type and
+     * This method simply invokes {@link #addCredentials(String, String, Collection, int)} with
      * {@link HttpURLConnection#HTTP_CREATED} as the expected status code.
      * 
      * @param tenantId The tenant that the device belongs to.
      * @param deviceId The device credentials belongs to.
-     * @param credentialsSpec The JSON object to be sent in the request body.
-     * @param expectedStatusCode The status code indicating a successful outcome.
-     * @return A future indicating the outcome of the operation.
-     *         The future will succeed if the response contained the expected status code.
-     *         Otherwise the future will fail with a {@link ServiceInvocationException}.
+     * @param secrets The secrets to add.
+     * @return A future indicating the outcome of the operation. The future will succeed if the credentials have been
+     *         added successfully. Otherwise the future will fail with a {@link ServiceInvocationException}.
      * @throws NullPointerException if the tenant is {@code null}.
      */
-    public Future<Void> addCredentials(final String tenantId, final String deviceId, final JsonObject credentialsSpec, final int expectedStatusCode) {
-        return addCredentials(tenantId, deviceId, credentialsSpec, CONTENT_TYPE_APPLICATION_JSON, expectedStatusCode);
+    public Future<Void> addCredentials(final String tenantId, final String deviceId,
+            final Collection<CommonSecret> secrets) {
+        return addCredentials(tenantId, deviceId, secrets, HttpURLConnection.HTTP_NO_CONTENT);
     }
 
     /**
-     * Adds credentials for a device.
+     * Add credentials for a device.
+     * <p>
+     * This method simply invokes {@link #addCredentials(String, String, Collection, String, int)} with
+     * <em>application/json</em> as the content type and {@link HttpURLConnection#HTTP_CREATED} as the expected status
+     * code.
      * 
      * @param tenantId The tenant that the device belongs to.
      * @param deviceId The device credentials belongs to.
-     * @param credentialsSpec The JSON object to be sent in the request body.
+     * @param secrets The secrets to add.
+     * @param expectedStatusCode The status code indicating a successful outcome.
+     * @return A future indicating the outcome of the operation. The future will succeed if the response contained the
+     *         expected status code. Otherwise the future will fail with a {@link ServiceInvocationException}.
+     * @throws NullPointerException if the tenant is {@code null}.
+     */
+    public Future<Void> addCredentials(final String tenantId, final String deviceId,
+            final Collection<CommonSecret> secrets, final int expectedStatusCode) {
+        return addCredentials(tenantId, deviceId, secrets, CONTENT_TYPE_APPLICATION_JSON, expectedStatusCode);
+    }
+
+    /**
+     * Add credentials for a device.
+     * 
+     * @param tenantId The tenant that the device belongs to.
+     * @param deviceId The device credentials belongs to.
+     * @param secrets The secrets to add.
      * @param contentType The content type to set on the request.
      * @param expectedStatusCode The status code indicating a successful outcome.
-     * @return A future indicating the outcome of the operation.
-     *         The future will succeed if the response contained the expected status code.
-     *         Otherwise the future will fail with a {@link ServiceInvocationException}.
+     * @return A future indicating the outcome of the operation. The future will succeed if the response contained the
+     *         expected status code. Otherwise the future will fail with a {@link ServiceInvocationException}.
      * @throws NullPointerException if the tenant is {@code null}.
      */
     public Future<Void> addCredentials(
             final String tenantId,
             final String deviceId,
-            final JsonObject credentialsSpec,
+            final Collection<CommonSecret> secrets,
             final String contentType,
             final int expectedStatusCode) {
 
         Objects.requireNonNull(tenantId);
         final String uri = String.format("/%s/%s/%s", CredentialsConstants.CREDENTIALS_ENDPOINT, tenantId, deviceId);
 
-        final JsonArray credSet = new JsonArray();
-        credSet.add(credentialsSpec);
+        return httpClient.get(uri, response -> response == HttpURLConnection.HTTP_OK)
+                .compose(body -> {
 
-        return httpClient.update(uri, credSet, contentType, response -> response == expectedStatusCode);
+                    // new list of secrets
+
+                    final List<CommonSecret> currentSecrets = new ArrayList<>(Json.decodeValue(body, SECRETS_TYPE_REF));
+                    currentSecrets.addAll(secrets);
+
+                    // update
+
+                    return httpClient.update(uri, Json.encodeToBuffer(secrets), contentType,
+                            response -> response == expectedStatusCode);
+                });
+
     }
 
     /**
@@ -468,9 +477,8 @@ public final class DeviceRegistryHttpClient {
      * 
      * @param tenantId The tenant that the device belongs to.
      * @param deviceId The identifier of the device.
-     * @return A future indicating the outcome of the operation.
-     *         The future will contain the response payload if the request succeeded.
-     *         Otherwise the future will fail with a {@link ServiceInvocationException}.
+     * @return A future indicating the outcome of the operation. The future will contain the response payload if the
+     *         request succeeded. Otherwise the future will fail with a {@link ServiceInvocationException}.
      * @throws NullPointerException if the tenant is {@code null}.
      */
     public Future<Buffer> getCredentials(final String tenantId, final String deviceId) {
@@ -483,15 +491,14 @@ public final class DeviceRegistryHttpClient {
     /**
      * Gets credentials of a specific type for a device.
      * <p>
-     * This method simply invokes {@link #getCredentials(String, String, String, int)}
-     * {@link HttpURLConnection#HTTP_OK} as the expected status code.
+     * This method simply invokes {@link #getCredentials(String, String, String, int)} {@link HttpURLConnection#HTTP_OK}
+     * as the expected status code.
      * 
      * @param tenantId The tenant that the device belongs to.
      * @param authId The authentication identifier of the device.
      * @param type The type of credentials to retrieve.
-     * @return A future indicating the outcome of the operation.
-     *         The future will contain the response payload if the request succeeded.
-     *         Otherwise the future will fail with a {@link ServiceInvocationException}.
+     * @return A future indicating the outcome of the operation. The future will contain the response payload if the
+     *         request succeeded. Otherwise the future will fail with a {@link ServiceInvocationException}.
      * @throws NullPointerException if the tenant is {@code null}.
      */
     public Future<Buffer> getCredentials(final String tenantId, final String authId, final String type) {
@@ -505,13 +512,13 @@ public final class DeviceRegistryHttpClient {
      * @param authId The authentication identifier of the device.
      * @param type The type of credentials to retrieve.
      * @param expectedStatusCode The status code indicating a successful outcome.
-     * @return A future indicating the outcome of the operation.
-     *         The future will contain the response payload if the response contains
-     *         the expected status code.
-     *         Otherwise the future will fail with a {@link ServiceInvocationException}.
+     * @return A future indicating the outcome of the operation. The future will contain the response payload if the
+     *         response contains the expected status code. Otherwise the future will fail with a
+     *         {@link ServiceInvocationException}.
      * @throws NullPointerException if the tenant is {@code null}.
      */
-    public Future<Buffer> getCredentials(final String tenantId, final String authId, final String type, final int expectedStatusCode) {
+    public Future<Buffer> getCredentials(final String tenantId, final String authId, final String type,
+            final int expectedStatusCode) {
 
         Objects.requireNonNull(tenantId);
         final String uri = String.format(TEMPLATE_URI_CREDENTIALS_INSTANCE, tenantId, authId, type);
@@ -521,7 +528,7 @@ public final class DeviceRegistryHttpClient {
     /**
      * Updates credentials of a specific type for a device.
      * <p>
-     * This method simply invokes {@link #updateCredentials(String, String, JsonObject, int)} with
+     * This method simply invokes {@link #updateCredentials(String, String, Collection, int)} with
      * {@link HttpURLConnection#HTTP_NO_CONTENT} as the expected status code.
      * 
      * @param tenantId The tenant that the device belongs to.
@@ -531,32 +538,10 @@ public final class DeviceRegistryHttpClient {
      *         updated successfully. Otherwise the future will fail with a {@link ServiceInvocationException}.
      * @throws NullPointerException if the tenant is {@code null}.
      */
-    public Future<Void> updateCredentials(final String tenantId, final String deviceId, final JsonObject credentialsSpec) {
-        return updateCredentials(tenantId, deviceId, credentialsSpec, HttpURLConnection.HTTP_NO_CONTENT);
-    }
-
-    /**
-     * Updates credentials of a specific type for a device.
-     * 
-     * @param tenantId The tenant that the device belongs to.
-     * @param deviceId The identifier of the device.
-     * @param credentialsSpec The JSON object to be sent in the request body.
-     * @param expectedStatusCode The status code indicating a successful outcome.
-     * @return A future indicating the outcome of the operation.
-     *         The future will succeed if the response contains the expected status code.
-     *         Otherwise the future will fail with a {@link ServiceInvocationException}.
-     * @throws NullPointerException if the tenant is {@code null}.
-     */
-    public Future<Void> updateCredentials(
-            final String tenantId,
-            final String deviceId,
-            final JsonObject credentialsSpec,
-            final int expectedStatusCode) {
-
-        Objects.requireNonNull(tenantId);
-        final String uri = String.format(TEMPLATE_URI_CREDENTIALS_BY_DEVICE, tenantId, deviceId);
-
-        return httpClient.update(uri, credentialsSpec, status -> status == expectedStatusCode);
+    public Future<Void> updateCredentials(final String tenantId, final String deviceId,
+            final CommonSecret credentialsSpec) {
+        return updateCredentials(tenantId, deviceId, Collections.singleton(credentialsSpec),
+                HttpURLConnection.HTTP_NO_CONTENT);
     }
 
     /**
@@ -575,7 +560,7 @@ public final class DeviceRegistryHttpClient {
     public Future<Void> updateCredentials(
             final String tenantId,
             final String deviceId,
-            final JsonArray credentialsSpec,
+            final Collection<CommonSecret> credentialsSpec,
             final int version,
             final int expectedStatusCode) {
 
@@ -586,7 +571,8 @@ public final class DeviceRegistryHttpClient {
                 .add(HttpHeaders.IF_MATCH, Integer.toString(version))
                 .add(HttpHeaders.CONTENT_TYPE, CONTENT_TYPE_JSON);
 
-        return httpClient.update(uri, credentialsSpec.toBuffer(), headers, status -> status == expectedStatusCode)
+        return httpClient
+                .update(uri, Json.encodeToBuffer(credentialsSpec), headers, status -> status == expectedStatusCode)
                 .compose(ok -> Future.succeededFuture());
     }
 
@@ -597,21 +583,18 @@ public final class DeviceRegistryHttpClient {
      * @param deviceId The identifier of the device.
      * @param credentialsSpec The JSON array to be sent in the request body.
      * @param expectedStatusCode The status code indicating a successful outcome.
-     * @return A future indicating the outcome of the operation.
-     *         The future will succeed if the response contains the expected status code.
-     *         Otherwise the future will fail with a {@link ServiceInvocationException}.
+     * @return A future indicating the outcome of the operation. The future will succeed if the response contains the
+     *         expected status code. Otherwise the future will fail with a {@link ServiceInvocationException}.
      * @throws NullPointerException if the tenant is {@code null}.
      */
     public Future<Void> updateCredentials(
             final String tenantId,
             final String deviceId,
-            final JsonArray credentialsSpec,
+            final Collection<CommonSecret> credentialsSpec,
             final int expectedStatusCode) {
 
-        Objects.requireNonNull(tenantId);
-        final String uri = String.format(TEMPLATE_URI_CREDENTIALS_BY_DEVICE, tenantId, deviceId);
-
-        return httpClient.update(uri, credentialsSpec, status -> status == expectedStatusCode);
+        return updateCredentials(tenantId, deviceId, credentialsSpec, CrudHttpClient.CONTENT_TYPE_JSON,
+                expectedStatusCode);
     }
 
     /**
@@ -622,22 +605,44 @@ public final class DeviceRegistryHttpClient {
      * @param credentialsSpec The JSON array to be sent in the request body.
      * @param contentType The content type to set on the request.
      * @param expectedStatusCode The status code indicating a successful outcome.
-     * @return A future indicating the outcome of the operation.
-     *         The future will succeed if the response contains the expected status code.
-     *         Otherwise the future will fail with a {@link ServiceInvocationException}.
+     * @return A future indicating the outcome of the operation. The future will succeed if the response contains the
+     *         expected status code. Otherwise the future will fail with a {@link ServiceInvocationException}.
      * @throws NullPointerException if the tenant is {@code null}.
      */
     public Future<Void> updateCredentials(
             final String tenantId,
             final String deviceId,
-            final JsonArray credentialsSpec,
+            final Collection<CommonSecret> credentialsSpec,
+            final String contentType,
+            final int expectedStatusCode) {
+
+        return updateCredentialsRaw(tenantId, deviceId, Json.encodeToBuffer(credentialsSpec), contentType,
+                expectedStatusCode);
+    }
+
+    /**
+     * Execute an update credentials request, with raw payload.
+     * 
+     * @param tenantId The tenant that the device belongs to.
+     * @param deviceId The identifier of the device.
+     * @param payload The raw payload.
+     * @param contentType The content type to set on the request.
+     * @param expectedStatusCode The status code indicating a successful outcome.
+     * @return A future indicating the outcome of the operation. The future will succeed if the response contains the
+     *         expected status code. Otherwise the future will fail with a {@link ServiceInvocationException}.
+     * @throws NullPointerException if the tenant is {@code null}.
+     */
+    public Future<Void> updateCredentialsRaw(
+            final String tenantId,
+            final String deviceId,
+            final Buffer payload,
             final String contentType,
             final int expectedStatusCode) {
 
         Objects.requireNonNull(tenantId);
         final String uri = String.format(TEMPLATE_URI_CREDENTIALS_BY_DEVICE, tenantId, deviceId);
 
-        return httpClient.update(uri, credentialsSpec, contentType, status -> status == expectedStatusCode);
+        return httpClient.update(uri, payload, contentType, status -> status == expectedStatusCode);
     }
 
     /**
@@ -646,11 +651,11 @@ public final class DeviceRegistryHttpClient {
      * @param tenantId The tenant that the device belongs to.
      * @param authId The authentication identifier of the device.
      * @param type The type of credentials to remove.
-     * @return A future indicating the outcome of the operation.
-     *         The future will succeed if the credentials have been removed successfully.
-     *         Otherwise the future will fail with a {@link ServiceInvocationException}.
+     * @return A future indicating the outcome of the operation. The future will succeed if the credentials have been
+     *         removed successfully. Otherwise the future will fail with a {@link ServiceInvocationException}.
      * @throws NullPointerException if the tenant is {@code null}.
      */
+    @Deprecated
     public Future<Void> removeCredentials(final String tenantId, final String authId, final String type) {
 
         Objects.requireNonNull(tenantId);
@@ -661,14 +666,13 @@ public final class DeviceRegistryHttpClient {
     /**
      * Removes all credentials from a device.
      * <p>
-     * This method simply invokes {@link #removeAllCredentials(String, String, int)}
-     * with {@link HttpURLConnection#HTTP_NO_CONTENT} as the expected status code.
+     * This method simply invokes {@link #removeAllCredentials(String, String, int)} with
+     * {@link HttpURLConnection#HTTP_NO_CONTENT} as the expected status code.
      * 
      * @param tenantId The tenant that the device belongs to.
      * @param deviceId The identifier of the device.
-     * @return A future indicating the outcome of the operation.
-     *         The future will succeed if the credentials have been removed successfully.
-     *         Otherwise the future will fail with a {@link ServiceInvocationException}.
+     * @return A future indicating the outcome of the operation. The future will succeed if the credentials have been
+     *         removed successfully. Otherwise the future will fail with a {@link ServiceInvocationException}.
      * @throws NullPointerException if the tenant is {@code null}.
      */
     public Future<Void> removeAllCredentials(final String tenantId, final String deviceId) {
@@ -682,12 +686,12 @@ public final class DeviceRegistryHttpClient {
      * @param tenantId The tenant that the device belongs to.
      * @param deviceId The identifier of the device.
      * @param expectedStatusCode The status code indicating a successful outcome.
-     * @return A future indicating the outcome of the operation.
-     *         The future will succeed if the response contains the expected status code.
-     *         Otherwise the future will fail with a {@link ServiceInvocationException}.
+     * @return A future indicating the outcome of the operation. The future will succeed if the response contains the
+     *         expected status code. Otherwise the future will fail with a {@link ServiceInvocationException}.
      * @throws NullPointerException if the tenant is {@code null}.
      */
-    public Future<Void> removeAllCredentials(final String tenantId, final String deviceId, final int expectedStatusCode) {
+    public Future<Void> removeAllCredentials(final String tenantId, final String deviceId,
+            final int expectedStatusCode) {
 
         Objects.requireNonNull(tenantId);
         final String uri = String.format(TEMPLATE_URI_CREDENTIALS_BY_DEVICE, tenantId, deviceId);
@@ -699,53 +703,56 @@ public final class DeviceRegistryHttpClient {
     /**
      * Creates a tenant and adds a device to it with a given password.
      * <p>
-     * This method simply invokes {@link #addDeviceForTenant(TenantObject, String, JsonObject, String)}
-     * with no extra data.
+     * This method simply invokes {@link #addDeviceForTenant(String, Tenant, String, Device, String)} with no extra
+     * data.
      * 
+     * @param tenantId The ID of the tenant to create.
      * @param tenant The tenant to create.
      * @param deviceId The identifier of the device to add to the tenant.
      * @param password The password to use for the device's credentials.
      * @return A future indicating the outcome of the operation.
      * @throws NullPointerException if tenant is {@code null}.
      */
-    public Future<Void> addDeviceForTenant(final TenantObject tenant, final String deviceId, final String password) {
+    public Future<Void> addDeviceForTenant(final String tenantId, final Tenant tenant, final String deviceId,
+            final String password) {
 
-        return addDeviceForTenant(tenant, deviceId, new JsonObject(), password);
+        return addDeviceForTenant(tenantId, tenant, deviceId, new Device(), password);
     }
 
     /**
      * Creates a tenant and adds a device to it with a given password.
      * <p>
-     * The password will be added as a hashed password
-     * using the device identifier as the authentication identifier.
+     * The password will be added as a hashed password using the device identifier as the authentication identifier.
      * 
+     * @param tenantId The ID of the tenant to create.
      * @param tenant The tenant to create.
      * @param deviceId The identifier of the device to add.
-     * @param data The data to register for the device.
+     * @param device The data to register for the device.
      * @param password The password to use for the device's credentials.
      * @return A future indicating the outcome of the operation.
      * @throws NullPointerException if tenant is {@code null}.
      */
     public Future<Void> addDeviceForTenant(
-            final TenantObject tenant,
+            final String tenantId,
+            final Tenant tenant,
             final String deviceId,
-            final JsonObject data,
+            final Device device,
             final String password) {
 
         Objects.requireNonNull(tenant);
-        final CredentialsObject credentialsSpec =
-                CredentialsObject.fromClearTextPassword(deviceId, deviceId, password, null, null);
 
-        return addTenant(tenant.getTenantId(), JsonObject.mapFrom(tenant))
-            .compose(ok -> registerDevice(tenant.getTenantId(), deviceId, data))
-            .compose(ok -> addCredentials(tenant.getTenantId(), deviceId, JsonObject.mapFrom(credentialsSpec)));
+        final PasswordSecret secret = AbstractCredentialsServiceTest.createPasswordSecret(deviceId, password);
+
+        return addTenant(tenantId, JsonObject.mapFrom(tenant))
+                .compose(ok -> registerDevice(tenantId, deviceId, device))
+                .compose(ok -> addCredentials(tenantId, deviceId,
+                        Collections.singleton(secret)));
     }
 
     /**
      * Adds a device with a given password to an existing tenant.
      * <p>
-     * The password will be added as a hashed password
-     * using the device identifier as the authentication identifier.
+     * The password will be added as a hashed password using the device identifier as the authentication identifier.
      * 
      * @param tenantId The identifier of the tenant to add the device to.
      * @param deviceId The identifier of the device to add.
@@ -758,14 +765,13 @@ public final class DeviceRegistryHttpClient {
             final String deviceId,
             final String password) {
 
-        return addDeviceToTenant(tenantId, deviceId, new JsonObject(), password);
+        return addDeviceToTenant(tenantId, deviceId, new Device(), password);
     }
 
     /**
      * Adds a device with a given password to an existing tenant.
      * <p>
-     * The password will be added as a hashed password
-     * using the device identifier as the authentication identifier.
+     * The password will be added as a hashed password using the device identifier as the authentication identifier.
      * 
      * @param tenantId The identifier of the tenant to add the device to.
      * @param deviceId The identifier of the device to add.
@@ -777,7 +783,7 @@ public final class DeviceRegistryHttpClient {
     public Future<Void> addDeviceToTenant(
             final String tenantId,
             final String deviceId,
-            final JsonObject data,
+            final Device data,
             final String password) {
 
         Objects.requireNonNull(tenantId);
@@ -785,64 +791,71 @@ public final class DeviceRegistryHttpClient {
         Objects.requireNonNull(data);
         Objects.requireNonNull(password);
 
-        final CredentialsObject credentialsSpec =
-                CredentialsObject.fromClearTextPassword(deviceId, deviceId, password, null, null);
+        final PasswordSecret secret = AbstractCredentialsServiceTest.createPasswordSecret(deviceId, password);
 
         return registerDevice(tenantId, deviceId, data)
-            .compose(ok -> addCredentials(tenantId, deviceId, JsonObject.mapFrom(credentialsSpec)));
+                .compose(ok -> addCredentials(tenantId, deviceId, Collections.singletonList(secret)));
     }
 
     /**
      * Creates a tenant and adds a device to it with a given client certificate.
      * <p>
-     * The device will be registered with a set of <em>x509-cert</em> credentials
-     * using the client certificate's subject DN as authentication identifier.
+     * The device will be registered with a set of <em>x509-cert</em> credentials using the client certificate's subject
+     * DN as authentication identifier.
      * 
+     * @param tenantId The identifier of the tenant to add the secret to.
      * @param tenant The tenant to create.
      * @param deviceId The identifier of the device to add to the tenant.
      * @param deviceCert The device's client certificate.
      * @return A future indicating the outcome of the operation.
      * @throws NullPointerException if tenant or certificate are {@code null}.
      */
-    public Future<Void> addDeviceForTenant(final TenantObject tenant, final String deviceId, final X509Certificate deviceCert) {
+    public Future<Void> addDeviceForTenant(final String tenantId, final Tenant tenant, final String deviceId,
+            final X509Certificate deviceCert) {
 
         Objects.requireNonNull(tenant);
 
-        return addTenant(tenant.getTenantId(), JsonObject.mapFrom(tenant))
-            .compose(ok -> registerDevice(tenant.getTenantId(), deviceId))
-            .compose(ok -> {
-                final CredentialsObject credentialsSpec =
-                        CredentialsObject.fromClientCertificate(deviceId, deviceCert, null, null);
-                return addCredentials(tenant.getTenantId(), deviceId, JsonObject.mapFrom(credentialsSpec));
-            }).map(ok -> {
-                LOG.debug("registered device with client certificate [tenant-id: {}, device-id: {}, auth-id: {}]",
-                        tenant.getTenantId(), deviceId, deviceCert.getSubjectX500Principal().getName(X500Principal.RFC2253));
-                return null;
-            });
+        return addTenant(tenantId, JsonObject.mapFrom(tenant))
+                .compose(ok -> registerDevice(tenantId, deviceId))
+                .compose(ok -> {
+
+                    final X509CertificateSecret secret = new X509CertificateSecret();
+                    secret.setAuthId(deviceCert.getSubjectDN().getName());
+
+                    return addCredentials(tenantId, deviceId, Collections.singleton(secret));
+
+                }).map(ok -> {
+                    LOG.debug("registered device with client certificate [tenant-id: {}, device-id: {}, auth-id: {}]",
+                            tenantId, deviceId, deviceCert.getSubjectX500Principal().getName(X500Principal.RFC2253));
+                    return null;
+                });
     }
 
     /**
      * Creates a tenant and adds a device to it with a given Pre-Shared Key.
      * <p>
-     * The device will be registered with a set of <em>psk</em> credentials
-     * using the device identifier as the authentication identifier and PSK identity.
+     * The device will be registered with a set of <em>psk</em> credentials using the device identifier as the
+     * authentication identifier and PSK identity.
      * 
+     * @param tenantId The identifier of the tenant to add the secret to.
      * @param tenant The tenant to create.
      * @param deviceId The identifier of the device to add to the tenant.
      * @param key The shared key.
      * @return A future indicating the outcome of the operation.
      * @throws NullPointerException if any of the parameters are are {@code null}.
      */
-    public Future<Void> addPskDeviceForTenant(final TenantObject tenant, final String deviceId, final String key) {
-        return addPskDeviceForTenant(tenant, deviceId, new JsonObject(), key);
+    public Future<Void> addPskDeviceForTenant(final String tenantId, final Tenant tenant, final String deviceId,
+            final String key) {
+        return addPskDeviceForTenant(tenantId, tenant, deviceId, new Device(), key);
     }
 
     /**
      * Creates a tenant and adds a device to it with a given Pre-Shared Key.
      * <p>
-     * The device will be registered with a set of <em>psk</em> credentials
-     * using the device identifier as the authentication identifier and PSK identity.
+     * The device will be registered with a set of <em>psk</em> credentials using the device identifier as the
+     * authentication identifier and PSK identity.
      * 
+     * @param tenantId The identifier of the tenant to add the secret to.
      * @param tenant The tenant to create.
      * @param deviceId The identifier of the device to add to the tenant.
      * @param deviceData Additional data to register for the device.
@@ -851,9 +864,10 @@ public final class DeviceRegistryHttpClient {
      * @throws NullPointerException if any of the parameters are are {@code null}.
      */
     public Future<Void> addPskDeviceForTenant(
-            final TenantObject tenant,
+            final String tenantId,
+            final Tenant tenant,
             final String deviceId,
-            final JsonObject deviceData,
+            final Device deviceData,
             final String key) {
 
         Objects.requireNonNull(tenant);
@@ -861,34 +875,36 @@ public final class DeviceRegistryHttpClient {
         Objects.requireNonNull(deviceData);
         Objects.requireNonNull(key);
 
-        final CredentialsObject credentialsSpec =
-                CredentialsObject.fromPresharedKey(deviceId, deviceId, key.getBytes(StandardCharsets.UTF_8), null, null);
+        final PskSecret secret = new PskSecret();
+        secret.setKey(key.getBytes(StandardCharsets.UTF_8));
+        secret.setAuthId(deviceId);
 
-        return addTenant(tenant.getTenantId(), JsonObject.mapFrom(tenant))
-            .compose(ok -> registerDevice(tenant.getTenantId(), deviceId, deviceData))
-            .compose(ok -> addCredentials(tenant.getTenantId(), deviceId, JsonObject.mapFrom(credentialsSpec)));
+        return addTenant(tenantId, JsonObject.mapFrom(tenant))
+                .compose(ok -> registerDevice(tenantId, deviceId, deviceData))
+                .compose(ok -> addCredentials(tenantId, deviceId, Collections.singleton(secret)));
 
     }
 
     /**
      * Adds a device with a given Pre-Shared Key to an existing tenant.
      * <p>
-     * The key will be added as a <em>psk</em> secret
-     * using the device identifier as the authentication identifier and PSK identity.
+     * The key will be added as a <em>psk</em> secret using the device identifier as the authentication identifier and
+     * PSK identity.
      * 
-     * @param tenant The identifier of the tenant to add the device to.
+     * @param tenantId The identifier of the tenant to add the device to.
      * @param deviceId The identifier of the device to add.
      * @param key The shared key.
      * @return A future indicating the outcome of the operation.
      * @throws NullPointerException if any of the parameters are {@code null}.
      */
-    public Future<Void> addPskDeviceToTenant(final String tenant, final String deviceId, final String key) {
+    public Future<Void> addPskDeviceToTenant(final String tenantId, final String deviceId, final String key) {
 
-        final CredentialsObject credentialsSpec =
-                CredentialsObject.fromPresharedKey(deviceId, deviceId, key.getBytes(StandardCharsets.UTF_8), null, null);
+        final PskSecret secret = new PskSecret();
+        secret.setKey(key.getBytes(StandardCharsets.UTF_8));
+        secret.setAuthId(deviceId);
 
-        return registerDevice(tenant, deviceId)
-                .compose(ok -> addCredentials(tenant, deviceId, JsonObject.mapFrom(credentialsSpec)));
+        return registerDevice(tenantId, deviceId)
+                .compose(ok -> addCredentials(tenantId, deviceId, Collections.singleton(secret)));
     }
 
 }
