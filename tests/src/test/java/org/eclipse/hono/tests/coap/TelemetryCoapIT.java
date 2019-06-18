@@ -24,7 +24,9 @@ import org.eclipse.californium.core.coap.Request;
 import org.eclipse.hono.client.MessageConsumer;
 import org.eclipse.hono.service.management.tenant.Tenant;
 import org.eclipse.hono.util.TelemetryConstants;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
 
 import io.vertx.core.Future;
@@ -42,6 +44,12 @@ public class TelemetryCoapIT extends CoapTestBase {
 
     private static final String POST_URI = "/" + TelemetryConstants.TELEMETRY_ENDPOINT;
     private static final String PUT_URI_TEMPLATE = POST_URI + "/%s/%s";
+
+    /**
+     * Time out each test after 20 seconds.
+     */
+    @Rule
+    public final Timeout timeout = Timeout.millis(TEST_TIMEOUT_MILLIS);
 
     @Override
     protected Future<MessageConsumer> createConsumer(final String tenantId, final Consumer<Message> messageConsumer) {

@@ -94,8 +94,10 @@ public abstract class CoapTestBase {
      */
     protected static IntegrationTestSupport helper;
 
+    protected static final long TEST_TIMEOUT_MILLIS = 20000; // 20 seconds
+
     private static final Vertx VERTX = Vertx.vertx();
-    private static final long TEST_TIMEOUT_MILLIS = 20000; // 20 seconds
+
     private static final int MESSAGES_TO_SEND = 60;
 
     /**
