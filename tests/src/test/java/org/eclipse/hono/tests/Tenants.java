@@ -14,6 +14,7 @@
 package org.eclipse.hono.tests;
 
 import java.security.cert.X509Certificate;
+import java.util.LinkedList;
 
 import javax.security.auth.x500.X500Principal;
 
@@ -56,6 +57,9 @@ public final class Tenants {
         final Adapter adapter = new Adapter();
         adapter.setType(type);
         adapter.setEnabled(state);
+        if (tenant.getAdapters() == null) {
+            tenant.setAdapters(new LinkedList<>());
+        }
         tenant.getAdapters().add(adapter);
 
     }
