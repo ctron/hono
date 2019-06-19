@@ -31,7 +31,6 @@ import org.eclipse.hono.util.CredentialsConstants;
 import org.eclipse.hono.util.CredentialsObject;
 import org.junit.After;
 import org.junit.AfterClass;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
@@ -42,12 +41,14 @@ import org.junit.runner.RunWith;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import io.vertx.core.Vertx;
+import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import static org.eclipse.hono.util.Constants.DEFAULT_TENANT;
+import static org.junit.Assert.assertNotNull;
 
 /**
  * Tests verifying the Device Registry component by making HTTP requests to its
@@ -55,6 +56,8 @@ import static org.eclipse.hono.util.Constants.DEFAULT_TENANT;
  */
 @RunWith(VertxUnitRunner.class)
 public class CredentialsHttpIT {
+
+    private static final String HTTP_HEADER_ETAG = HttpHeaders.ETAG.toString();
 
     private static final String TENANT = DEFAULT_TENANT;
     private static final String TEST_AUTH_ID = "sensor20";
@@ -215,8 +218,9 @@ public class CredentialsHttpIT {
                         TENANT, deviceId, Collections.singleton(hashedPasswordSecret),
                         HttpURLConnection.HTTP_NO_CONTENT)
                 .compose(ar -> {
-                    final var etag = ar.get("etag");
-                    Assert.assertNotNull(etag);
+                    final var etag = ar.get(HTTP_HEADER_ETAG);
+                    System.out.println(ar);
+                    assertNotNull("missing etag header", etag);
                     // now try to update credentials with the same version
                     return registry.updateCredentialsWithVersion(TENANT, deviceId,
                             Collections.singleton(hashedPasswordSecret), etag, HttpURLConnection.HTTP_PRECON_FAILED);
@@ -260,8 +264,10 @@ public class CredentialsHttpIT {
     @Test
     public void testAddCredentialsFailsForEmptyBody(final TestContext context) {
 
-        registry.updateCredentials(TENANT, deviceId, null, HttpURLConnection.HTTP_BAD_REQUEST)
+        registry.updateCredentialsRaw(TENANT, deviceId, null, CrudHttpClient.CONTENT_TYPE_JSON,
+                HttpURLConnection.HTTP_BAD_REQUEST)
                 .setHandler(context.asyncAssertSuccess());
+
     }
 
     /**
@@ -398,19 +404,24 @@ public class CredentialsHttpIT {
     }
 
     /**
-     * Verify that a correctly added credentials record can be successfully looked up again by using the type and authId.
+     * Verify that a correctly added credentials record can be successfully looked up again by using the type and
+     * authId.
      * 
      * @param context The vert.x test context.
      */
     @Test
-    public void testGetAddedCredentials(final TestContext context)  {
+    public void testGetAddedCredentials(final TestContext context) {
 
         registry.updateCredentials(TENANT, deviceId, Collections.singleton(hashedPasswordSecret),
                 HttpURLConnection.HTTP_NO_CONTENT)
-            .compose(ar -> registry.getCredentials(TENANT, deviceId))
-            .setHandler(context.asyncAssertSuccess(b -> {
-                context.assertEquals(JsonObject.mapFrom(hashedPasswordSecret), b.toJsonArray().getJsonObject(0));
-            }));
+                .compose(ar -> registry.getCredentials(TENANT, deviceId))
+                .setHandler(context.asyncAssertSuccess(b -> {
+                    context.assertEquals(
+                            new JsonArray()
+                                    .add(JsonObject.mapFrom(hashedPasswordSecret)),
+                            b.toJsonArray());
+                }));
+
     }
 
     /**

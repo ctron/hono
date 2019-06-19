@@ -16,6 +16,8 @@ package org.eclipse.hono.tests;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
 import java.security.cert.X509Certificate;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -36,8 +38,6 @@ import org.eclipse.hono.util.TenantConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-
 import io.vertx.core.Future;
 import io.vertx.core.MultiMap;
 import io.vertx.core.Vertx;
@@ -56,9 +56,6 @@ import static org.eclipse.hono.service.http.HttpUtils.CONTENT_TYPE_JSON;
 public final class DeviceRegistryHttpClient {
 
     private static final Logger LOG = LoggerFactory.getLogger(DeviceRegistryHttpClient.class);
-
-    private static final TypeReference<List<CommonSecret>> SECRETS_TYPE_REF = new TypeReference<>() {
-    };
 
     private static final String CONTENT_TYPE_APPLICATION_JSON = "application/json";
     private static final String URI_ADD_TENANT = "/" + TenantConstants.TENANT_HTTP_ENDPOINT;
@@ -459,13 +456,16 @@ public final class DeviceRegistryHttpClient {
 
                     // new list of secrets
 
-                    final List<CommonSecret> currentSecrets = Json.decodeValue(body, SECRETS_TYPE_REF);
+                    // get a list, through an array - workaround for vert.x json issue
+                    final List<CommonSecret> currentSecrets = new ArrayList<>(
+                            Arrays.asList(Json.decodeValue(body, CommonSecret[].class)));
                     currentSecrets.addAll(secrets);
 
                     // update
 
-                    return httpClient.update(uri, Json.encodeToBuffer(currentSecrets.toArray(CommonSecret[]::new)),
-                            contentType,
+                    // encode array, not list - workaround for vert.x json issue
+                    final var payload = Json.encodeToBuffer(currentSecrets.toArray(CommonSecret[]::new));
+                    return httpClient.update(uri, payload, contentType,
                             response -> response == expectedStatusCode);
                 });
 
@@ -570,8 +570,11 @@ public final class DeviceRegistryHttpClient {
                 .add(HttpHeaders.IF_MATCH, version)
                 .add(HttpHeaders.CONTENT_TYPE, CONTENT_TYPE_JSON);
 
+        // encode array not list, workaround for vert.x issue
+        final var payload = Json.encodeToBuffer(credentialsSpec.toArray(CommonSecret[]::new));
+
         return httpClient
-                .update(uri, Json.encodeToBuffer(credentialsSpec), headers, status -> status == expectedStatusCode)
+                .update(uri, payload, headers, status -> status == expectedStatusCode)
                 .compose(ok -> Future.succeededFuture());
     }
 
@@ -615,8 +618,13 @@ public final class DeviceRegistryHttpClient {
             final String contentType,
             final int expectedStatusCode) {
 
-        return updateCredentialsRaw(tenantId, deviceId, Json.encodeToBuffer(credentialsSpec.toArray(CommonSecret[]::new)), contentType,
-                expectedStatusCode);
+        Objects.requireNonNull(credentialsSpec);
+
+        // encode array not list, workaround for vert.x issue
+        final var payload = Json.encodeToBuffer(credentialsSpec.toArray(CommonSecret[]::new));
+
+        return updateCredentialsRaw(tenantId, deviceId, payload, contentType, expectedStatusCode);
+
     }
 
     /**
