@@ -346,8 +346,8 @@ public final class FileBasedCredentialsService extends AbstractVerticle
     }
 
     /**
-     * Get the credentials associated with the authId and the given type.
-     * If type is null, all credentials associated with the authId are returned (as JsonArray inside the return value).
+     * Get the credentials associated with the authId and the given type. If type is null, all credentials associated
+     * with the authId are returned (as JsonArray inside the return value).
      *
      * @param tenantId The id of the tenant the credentials belong to.
      * @param authId The authentication identifier to look up credentials for.
@@ -363,42 +363,61 @@ public final class FileBasedCredentialsService extends AbstractVerticle
         Objects.requireNonNull(type);
 
         final Map<String, Versioned<JsonArray>> credentialsForTenant = credentials.get(tenantId);
-        if (credentialsForTenant != null) {
-            final Versioned<JsonArray> authIdCredentials = credentialsForTenant.get(authId);
-            if (authIdCredentials != null) {
-                for (final Object authIdCredentialEntry : authIdCredentials.getValue()) {
-                    final JsonObject authIdCredential = (JsonObject) authIdCredentialEntry;
-                    // return the first matching type entry for this authId
-                    if (type.equals(authIdCredential.getString(CredentialsConstants.FIELD_TYPE))) {
-                        if (clientContext != null) {
-                            final AtomicBoolean match = new AtomicBoolean(true);
-                            clientContext.forEach(field -> {
-                                if (authIdCredential.containsKey(field.getKey())) {
-                                    if (!authIdCredential.getString(field.getKey()).equals(field.getValue())) {
-                                        match.set(false);
-                                    }
-                                } else {
-                                    match.set(false);
-                                }
-                            });
-                            if (!match.get()) {
-                                continue;
-                            }
-                        }
-                        return authIdCredential;
-                    }
-                }
-                if (clientContext != null) {
-                    TracingHelper.logError(span, "no credentials found with matching type and client context");
-                } else {
-                    TracingHelper.logError(span, "no credentials found with matching type");
-                }
-            } else {
-                TracingHelper.logError(span, "no credentials found for auth-id");
-            }
-        } else {
+        if (credentialsForTenant == null) {
             TracingHelper.logError(span, "no credentials found for tenant");
+            return null;
         }
+
+        final Versioned<JsonArray> authIdCredentials = credentialsForTenant.get(authId);
+        if (authIdCredentials == null) {
+            TracingHelper.logError(span, "no credentials found for auth-id");
+            return null;
+        }
+
+        for (final Object authIdCredentialEntry : authIdCredentials.getValue()) {
+            final JsonObject authIdCredential = (JsonObject) authIdCredentialEntry;
+
+            final Boolean enabled = authIdCredential.getBoolean("enabled", true);
+            if (Boolean.FALSE.equals(enabled)) {
+                // suppress all "disabled" ... continue search
+                continue;
+            }
+
+
+            if (!type.equals(authIdCredential.getString(CredentialsConstants.FIELD_TYPE))) {
+                // auth-id doesn't match ... continue search
+                continue;
+            }
+
+            if (clientContext != null) {
+                final AtomicBoolean match = new AtomicBoolean(true);
+                clientContext.forEach(field -> {
+                    if (authIdCredential.containsKey(field.getKey())) {
+                        if (!authIdCredential.getString(field.getKey()).equals(field.getValue())) {
+                            match.set(false);
+                        }
+                    } else {
+                        match.set(false);
+                    }
+                });
+                if (!match.get()) {
+                    continue;
+                }
+            }
+
+            // return the first entry that matches
+
+            return authIdCredential;
+        }
+
+        // we ended up with no match
+
+        if (clientContext != null) {
+            TracingHelper.logError(span, "no credentials found with matching type and client context");
+        } else {
+            TracingHelper.logError(span, "no credentials found with matching type");
+        }
+
         return null;
     }
 

@@ -16,6 +16,7 @@ package org.eclipse.hono.tests.registry;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import java.net.HttpURLConnection;
 import java.time.Instant;
@@ -95,7 +96,6 @@ abstract class CredentialsApiTests extends DeviceRegistryTestBase {
                     ctx.verify(() -> assertStandardProperties(
                             result,
                             deviceId,
-                            true,
                             authId,
                             CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD,
                             2));
@@ -115,9 +115,11 @@ abstract class CredentialsApiTests extends DeviceRegistryTestBase {
 
         final String deviceId = getHelper().getRandomDeviceId(Constants.DEFAULT_TENANT);
         final String authId = UUID.randomUUID().toString();
+
         final List<CommonSecret> credentials = getRandomHashedPasswordCredentials(deviceId, authId);
 
-        credentials.forEach(c -> c.setEnabled(false));
+        // disable the first entry
+        credentials.get(0).setEnabled(false);
 
         getHelper().registry
                 .registerDevice(Constants.DEFAULT_TENANT, deviceId, new Device())
@@ -130,10 +132,9 @@ abstract class CredentialsApiTests extends DeviceRegistryTestBase {
                     ctx.verify(() -> assertStandardProperties(
                             result,
                             deviceId,
-                            false,
                             authId,
                             CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD,
-                            2));
+                            1));
                     ctx.completeNow();
                 }));
     }
@@ -166,7 +167,6 @@ abstract class CredentialsApiTests extends DeviceRegistryTestBase {
                         assertStandardProperties(
                                 result,
                                 deviceId,
-                                true,
                                 authId,
                                 CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD,
                                 2);
@@ -249,13 +249,13 @@ abstract class CredentialsApiTests extends DeviceRegistryTestBase {
     private void assertStandardProperties(
             final CredentialsObject credentials,
             final String expectedDeviceId,
-            final boolean expectedStatus,
             final String expectedAuthId,
             final String expectedType,
             final int expectedNumberOfSecrets) {
 
         assertNotNull(credentials);
-        assertThat(credentials.isEnabled()).isEqualTo(expectedStatus);
+        // only enabled credentials will be returned
+        assertTrue(credentials.isEnabled());
         assertThat(credentials.getDeviceId()).isEqualTo(expectedDeviceId);
         assertThat(credentials.getAuthId()).isEqualTo(expectedAuthId);
         assertThat(credentials.getType()).isEqualTo(expectedType);
