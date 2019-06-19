@@ -482,7 +482,7 @@ public final class FileBasedTenantService extends AbstractVerticle implements Te
 
         final var tenant = new Tenant();
 
-        tenant.setEnabled(tenantObject.getProperty(TenantConstants.FIELD_ENABLED, null));
+        tenant.setEnabled(tenantObject.getProperty(TenantConstants.FIELD_ENABLED, Boolean.class));
 
         Optional.ofNullable(tenantObject.getProperty("ext", JsonObject.class))
                 .map(JsonObject::getMap)
