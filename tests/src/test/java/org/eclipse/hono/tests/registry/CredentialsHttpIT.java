@@ -424,6 +424,22 @@ public class CredentialsHttpIT {
     }
 
     /**
+     * Verifies that the service accepts an add credentials and assign it with an Etag value.
+     *
+     * @param context The vert.x test context.
+     */
+    @Test
+    public void testAddedCredentialsContainsEtag(final TestContext context)  {
+
+        registry
+                .updateCredentials(TENANT, deviceId, Collections.singleton(hashedPasswordSecret),
+                        HttpURLConnection.HTTP_NO_CONTENT)
+                .setHandler(context.asyncAssertSuccess(res -> {
+                    context.assertNotNull(res.get(HTTP_HEADER_ETAG));
+                }));
+    }
+
+    /**
      * Verify that multiple (2) correctly added credentials records of the same authId can be successfully looked up by
      * single requests using their type and authId again.
      * 
