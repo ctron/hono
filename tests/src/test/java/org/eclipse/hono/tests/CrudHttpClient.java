@@ -74,7 +74,7 @@ public final class CrudHttpClient {
         this.context = vertx.getOrCreateContext();
     }
 
-    private RequestOptions getRequestOptions() {
+    private RequestOptions createRequestOptions() {
         return new RequestOptions()
                 .setSsl(options.isSsl())
                 .setHost(options.getDefaultHost())
@@ -97,7 +97,7 @@ public final class CrudHttpClient {
             final Predicate<Integer> successPredicate) {
 
         Objects.requireNonNull(uri);
-        return options(getRequestOptions().setURI(uri), requestHeaders, successPredicate);
+        return options(createRequestOptions().setURI(uri), requestHeaders, successPredicate);
     }
 
     /**
@@ -211,7 +211,7 @@ public final class CrudHttpClient {
         Objects.requireNonNull(successPredicate);
 
         return create(
-                getRequestOptions().setURI(uri),
+                createRequestOptions().setURI(uri),
                 body,
                 requestHeaders,
                 successPredicate);
@@ -362,7 +362,7 @@ public final class CrudHttpClient {
         Objects.requireNonNull(successPredicate);
 
         return update(
-                getRequestOptions().setURI(uri),
+                createRequestOptions().setURI(uri),
                 body,
                 requestHeaders,
                 successPredicate);
@@ -425,7 +425,7 @@ public final class CrudHttpClient {
 
         Objects.requireNonNull(uri);
         Objects.requireNonNull(successPredicate);
-        return get(getRequestOptions().setURI(uri), successPredicate);
+        return get(createRequestOptions().setURI(uri), successPredicate);
     }
 
     /**
@@ -473,7 +473,7 @@ public final class CrudHttpClient {
         Objects.requireNonNull(uri);
         Objects.requireNonNull(successPredicate);
 
-        return delete(getRequestOptions().setURI(uri), successPredicate);
+        return delete(createRequestOptions().setURI(uri), successPredicate);
     }
 
     /**
