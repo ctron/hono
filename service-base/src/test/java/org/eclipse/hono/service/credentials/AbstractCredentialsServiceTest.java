@@ -73,7 +73,7 @@ public abstract class AbstractCredentialsServiceTest {
      * <p>
      * Return this device management service which is needed in order to work in coordination with the credentials
      * service.
-     * 
+     *
      * @return The device management service.
      */
     public abstract DeviceManagementService getDeviceManagementService();
@@ -353,9 +353,11 @@ public abstract class AbstractCredentialsServiceTest {
 
     }
 
+    //TODO add a test with resource version ?
+
     /**
      * Test updating a new secret.
-     * 
+     * Also verifies that removing a device deletes the attached credentials.
      * @param ctx The vert.x test context.
      */
     @Test
@@ -452,7 +454,7 @@ public abstract class AbstractCredentialsServiceTest {
 
         }));
 
-        // Phase 5
+        // Phase 5 verifies that when the device is deleted, the corresponding credentials are deleted as well.
 
         final Future<?> phase5 = Future.future();
 

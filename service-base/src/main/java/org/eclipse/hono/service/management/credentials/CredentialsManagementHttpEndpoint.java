@@ -76,7 +76,7 @@ public final class CredentialsManagementHttpEndpoint extends AbstractHttpEndpoin
         // get all credentials for a given device
         router.get(pathWithTenantAndDeviceId).handler(this::getCredentialsForDevice);
 
-        // update all credentials for a given device
+        // set credentials for a given device
         router.put(pathWithTenantAndDeviceId).handler(bodyHandler);
         router.put(pathWithTenantAndDeviceId).handler(this::extractRequiredJsonArrayPayload);
         router.put(pathWithTenantAndDeviceId).handler(this::extractIfMatchVersionParam);
