@@ -15,6 +15,7 @@
 package org.eclipse.hono.tests.registry;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertNotNull;
 
 import java.net.HttpURLConnection;
 import java.time.Instant;
@@ -84,9 +85,12 @@ abstract class CredentialsApiTests extends DeviceRegistryTestBase {
         final List<CommonSecret> credentials = getRandomHashedPasswordCredentials(deviceId, authId);
 
         getHelper().registry
-                .addCredentials(Constants.DEFAULT_TENANT, deviceId, credentials)
-                .compose(ok -> getClient(Constants.DEFAULT_TENANT))
-                .compose(client -> client.get(CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD, authId))
+                .registerDevice(Constants.DEFAULT_TENANT, deviceId)
+                .compose(ok -> {
+                    return getHelper().registry.addCredentials(Constants.DEFAULT_TENANT, deviceId, credentials)
+                            .compose(ok2 -> getClient(Constants.DEFAULT_TENANT))
+                            .compose(client -> client.get(CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD, authId));
+                })
                 .setHandler(ctx.succeeding(result -> {
                     ctx.verify(() -> assertStandardProperties(
                             result,
@@ -250,10 +254,13 @@ abstract class CredentialsApiTests extends DeviceRegistryTestBase {
             final String expectedType,
             final int expectedNumberOfSecrets) {
 
+        assertNotNull(credentials);
         assertThat(credentials.isEnabled()).isEqualTo(expectedStatus);
         assertThat(credentials.getDeviceId()).isEqualTo(expectedDeviceId);
         assertThat(credentials.getAuthId()).isEqualTo(expectedAuthId);
         assertThat(credentials.getType()).isEqualTo(expectedType);
+        assertNotNull(credentials.getSecrets());
         assertThat(credentials.getSecrets()).hasSize(expectedNumberOfSecrets);
+
     }
 }

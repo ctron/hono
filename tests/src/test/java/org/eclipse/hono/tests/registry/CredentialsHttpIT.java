@@ -297,9 +297,11 @@ public class CredentialsHttpIT {
 
         final JsonObject json = JsonObject.mapFrom(hashedPasswordSecret);
         json.remove(fieldMissing);
+        final JsonArray payload = new JsonArray()
+                .add(json);
 
         registry
-                .updateCredentialsRaw(TENANT, deviceId, json.toBuffer(),
+                .updateCredentialsRaw(TENANT, deviceId, payload.toBuffer(),
                         CrudHttpClient.CONTENT_TYPE_JSON, HttpURLConnection.HTTP_BAD_REQUEST)
                 .setHandler(context.asyncAssertSuccess());
     }
