@@ -964,6 +964,7 @@ Test cases are run against Docker images of Hono server + (Apache Qpid Dispatch 
                 <trust-store.path>${project.build.directory}/certs/trusted-certs.pem</trust-store.path>
                 <test.env>${test.env}</test.env>
                 <max.bcrypt.iterations>${max.bcrypt.iterations}</max.bcrypt.iterations>
+                <vertx.logger-delegate-factory-class-name>io.vertx.core.logging.SLF4JLogDelegateFactory</vertx.logger-delegate-factory-class-name>
                 <!-- javax.net.debug>ssl:handshake</javax.net.debug-->
               </systemProperties>
               <failIfNoSpecifiedTests>false</failIfNoSpecifiedTests>
