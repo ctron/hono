@@ -653,24 +653,6 @@ public final class DeviceRegistryHttpClient {
     }
 
     /**
-     * Removes credentials of a specific type from a device.
-     * 
-     * @param tenantId The tenant that the device belongs to.
-     * @param authId The authentication identifier of the device.
-     * @param type The type of credentials to remove.
-     * @return A future indicating the outcome of the operation. The future will succeed if the credentials have been
-     *         removed successfully. Otherwise the future will fail with a {@link ServiceInvocationException}.
-     * @throws NullPointerException if the tenant is {@code null}.
-     */
-    @Deprecated
-    public Future<Void> removeCredentials(final String tenantId, final String authId, final String type) {
-
-        Objects.requireNonNull(tenantId);
-        final String uri = String.format(TEMPLATE_URI_CREDENTIALS_INSTANCE, tenantId, authId, type);
-        return httpClient.delete(uri, status -> status == HttpURLConnection.HTTP_NO_CONTENT);
-    }
-
-    /**
      * Removes all credentials from a device.
      * <p>
      * This method simply invokes {@link #removeAllCredentials(String, String, int)} with
