@@ -303,8 +303,6 @@ public final class FileBasedCredentialsService extends AbstractVerticle
         }
     }
 
-
-
     private void findCredentialsForDevice(final JsonArray credentials, final String deviceId, final JsonArray result) {
 
         for (final Object obj : credentials) {
@@ -516,7 +514,7 @@ public final class FileBasedCredentialsService extends AbstractVerticle
             credentialsForTenant.put(authId, new Versioned<>(json));
         }
 
-        return OperationResult.empty(HttpURLConnection.HTTP_NO_CONTENT);
+        return OperationResult.ok(HttpURLConnection.HTTP_NO_CONTENT, null, Optional.empty(), Optional.empty());
     }
 
     /**
@@ -580,11 +578,11 @@ public final class FileBasedCredentialsService extends AbstractVerticle
         final GenericSecret secret = new GenericSecret();
         secret.setAuthId(credentialsObject.getString(CredentialsConstants.FIELD_AUTH_ID));
         secret.setType(credentialsObject.getString(CredentialsConstants.FIELD_TYPE));
-        secret.setEnabled(credentialsObject.getBoolean(CredentialsConstants.FIELD_ENABLED));
 
         secret.setNotBefore(secretObject.getInstant(CredentialsConstants.FIELD_SECRETS_NOT_BEFORE));
         secret.setNotAfter(secretObject.getInstant(CredentialsConstants.FIELD_SECRETS_NOT_AFTER));
 
+        copyAdditionalField(secret, secretObject, CredentialsConstants.FIELD_ENABLED);
         copyAdditionalField(secret, secretObject, CredentialsConstants.FIELD_SECRETS_HASH_FUNCTION);
         copyAdditionalField(secret, secretObject, CredentialsConstants.FIELD_SECRETS_PWD_HASH);
         copyAdditionalField(secret, secretObject, CredentialsConstants.FIELD_SECRETS_SALT);
@@ -631,7 +629,7 @@ public final class FileBasedCredentialsService extends AbstractVerticle
                         OperationResult.ok(HTTP_OK,
                                 secrets,
                                 //TODO check cache directive
-                                Optional.ofNullable(getCacheDirective(CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD)),
+                                Optional.empty(),
                                 Optional.empty())));
 
             }
