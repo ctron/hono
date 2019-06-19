@@ -96,11 +96,10 @@ public final class CredentialsManagementHttpEndpoint extends AbstractHttpEndpoin
         final String resourceVersion = ctx.get(KEY_RESOURCE_VERSION);
         final String tenantId = getTenantParam(ctx);
 
-        logger.debug("updating credentials [tenant: {}, device-id: {}]", tenantId, deviceId);
+        logger.debug("updating credentials [tenant: {}, device-id: {}] - {}", tenantId, deviceId, credentials);
 
         final JsonObject payload = new JsonObject();
         payload.put(CredentialsConstants.CREDENTIALS_ENDPOINT, credentials);
-
 
         final JsonObject requestMsg = EventBusMessage.forOperation(CredentialsConstants.CredentialsAction.update.toString())
                 .setTenant(tenantId)

@@ -121,8 +121,13 @@ public abstract class AbstractHttpEndpoint<T> extends AbstractEndpoint implement
         } else {
             try {
                 if (ctx.getBody() != null) {
-                    ctx.put(KEY_REQUEST_BODY, payloadExtractor.apply(ctx));
-                    ctx.next();
+                    final var payload = payloadExtractor.apply(ctx);
+                    if (payload != null) {
+                        ctx.put(KEY_REQUEST_BODY, payload);
+                        ctx.next();
+                    } else {
+                        ctx.fail(new ClientErrorException(HttpURLConnection.HTTP_BAD_REQUEST, "Null body"));
+                    }
                 } else {
                     ctx.fail(new ClientErrorException(HttpURLConnection.HTTP_BAD_REQUEST, "Empty body"));
                 }
@@ -156,7 +161,14 @@ public abstract class AbstractHttpEndpoint<T> extends AbstractEndpoint implement
      * @param ctx The routing context to retrieve the JSON request body from.
      */
     protected void extractRequiredJsonArrayPayload(final RoutingContext ctx) {
-        extractRequiredJson(ctx, RoutingContext::getBodyAsJsonArray);
+        extractRequiredJson(ctx, body -> {
+            final var payload = body.getBodyAsJsonArray();
+            if (payload != null && payload.getList() == null) {
+                // work around eclipse-vertx/vert.x#2993
+                return null;
+            }
+            return payload;
+        });
     }
 
     /**
