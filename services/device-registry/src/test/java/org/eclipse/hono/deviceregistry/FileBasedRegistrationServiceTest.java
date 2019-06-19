@@ -46,6 +46,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 
+import io.opentracing.noop.NoopSpan;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
@@ -126,7 +127,7 @@ public class FileBasedRegistrationServiceTest extends AbstractRegistrationServic
         }).when(fileSystem).createFile(eq(registrationConfig.getFilename()), any(Handler.class));
 
         // WHEN persisting a dirty registry
-        registrationService.createDevice(TENANT, Optional.of(DEVICE), new Device());
+        registrationService.createDevice(TENANT, Optional.of(DEVICE), new Device(), NoopSpan.INSTANCE);
         registrationService.saveToFile().setHandler(ctx.succeeding(s -> ctx.verify(() -> {
             // THEN the file has been created
             verify(fileSystem).createFile(eq(registrationConfig.getFilename()), any(Handler.class));
@@ -389,15 +390,16 @@ public class FileBasedRegistrationServiceTest extends AbstractRegistrationServic
 
         // GIVEN a registry whose devices-per-tenant limit has been reached
         registrationConfig.setMaxDevicesPerTenant(1);
-        registrationService.createDevice(TENANT, Optional.of(DEVICE), new Device());
+        registrationService.createDevice(TENANT, Optional.of(DEVICE), new Device(), NoopSpan.INSTANCE);
 
         // WHEN registering an additional device for the tenant
         final OperationResult<Id> result = registrationService.createDevice(TENANT, Optional.of("newDevice"),
-                new Device());
+                new Device(), NoopSpan.INSTANCE);
 
         // THEN the result contains a FORBIDDEN status code and the device has not been added to the registry
         assertEquals(HttpURLConnection.HTTP_FORBIDDEN, result.getStatus());
-        assertEquals(HttpURLConnection.HTTP_NOT_FOUND, registrationService.readDevice(TENANT, "newDevice").getStatus());
+        assertEquals(HttpURLConnection.HTTP_NOT_FOUND,
+                registrationService.readDevice(TENANT, "newDevice", NoopSpan.INSTANCE).getStatus());
     }
 
     /**
@@ -409,15 +411,17 @@ public class FileBasedRegistrationServiceTest extends AbstractRegistrationServic
         // GIVEN a registry that has been configured to not allow modification of entries
         // which contains a device
         registrationConfig.setModificationEnabled(false);
-        registrationService.createDevice(TENANT, Optional.of(DEVICE), new Device().putExtension("value", "1"));
+        registrationService.createDevice(TENANT, Optional.of(DEVICE), new Device().putExtension("value", "1"),
+                NoopSpan.INSTANCE);
 
         // WHEN trying to update the device
         final OperationResult<Id> result = registrationService
-                .updateDevice(TENANT, DEVICE, new Device().putExtension("value", "2"), Optional.empty());
+                .updateDevice(TENANT, DEVICE, new Device().putExtension("value", "2"), Optional.empty(),
+                        NoopSpan.INSTANCE);
 
         // THEN the result contains a FORBIDDEN status code and the device has not been updated
         assertEquals(HttpURLConnection.HTTP_FORBIDDEN, result.getStatus());
-        final var device = registrationService.readDevice(TENANT, DEVICE);
+        final var device = registrationService.readDevice(TENANT, DEVICE, NoopSpan.INSTANCE);
         assertNotNull(device);
         assertNotNull(device.getPayload());
         assertNotNull(device.getPayload().getExtensions());
@@ -433,14 +437,16 @@ public class FileBasedRegistrationServiceTest extends AbstractRegistrationServic
         // GIVEN a registry that has been configured to not allow modification of entries
         // which contains a device
         registrationConfig.setModificationEnabled(false);
-        registrationService.createDevice(TENANT, Optional.of(DEVICE), new Device());
+        registrationService.createDevice(TENANT, Optional.of(DEVICE), new Device(), NoopSpan.INSTANCE);
 
         // WHEN trying to remove the device
-        final Result<Void> result = registrationService.deleteDevice(TENANT, DEVICE, Optional.empty());
+        final Result<Void> result = registrationService.deleteDevice(TENANT, DEVICE, Optional.empty(),
+                NoopSpan.INSTANCE);
 
         // THEN the result contains a FORBIDDEN status code and the device has not been removed
         assertEquals(HttpURLConnection.HTTP_FORBIDDEN, result.getStatus());
-        assertEquals(HttpURLConnection.HTTP_OK, registrationService.readDevice(TENANT, DEVICE).getStatus());
+        assertEquals(HttpURLConnection.HTTP_OK,
+                registrationService.readDevice(TENANT, DEVICE, NoopSpan.INSTANCE).getStatus());
     }
 
     /**
@@ -492,7 +498,7 @@ public class FileBasedRegistrationServiceTest extends AbstractRegistrationServic
         startupTracker
         .compose(ok -> {
             // WHEN adding a device
-                    registrationService.createDevice(TENANT, Optional.of(DEVICE), new Device());
+                    registrationService.createDevice(TENANT, Optional.of(DEVICE), new Device(), NoopSpan.INSTANCE);
             final Future<Void> shutdownTracker = Future.future();
                     registrationService.stop(shutdownTracker);
             return shutdownTracker;

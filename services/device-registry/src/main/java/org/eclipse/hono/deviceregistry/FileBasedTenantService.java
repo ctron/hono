@@ -426,6 +426,7 @@ public final class FileBasedTenantService extends AbstractVerticle implements Te
      * @param tenantId The identifier of the tenant.
      * @param tenantSpec The information to update the tenant with.
      * @param expectedResourceVersion The version identifier of the tenant information to update.
+     * @param span The tracing span to use.
      * @return The outcome of the operation indicating success or failure.
      * @throws NullPointerException if any of the parameters are {@code null}.
      */

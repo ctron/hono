@@ -620,7 +620,8 @@ public final class FileBasedCredentialsService extends AbstractVerticle
         resultHandler.handle(Future.succeededFuture(remove(tenantId, deviceId, resourceVersion, span)));
     }
 
-    private Result<Void> remove(final String tenantId, final String deviceId, final Optional<String> resourceVersion, Span span) {
+    private Result<Void> remove(final String tenantId, final String deviceId, final Optional<String> resourceVersion,
+            final Span span) {
 
         try {
             removeAllForDevice(tenantId, deviceId, resourceVersion, span);

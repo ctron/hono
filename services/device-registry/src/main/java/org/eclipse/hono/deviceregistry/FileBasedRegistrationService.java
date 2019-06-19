@@ -499,6 +499,7 @@ public class FileBasedRegistrationService extends AbstractVerticle
      * @param tenantId The tenant the device belongs to.
      * @param deviceId The ID of the device to add.
      * @param device Additional data to register with the device (may be {@code null}).
+     * @param span The tracing span to use.
      * @return The outcome of the operation indicating success or failure.
      */
     public OperationResult<Id> createDevice(final String tenantId, final Optional<String> deviceId,
