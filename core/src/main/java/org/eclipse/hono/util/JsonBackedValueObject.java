@@ -83,7 +83,7 @@ abstract class JsonBackedValueObject {
      * @return The property value or {@code null} if the property is not set or is of an unexpected type.
      * @throws NullPointerException if any of the parameters are {@code null}.
      */
-    protected final <T> T getProperty(final JsonObject parent, final String name, final Class<T> clazz) {
+    protected static final <T> T getProperty(final JsonObject parent, final String name, final Class<T> clazz) {
         return getProperty(parent, name, clazz, null);
     }
 
@@ -98,7 +98,7 @@ abstract class JsonBackedValueObject {
      * @return The property value or the given default value if the property is not set or is of an unexpected type.
      * @throws NullPointerException if any of parent or name are {@code null}.
      */
-    protected final <T> T getProperty(final JsonObject parent, final String name, final Class<T> clazz,
+    protected static final <T> T getProperty(final JsonObject parent, final String name, final Class<T> clazz,
             final T defaultValue) {
         final Object value = parent.getValue(Objects.requireNonNull(name), defaultValue);
         if (value == null) {
