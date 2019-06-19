@@ -64,6 +64,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.jupiter.api.Disabled;
 import org.junit.rules.TestName;
 import org.junit.rules.Timeout;
 import org.slf4j.Logger;
@@ -514,6 +515,7 @@ public abstract class CoapTestBase {
      * @param ctx The vert.x test context.
      */
     @Test
+    @Disabled("No possibility to add a malfored key anymore")
     public void testUploadFailsForMalformedSharedSecret(final TestContext ctx) {
 
         final Async setup = ctx.async();
