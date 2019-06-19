@@ -32,7 +32,7 @@ import org.eclipse.hono.service.management.device.Device;
 import org.eclipse.hono.util.Constants;
 import org.eclipse.hono.util.CredentialsConstants;
 import org.eclipse.hono.util.CredentialsObject;
-import org.junit.Ignore;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import io.vertx.core.Future;
@@ -146,7 +146,7 @@ abstract class CredentialsApiTests extends DeviceRegistryTestBase {
      */
     @Timeout(value = 5, timeUnit = TimeUnit.SECONDS)
     @Test
-    @Ignore("credentials ext concept")
+    @Disabled("credentials ext concept")
     public void testGetCredentialsByClientContext(final VertxTestContext ctx) {
 
         final String deviceId = getHelper().getRandomDeviceId(Constants.DEFAULT_TENANT);
@@ -184,7 +184,7 @@ abstract class CredentialsApiTests extends DeviceRegistryTestBase {
      */
     @Timeout(value = 5, timeUnit = TimeUnit.SECONDS)
     @Test
-    @Ignore("credentials ext concept")
+    @Disabled("credentials ext concept")
     public void testGetCredentialsFailsForNonMatchingClientContext(final VertxTestContext ctx) {
 
         final String deviceId = getHelper().getRandomDeviceId(Constants.DEFAULT_TENANT);
@@ -246,7 +246,7 @@ abstract class CredentialsApiTests extends DeviceRegistryTestBase {
 
     }
 
-    private void assertStandardProperties(
+    private static void assertStandardProperties(
             final CredentialsObject credentials,
             final String expectedDeviceId,
             final String expectedAuthId,
@@ -263,4 +263,5 @@ abstract class CredentialsApiTests extends DeviceRegistryTestBase {
         assertThat(credentials.getSecrets()).hasSize(expectedNumberOfSecrets);
 
     }
+
 }
