@@ -377,13 +377,6 @@ public final class FileBasedCredentialsService extends AbstractVerticle
         for (final Object authIdCredentialEntry : authIdCredentials.getValue()) {
             final JsonObject authIdCredential = (JsonObject) authIdCredentialEntry;
 
-            final Boolean enabled = authIdCredential.getBoolean("enabled", true);
-            if (Boolean.FALSE.equals(enabled)) {
-                // suppress all "disabled" ... continue search
-                continue;
-            }
-
-
             if (!type.equals(authIdCredential.getString(CredentialsConstants.FIELD_TYPE))) {
                 // auth-id doesn't match ... continue search
                 continue;
@@ -405,9 +398,29 @@ public final class FileBasedCredentialsService extends AbstractVerticle
                 }
             }
 
+            // copy
+
+            final var authIdCredentialCopy = authIdCredential.copy();
+
+            for (final Iterator<Object> i = authIdCredentialCopy.getJsonArray(CredentialsConstants.FIELD_SECRETS)
+                    .iterator(); i.hasNext();) {
+
+                final Object o = i.next();
+                if (!(o instanceof JsonObject)) {
+                    i.remove();
+                    continue;
+                }
+
+                final JsonObject secret = (JsonObject) o;
+                if (Boolean.FALSE.equals(secret.getBoolean(CredentialsConstants.FIELD_ENABLED, true))) {
+                    i.remove();
+                    continue;
+                }
+            }
+
             // return the first entry that matches
 
-            return authIdCredential;
+            return authIdCredentialCopy;
         }
 
         // we ended up with no match
@@ -475,7 +488,6 @@ public final class FileBasedCredentialsService extends AbstractVerticle
                 credentialsJson.put(CredentialsConstants.FIELD_AUTH_ID, authId);
                 credentialsJson.put(CredentialsConstants.FIELD_PAYLOAD_DEVICE_ID, deviceId);
                 credentialsJson.put(CredentialsConstants.FIELD_TYPE, type);
-                credentialsJson.put(CredentialsConstants.FIELD_ENABLED, secret.getEnabled());
                 json.add(credentialsJson);
             }
 
@@ -497,6 +509,7 @@ public final class FileBasedCredentialsService extends AbstractVerticle
             }
 
             final JsonObject secretJson = secretObject.copy();
+            secretJson.put(CredentialsConstants.FIELD_ENABLED, secret.getEnabled());
             secretJson.remove(CredentialsConstants.FIELD_TYPE);
             secretsJson.add(secretJson);
 

@@ -28,7 +28,6 @@ import java.util.concurrent.TimeUnit;
 import org.eclipse.hono.client.CredentialsClient;
 import org.eclipse.hono.service.credentials.AbstractCredentialsServiceTest;
 import org.eclipse.hono.service.management.credentials.CommonSecret;
-import org.eclipse.hono.service.management.device.Device;
 import org.eclipse.hono.util.Constants;
 import org.eclipse.hono.util.CredentialsConstants;
 import org.eclipse.hono.util.CredentialsObject;
@@ -88,7 +87,8 @@ abstract class CredentialsApiTests extends DeviceRegistryTestBase {
         getHelper().registry
                 .registerDevice(Constants.DEFAULT_TENANT, deviceId)
                 .compose(ok -> {
-                    return getHelper().registry.addCredentials(Constants.DEFAULT_TENANT, deviceId, credentials)
+                    return getHelper().registry
+                            .addCredentials(Constants.DEFAULT_TENANT, deviceId, credentials)
                             .compose(ok2 -> getClient(Constants.DEFAULT_TENANT))
                             .compose(client -> client.get(CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD, authId));
                 })
@@ -122,9 +122,10 @@ abstract class CredentialsApiTests extends DeviceRegistryTestBase {
         credentials.get(0).setEnabled(false);
 
         getHelper().registry
-                .registerDevice(Constants.DEFAULT_TENANT, deviceId, new Device())
+                .registerDevice(Constants.DEFAULT_TENANT, deviceId)
                 .compose(ok -> {
-                    return getHelper().registry.addCredentials(Constants.DEFAULT_TENANT, deviceId, credentials)
+                    return getHelper().registry
+                            .addCredentials(Constants.DEFAULT_TENANT, deviceId, credentials)
                             .compose(ok2 -> getClient(Constants.DEFAULT_TENANT))
                             .compose(client -> client.get(CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD, authId));
                 })

@@ -35,12 +35,14 @@ import org.eclipse.hono.service.management.device.Device;
 import org.eclipse.hono.service.management.device.DeviceManagementService;
 import org.eclipse.hono.util.CacheDirective;
 import org.eclipse.hono.util.CredentialsConstants;
+import org.eclipse.hono.util.CredentialsObject;
 import org.eclipse.hono.util.CredentialsResult;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.ThrowingConsumer;
 import org.springframework.security.crypto.bcrypt.BCrypt;
 
 import java.net.HttpURLConnection;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -445,6 +447,64 @@ public abstract class AbstractCredentialsServiceTest {
 
         phase5.setHandler(ctx.succeeding(s -> ctx.completeNow()));
 
+    }
+
+    /**
+     * Test fetching disabled credentials for the protocol adapter.
+     * 
+     * @param ctx The vert.x test context.
+     */
+    @Test
+    public void testDisableCredentials(final VertxTestContext ctx) {
+
+        final var tenantId = UUID.randomUUID().toString();
+        final var deviceId = UUID.randomUUID().toString();
+        final var authId = UUID.randomUUID().toString();
+
+        final var secret1 = createPasswordSecret(authId, "bar");
+        final var secret2 = createPasswordSecret(authId, "baz");
+        secret2.setEnabled(false);
+
+        final List<CommonSecret> credentials = Arrays.asList(secret1, secret2);
+
+        // create device
+
+        final Future<?> phase1 = Future.future();
+        getDeviceManagementService().createDevice(
+                tenantId, Optional.of(deviceId), new Device(), NoopSpan.INSTANCE,
+                ctx.succeeding(s -> phase1.complete()));
+
+        // set credentials
+
+        final Future<?> phase2 = Future.future();
+
+        phase1.setHandler(ctx.succeeding(n -> {
+            getCredentialsManagementService()
+                    .set(tenantId, deviceId, Optional.empty(), credentials, NoopSpan.INSTANCE,
+                            ctx.succeeding(s -> phase2.complete()));
+        }));
+
+        // validate credentials
+
+        final Future<?> phase3 = Future.future();
+
+        phase2.setHandler(ctx.succeeding(n -> {
+            getCredentialsService().get(tenantId, CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD,
+                    authId, ctx.succeeding(s -> ctx.verify(() -> {
+
+                        assertEquals(HttpURLConnection.HTTP_OK, s.getStatus());
+
+                        final CredentialsObject creds = s.getPayload().mapTo(CredentialsObject.class);
+
+                        assertEquals(authId, creds.getAuthId());
+                        assertEquals(CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD, creds.getType());
+                        assertEquals(1, creds.getSecrets().size());
+
+                        phase3.complete();
+            })));
+        }));
+
+        phase3.setHandler(ctx.succeeding(s -> ctx.completeNow()));
     }
 
     /**
