@@ -21,9 +21,9 @@ import io.vertx.core.Verticle;
 import org.eclipse.hono.service.AbstractApplication;
 import org.eclipse.hono.service.HealthCheckProvider;
 import org.eclipse.hono.service.auth.AuthenticationService;
-import org.eclipse.hono.service.credentials.BaseCredentialsService;
-import org.eclipse.hono.service.registration.BaseRegistrationService;
-import org.eclipse.hono.service.tenant.BaseTenantService;
+import org.eclipse.hono.service.credentials.CompleteBaseCredentialsService;
+import org.eclipse.hono.service.registration.CompleteBaseRegistrationService;
+import org.eclipse.hono.service.tenant.CompleteBaseTenantService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
@@ -45,9 +45,9 @@ import io.vertx.core.Future;
 public class Application extends AbstractApplication {
 
     private AuthenticationService authenticationService;
-    private BaseCredentialsService<?> credentialsService;
-    private BaseRegistrationService<?> registrationService;
-    private BaseTenantService<?> tenantService;
+    private CompleteBaseCredentialsService<?> credentialsService;
+    private CompleteBaseRegistrationService<?> registrationService;
+    private CompleteBaseTenantService<?> tenantService;
 
 
     /**
@@ -57,7 +57,7 @@ public class Application extends AbstractApplication {
      * @throws NullPointerException if service is {@code null}.
      */
     @Autowired
-    public final void setCredentialsService(final BaseCredentialsService<?> credentialsService) {
+    public final void setCredentialsService(final CompleteBaseCredentialsService<?> credentialsService) {
         this.credentialsService = Objects.requireNonNull(credentialsService);
     }
 
@@ -68,7 +68,7 @@ public class Application extends AbstractApplication {
      * @throws NullPointerException if service is {@code null}.
      */
     @Autowired
-    public final void setRegistrationService(final BaseRegistrationService<?> registrationService) {
+    public final void setRegistrationService(final CompleteBaseRegistrationService<?> registrationService) {
         this.registrationService = Objects.requireNonNull(registrationService);
     }
 
@@ -79,7 +79,7 @@ public class Application extends AbstractApplication {
      * @throws NullPointerException if service is {@code null}.
      */
     @Autowired
-    public final void setTenantService(final BaseTenantService<?> tenantService) {
+    public final void setTenantService(final CompleteBaseTenantService<?> tenantService) {
         this.tenantService = Objects.requireNonNull(tenantService);
     }
 
