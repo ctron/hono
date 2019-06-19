@@ -219,7 +219,6 @@ public class CredentialsHttpIT {
                         HttpURLConnection.HTTP_NO_CONTENT)
                 .compose(ar -> {
                     final var etag = ar.get(HTTP_HEADER_ETAG);
-                    System.out.println(ar);
                     assertNotNull("missing etag header", etag);
                     // now try to update credentials with the same version
                     return registry.updateCredentialsWithVersion(TENANT, deviceId,
