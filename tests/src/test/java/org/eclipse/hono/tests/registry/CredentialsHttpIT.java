@@ -221,8 +221,8 @@ public class CredentialsHttpIT {
                     final var etag = ar.get(HTTP_HEADER_ETAG);
                     assertNotNull("missing etag header", etag);
                     // now try to update credentials with the same version
-                    return registry.updateCredentialsWithVersion(TENANT, deviceId,
-                            Collections.singleton(hashedPasswordSecret), etag, HttpURLConnection.HTTP_PRECON_FAILED);
+                    return registry.updateCredentials(TENANT, deviceId,
+                            Collections.singleton(hashedPasswordSecret), HttpURLConnection.HTTP_PRECON_FAILED);
                 })
                 .setHandler(context.asyncAssertSuccess());
 
