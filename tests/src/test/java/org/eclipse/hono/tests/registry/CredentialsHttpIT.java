@@ -409,7 +409,7 @@ public class CredentialsHttpIT {
                 HttpURLConnection.HTTP_NO_CONTENT)
             .compose(ar -> registry.getCredentials(TENANT, deviceId))
             .setHandler(context.asyncAssertSuccess(b -> {
-                context.assertEquals(hashedPasswordSecret, b.toJsonArray());
+                context.assertEquals(JsonObject.mapFrom(hashedPasswordSecret), b.toJsonArray().getJsonObject(0));
             }));
     }
 

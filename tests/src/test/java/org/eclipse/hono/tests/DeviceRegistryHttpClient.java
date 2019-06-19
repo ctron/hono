@@ -615,7 +615,7 @@ public final class DeviceRegistryHttpClient {
             final String contentType,
             final int expectedStatusCode) {
 
-        return updateCredentialsRaw(tenantId, deviceId, Json.encodeToBuffer(credentialsSpec), contentType,
+        return updateCredentialsRaw(tenantId, deviceId, Json.encodeToBuffer(credentialsSpec.toArray(CommonSecret[]::new)), contentType,
                 expectedStatusCode);
     }
 
