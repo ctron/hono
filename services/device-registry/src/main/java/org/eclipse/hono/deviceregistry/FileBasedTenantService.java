@@ -484,9 +484,7 @@ public final class FileBasedTenantService extends AbstractVerticle implements Te
 
         tenant.setEnabled(tenantObject.getProperty(TenantConstants.FIELD_ENABLED, null));
 
-        Optional.ofNullable(tenantObject.getProperty("ext"))
-                .filter(JsonObject.class::isInstance)
-                .map(JsonObject.class::cast)
+        Optional.ofNullable(tenantObject.getProperty("ext", JsonObject.class))
                 .map(JsonObject::getMap)
                 .ifPresent(tenant::setExtensions);
 
@@ -500,9 +498,7 @@ public final class FileBasedTenantService extends AbstractVerticle implements Te
                 .map(json -> json.mapTo(ResourceLimits.class))
                 .ifPresent(tenant::setLimits);
 
-        Optional.ofNullable(tenantObject.getProperty(TenantConstants.FIELD_PAYLOAD_TRUSTED_CA))
-                .filter(JsonObject.class::isInstance)
-                .map(JsonObject.class::cast)
+        Optional.ofNullable(tenantObject.getProperty(TenantConstants.FIELD_PAYLOAD_TRUSTED_CA, JsonObject.class))
                 .map(json -> json.mapTo(TrustedCertificateAuthority.class))
                 .ifPresent(tenant::setTrustedCertificateAuthority);
 

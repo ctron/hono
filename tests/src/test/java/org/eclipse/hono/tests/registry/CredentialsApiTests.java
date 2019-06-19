@@ -170,7 +170,7 @@ abstract class CredentialsApiTests extends DeviceRegistryTestBase {
                                 authId,
                                 CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD,
                                 2);
-                        assertThat((String) result.getProperty("client-id")).isEqualTo("gateway-one");
+                        assertThat(result.getProperty("client-id", String.class)).isEqualTo("gateway-one");
                     });
                     ctx.completeNow();
         }));
