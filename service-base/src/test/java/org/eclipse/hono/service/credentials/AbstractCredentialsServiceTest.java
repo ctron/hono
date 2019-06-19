@@ -98,7 +98,7 @@ public abstract class AbstractCredentialsServiceTest {
      * @return {@code true} if the implementation supports resource versions, {@code false} otherwise.
      */
     protected boolean supportsResourceVersion() {
-        return false; // FIXME: back to true
+        return true;
     }
 
     /**
@@ -212,7 +212,7 @@ public abstract class AbstractCredentialsServiceTest {
                 // assert a few basics, optionals may be empty
                 // but must not be null
                 assertNotNull(s3.getCacheDirective());
-                assertResourceVersion(s3.getResourceVersion());
+                assertResourceVersion(s3);
 
                 mangementValidation.accept(s3);
 
@@ -247,33 +247,38 @@ public abstract class AbstractCredentialsServiceTest {
 
             getCredentialsManagementService().set(tenantId, deviceId, Optional.empty(),
                     Collections.singletonList(secret), NoopSpan.INSTANCE,
-                    ctx.succeeding(s2 -> {
+                    ctx.succeeding(s2 -> ctx.verify(() -> {
 
-                        ctx.verify(() -> {
+                        assertEquals(HTTP_NO_CONTENT, s2.getStatus());
+                        assertResourceVersion(s2);
 
-                            assertEquals(HTTP_NO_CONTENT, s2.getStatus());
-                            assertResourceVersion(s2.getResourceVersion());
+                        assertGet(ctx, tenantId, deviceId, authId,
+                                CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD,
+                                r -> {
+                                    assertEquals(HTTP_OK, r.getStatus());
+                                },
+                                r -> {
+                                    assertEquals(HTTP_OK, r.getStatus());
+                                },
+                                ctx::completeNow);
 
-                            assertGet(ctx, tenantId, deviceId, authId,
-                                    CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD,
-                                    r -> {
-                                        assertEquals(HTTP_OK, r.getStatus());
-                                    },
-                                    r -> {
-                                        assertEquals(HTTP_OK, r.getStatus());
-                                    },
-                                    ctx::completeNow);
-
-                        });
-
-                    }));
+                    })));
 
         });
 
     }
 
-    private void assertResourceVersion(final Optional<String> resourceVersion) {
+    private void assertResourceVersion(final OperationResult<?> result) {
+        if (result == null) {
+            return;
+        }
+
+        final var resourceVersion = result.getResourceVersion();
         assertNotNull(resourceVersion);
+
+        if (result.isError()) {
+            return;
+        }
 
         if (!supportsResourceVersion()) {
             return;
@@ -303,26 +308,22 @@ public abstract class AbstractCredentialsServiceTest {
 
             getCredentialsManagementService().set(tenantId, deviceId, Optional.empty(),
                     Collections.singletonList(secret), NoopSpan.INSTANCE,
-                    ctx.succeeding(s2 -> {
+                    ctx.succeeding(s2 -> ctx.verify(() -> {
 
-                        ctx.verify(() -> {
+                        assertResourceVersion(s2);
+                        assertEquals(HTTP_NO_CONTENT, s2.getStatus());
 
-                            assertResourceVersion(s2.getResourceVersion());
-                            assertEquals(HTTP_NO_CONTENT, s2.getStatus());
+                        assertGet(ctx, tenantId, deviceId, authId,
+                                CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD,
+                                r -> {
+                                    assertEquals(HTTP_OK, r.getStatus());
+                                },
+                                r -> {
+                                    assertEquals(HTTP_OK, r.getStatus());
+                                },
+                                phase1::complete);
 
-                            assertGet(ctx, tenantId, deviceId, authId,
-                                    CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD,
-                                    r -> {
-                                        assertEquals(HTTP_OK, r.getStatus());
-                                    },
-                                    r -> {
-                                        assertEquals(HTTP_OK, r.getStatus());
-                                    },
-                                    phase1::complete);
-
-                        });
-
-                    }));
+                    })));
 
         });
 

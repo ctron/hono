@@ -207,8 +207,10 @@ public class FileBasedDeviceBackend implements DeviceBackend {
                 final Future<OperationResult<Device>> readFuture = Future.future();
                 registrationService.readDevice(tenantId, deviceId, span, readFuture);
                 return readFuture.map(d -> {
-                    if (d.getStatus() == 200) {
-                        return OperationResult.ok(200, Collections.<CommonSecret> emptyList(), r.getCacheDirective(),
+                    if (d.getStatus() == HttpURLConnection.HTTP_OK) {
+                        return OperationResult.ok(HttpURLConnection.HTTP_OK,
+                                Collections.<CommonSecret> emptyList(),
+                                r.getCacheDirective(),
                                 r.getResourceVersion());
                     } else {
                         return r;

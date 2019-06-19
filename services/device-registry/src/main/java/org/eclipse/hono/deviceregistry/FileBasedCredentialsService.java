@@ -16,6 +16,7 @@ package org.eclipse.hono.deviceregistry;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -23,6 +24,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -83,7 +85,9 @@ public final class FileBasedCredentialsService extends AbstractVerticle
     private static final Logger log = LoggerFactory.getLogger(FileBasedCredentialsService.class);
 
     // <tenantId, <authId, credentialsData[]>>
-    private final Map<String, Map<String, Versioned<JsonArray>>> credentials = new HashMap<>();
+    private final Map<String, Map<String, JsonArray>> credentials = new HashMap<>();
+    // <tenantId, <deviceId, version>>
+    private final Map<String, Map<String, String>> versions = new HashMap<>();
     private boolean running = false;
     private boolean dirty = false;
     private FileBasedCredentialsConfigProperties config;
@@ -192,16 +196,16 @@ public final class FileBasedCredentialsService extends AbstractVerticle
     int addCredentialsForTenant(final JsonObject tenant) {
         int count = 0;
         final String tenantId = tenant.getString(FIELD_TENANT);
-        final Map<String, Versioned<JsonArray>> credentialsMap = new HashMap<>();
+        final Map<String, JsonArray> credentialsMap = new HashMap<>();
         for (final Object credentialsObj : tenant.getJsonArray(ARRAY_CREDENTIALS)) {
             final JsonObject credentials = (JsonObject) credentialsObj;
-            final Versioned<JsonArray> authIdCredentials;
+            final JsonArray authIdCredentials;
             if (credentialsMap.containsKey(credentials.getString(CredentialsConstants.FIELD_AUTH_ID))) {
                 authIdCredentials = credentialsMap.get(credentials.getString(CredentialsConstants.FIELD_AUTH_ID));
             } else {
-                authIdCredentials = new Versioned<>(new JsonArray());
+                authIdCredentials = new JsonArray();
             }
-            authIdCredentials.getValue().add(credentials);
+            authIdCredentials.add(credentials);
             credentialsMap.put(credentials.getString(CredentialsConstants.FIELD_AUTH_ID), authIdCredentials);
             count++;
         }
@@ -231,10 +235,10 @@ public final class FileBasedCredentialsService extends AbstractVerticle
             return checkFileExists(true).compose(s -> {
                 final AtomicInteger idCount = new AtomicInteger();
                 final JsonArray tenants = new JsonArray();
-                for (final Entry<String, Map<String, Versioned<JsonArray>>> entry : credentials.entrySet()) {
+                for (final Entry<String, Map<String, JsonArray>> entry : credentials.entrySet()) {
                     final JsonArray credentialsArray = new JsonArray();
-                    for (final Versioned<JsonArray> singleAuthIdCredentials : entry.getValue().values()) {
-                        credentialsArray.addAll(singleAuthIdCredentials.getValue().copy());
+                    for (final JsonArray singleAuthIdCredentials : entry.getValue().values()) {
+                        credentialsArray.addAll(singleAuthIdCredentials.copy());
                         idCount.incrementAndGet();
                     }
                     tenants.add(
@@ -360,19 +364,19 @@ public final class FileBasedCredentialsService extends AbstractVerticle
         Objects.requireNonNull(authId);
         Objects.requireNonNull(type);
 
-        final Map<String, Versioned<JsonArray>> credentialsForTenant = credentials.get(tenantId);
+        final Map<String, JsonArray> credentialsForTenant = credentials.get(tenantId);
         if (credentialsForTenant == null) {
             TracingHelper.logError(span, "no credentials found for tenant");
             return null;
         }
 
-        final Versioned<JsonArray> authIdCredentials = credentialsForTenant.get(authId);
+        final JsonArray authIdCredentials = credentialsForTenant.get(authId);
         if (authIdCredentials == null) {
             TracingHelper.logError(span, "no credentials found for auth-id");
             return null;
         }
 
-        for (final Object authIdCredentialEntry : authIdCredentials.getValue()) {
+        for (final Object authIdCredentialEntry : authIdCredentials) {
             final JsonObject authIdCredential = (JsonObject) authIdCredentialEntry;
 
             if (!type.equals(authIdCredential.getString(CredentialsConstants.FIELD_TYPE))) {
@@ -443,10 +447,19 @@ public final class FileBasedCredentialsService extends AbstractVerticle
     private OperationResult<Void> set(final String tenantId, final String deviceId,
             final Optional<String> resourceVersion, final Span span, final List<CommonSecret> secrets) {
 
+        if (!checkResourceVersion(tenantId, deviceId, resourceVersion)) {
+            TracingHelper.logError(span, "Resource version mismatch");
+            return OperationResult.empty(HttpURLConnection.HTTP_PRECON_FAILED);
+        }
+
+        // change version
+        final var newVersion = UUID.randomUUID().toString();
+        setResourceVersion(tenantId, deviceId, newVersion);
+
         // clean out all existing credentials for this device
 
         try {
-            removeAllForDevice(tenantId, deviceId, resourceVersion, span);
+            removeAllForDevice(tenantId, deviceId, span);
         } catch (final ClientErrorException e) {
             TracingHelper.logError(span, e);
             return OperationResult.empty(e.getErrorCode());
@@ -454,7 +467,7 @@ public final class FileBasedCredentialsService extends AbstractVerticle
 
         // authId->credentials[]
 
-        final Map<String, Versioned<JsonArray>> credentialsForTenant = createOrGetCredentialsForTenant(tenantId);
+        final Map<String, JsonArray> credentialsForTenant = createOrGetCredentialsForTenant(tenantId);
 
         // now add the new ones
 
@@ -464,14 +477,7 @@ public final class FileBasedCredentialsService extends AbstractVerticle
             final JsonObject secretObject = JsonObject.mapFrom(secret);
             final String type = secretObject.getString(CredentialsConstants.FIELD_TYPE);
 
-            final var credentials = createOrGetAuthIdCredentials(authId, credentialsForTenant);
-
-            if (!credentials.isVersionMatch(resourceVersion)) {
-                TracingHelper.logError(span, "Resource version mismatch");
-                return OperationResult.empty(HttpURLConnection.HTTP_PRECON_FAILED);
-            }
-
-            final JsonArray json = credentials.getValue();
+            final var json = createOrGetAuthIdCredentials(authId, credentialsForTenant);
 
             // find credentials - matching by type
 
@@ -511,10 +517,10 @@ public final class FileBasedCredentialsService extends AbstractVerticle
             secretJson.remove(CredentialsConstants.FIELD_TYPE);
             secretsJson.add(secretJson);
 
-            credentialsForTenant.put(authId, new Versioned<>(json));
+            credentialsForTenant.put(authId, json);
         }
 
-        return OperationResult.ok(HttpURLConnection.HTTP_NO_CONTENT, null, Optional.empty(), Optional.empty());
+        return OperationResult.ok(HttpURLConnection.HTTP_NO_CONTENT, null, Optional.empty(), Optional.of(newVersion));
     }
 
     /**
@@ -522,23 +528,16 @@ public final class FileBasedCredentialsService extends AbstractVerticle
      * 
      * @param tenantId The tenant to process.
      * @param deviceId The device id to look for.
-     * @param resourceVersion The expected resource version
      */
-    private void removeAllForDevice(final String tenantId, final String deviceId,
-            final Optional<String> resourceVersion, final Span span) {
+    private void removeAllForDevice(final String tenantId, final String deviceId, final Span span) {
 
         final boolean canModify = getConfig().isModificationEnabled();
 
-        final Map<String, Versioned<JsonArray>> credentialsForTenant = createOrGetCredentialsForTenant(tenantId);
+        final Map<String, JsonArray> credentialsForTenant = createOrGetCredentialsForTenant(tenantId);
 
-        for (final Versioned<JsonArray> versionedCredentials : credentialsForTenant.values()) {
+        for (final JsonArray versionedCredentials : credentialsForTenant.values()) {
 
-            if (!versionedCredentials.isVersionMatch(resourceVersion)) {
-                TracingHelper.logError(span, "Resource Version mismatch.");
-                throw new ClientErrorException(HttpURLConnection.HTTP_PRECON_FAILED);
-            }
-
-            for (final Iterator<Object> i = versionedCredentials.getValue().iterator(); i.hasNext();) {
+            for (final Iterator<Object> i = versionedCredentials.iterator(); i.hasNext();) {
 
                 final Object o = i.next();
 
@@ -600,19 +599,21 @@ public final class FileBasedCredentialsService extends AbstractVerticle
         Objects.requireNonNull(deviceId);
         Objects.requireNonNull(resultHandler);
 
-        final Map<String, Versioned<JsonArray>> credentialsForTenant = credentials.get(tenantId);
+        final Map<String, JsonArray> credentialsForTenant = credentials.get(tenantId);
         if (credentialsForTenant == null) {
             TracingHelper.logError(span, "No credentials found for tenant");
-            resultHandler.handle(Future.succeededFuture(Result.from(HTTP_NOT_FOUND, OperationResult::empty)));
+            resultHandler.handle(Future.succeededFuture(OperationResult.ok(HTTP_NOT_FOUND, null, Optional.empty(),
+                    Optional.of(getOrCreateResourceVersion(tenantId, deviceId)))));
         } else {
             final JsonArray matchingCredentials = new JsonArray();
             // iterate over all credentials per auth-id in order to find credentials matching the given device
-            for (final Versioned<JsonArray> credentialsForAuthId : credentialsForTenant.values()) {
-                findCredentialsForDevice(credentialsForAuthId.getValue(), deviceId, matchingCredentials);
+            for (final JsonArray credentialsForAuthId : credentialsForTenant.values()) {
+                findCredentialsForDevice(credentialsForAuthId, deviceId, matchingCredentials);
             }
             if (matchingCredentials.isEmpty()) {
                 TracingHelper.logError(span, "No credentials found for device");
-                resultHandler.handle(Future.succeededFuture(Result.from(HTTP_NOT_FOUND, OperationResult::empty)));
+                resultHandler.handle(Future.succeededFuture(OperationResult.ok(HTTP_NOT_FOUND, null, Optional.empty(),
+                        Optional.of(getOrCreateResourceVersion(tenantId, deviceId)))));
             } else {
                 final List<CommonSecret> secrets = new ArrayList<>();
                 for (final Object credential : matchingCredentials) {
@@ -630,7 +631,7 @@ public final class FileBasedCredentialsService extends AbstractVerticle
                                 secrets,
                                 //TODO check cache directive
                                 Optional.empty(),
-                                Optional.empty())));
+                                Optional.of(getOrCreateResourceVersion(tenantId, deviceId)))));
 
             }
         }
@@ -653,14 +654,58 @@ public final class FileBasedCredentialsService extends AbstractVerticle
     private Result<Void> remove(final String tenantId, final String deviceId, final Optional<String> resourceVersion,
             final Span span) {
 
+        if (!checkResourceVersion(tenantId, deviceId, resourceVersion)) {
+            TracingHelper.logError(span, "Resource version mismatch");
+            return Result.from(HttpURLConnection.HTTP_PRECON_FAILED);
+        }
+
+        setResourceVersion(tenantId, deviceId, null);
+
         try {
-            removeAllForDevice(tenantId, deviceId, resourceVersion, span);
+            removeAllForDevice(tenantId, deviceId, span);
         } catch (final ClientErrorException e) {
             TracingHelper.logError(span, e);
             return Result.from(e.getErrorCode());
         }
 
         return Result.from(HttpURLConnection.HTTP_NO_CONTENT);
+    }
+
+    private boolean checkResourceVersion(final String tenantId, final String deviceId, final Optional<String> resourceVersion) {
+
+        if (resourceVersion.isEmpty()) {
+            return true;
+        }
+
+        final String version = versions.getOrDefault(tenantId, Collections.emptyMap()).get(deviceId);
+        if (version == null) {
+            return true;
+        }
+
+        return version.equals(resourceVersion.get());
+    }
+
+    private String setResourceVersion(final String tenantId, final String deviceId, final String version) {
+
+        if (version != null) {
+
+            versions
+                    .computeIfAbsent(tenantId, key -> new HashMap<>())
+                    .put(deviceId, version);
+
+        } else {
+
+            versions.getOrDefault(tenantId, Collections.emptyMap()).remove(deviceId);
+
+        }
+
+        return version;
+
+    }
+
+    private String getOrCreateResourceVersion(final String tenantId, final String deviceId) {
+        return versions.computeIfAbsent(tenantId, key -> new HashMap<>())
+                .computeIfAbsent(deviceId, key -> UUID.randomUUID().toString());
     }
 
     @Override
@@ -681,13 +726,13 @@ public final class FileBasedCredentialsService extends AbstractVerticle
      * @param tenantId The tenant to get
      * @return The map, never returns {@code null}.
      */
-    private Map<String, Versioned<JsonArray>> createOrGetCredentialsForTenant(final String tenantId) {
+    private Map<String, JsonArray> createOrGetCredentialsForTenant(final String tenantId) {
         return credentials.computeIfAbsent(tenantId, id -> new HashMap<>());
     }
 
-    private Versioned<JsonArray> createOrGetAuthIdCredentials(final String authId,
-            final Map<String, Versioned<JsonArray>> credentialsForTenant) {
-        return credentialsForTenant.computeIfAbsent(authId, id -> new Versioned<>(new JsonArray()));
+    private JsonArray createOrGetAuthIdCredentials(final String authId,
+            final Map<String, JsonArray> credentialsForTenant) {
+        return credentialsForTenant.computeIfAbsent(authId, id -> new JsonArray());
     }
 
     private CacheDirective getCacheDirective(final String type) {
