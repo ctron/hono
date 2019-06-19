@@ -403,22 +403,22 @@ public final class FileBasedCredentialsService extends AbstractVerticle
     }
 
     @Override
-    //TODO do something with the span ?
     public void set(final String tenantId, final String deviceId, final Optional<String> resourceVersion,
             final List<CommonSecret> secrets, final Span span, final Handler<AsyncResult<OperationResult<Void>>> resultHandler) {
 
-        resultHandler.handle(Future.succeededFuture(set(tenantId, deviceId, resourceVersion, secrets)));
+        resultHandler.handle(Future.succeededFuture(set(tenantId, deviceId, resourceVersion, span, secrets)));
 
     }
 
     private OperationResult<Void> set(final String tenantId, final String deviceId,
-            final Optional<String> resourceVersion, final List<CommonSecret> secrets) {
+            final Optional<String> resourceVersion, final Span span, final List<CommonSecret> secrets) {
 
         // clean out all existing credentials for this device
 
         try {
-            removeAllForDevice(tenantId, deviceId, resourceVersion);
+            removeAllForDevice(tenantId, deviceId, resourceVersion, span);
         } catch (final ClientErrorException e) {
+            TracingHelper.logError(span, e);
             return OperationResult.empty(e.getErrorCode());
         }
 
@@ -437,6 +437,7 @@ public final class FileBasedCredentialsService extends AbstractVerticle
             final var credentials = createOrGetAuthIdCredentials(authId, credentialsForTenant);
 
             if (!credentials.isVersionMatch(resourceVersion)) {
+                TracingHelper.logError(span, "Resource version mismatch");
                 return OperationResult.empty(HttpURLConnection.HTTP_PRECON_FAILED);
             }
 
@@ -461,6 +462,7 @@ public final class FileBasedCredentialsService extends AbstractVerticle
 
             if (!deviceId.equals(credentialsJson.getString(CredentialsConstants.FIELD_PAYLOAD_DEVICE_ID))) {
                 // found an entry for another device, with the same auth-id
+                TracingHelper.logError(span, "Auth-id already used for another device");
                 return OperationResult.empty(HttpURLConnection.HTTP_CONFLICT);
             }
 
@@ -493,7 +495,7 @@ public final class FileBasedCredentialsService extends AbstractVerticle
      * @param resourceVersion The expected resource version
      */
     private void removeAllForDevice(final String tenantId, final String deviceId,
-            final Optional<String> resourceVersion) {
+            final Optional<String> resourceVersion, final Span span) {
 
         final boolean canModify = getConfig().isModificationEnabled();
 
@@ -502,6 +504,7 @@ public final class FileBasedCredentialsService extends AbstractVerticle
         for (final Versioned<JsonArray> versionedCredentials : credentialsForTenant.values()) {
 
             if (!versionedCredentials.isVersionMatch(resourceVersion)) {
+                TracingHelper.logError(span, "Resource Version mismatch.");
                 throw new ClientErrorException(HttpURLConnection.HTTP_PRECON_FAILED);
             }
 
@@ -522,6 +525,7 @@ public final class FileBasedCredentialsService extends AbstractVerticle
                 // check if we may overwrite
 
                 if (!canModify) {
+                    TracingHelper.logError(span, "Modification is disabled for the Credentials service.");
                     throw new ClientErrorException(HttpURLConnection.HTTP_FORBIDDEN);
                 }
 
@@ -559,7 +563,6 @@ public final class FileBasedCredentialsService extends AbstractVerticle
     }
 
     @Override
-    //TODO do something with the span ?
     public void get(final String tenantId, final String deviceId, final Span span,
             final Handler<AsyncResult<OperationResult<List<CommonSecret>>>> resultHandler) {
 
@@ -569,6 +572,7 @@ public final class FileBasedCredentialsService extends AbstractVerticle
 
         final Map<String, Versioned<JsonArray>> credentialsForTenant = credentials.get(tenantId);
         if (credentialsForTenant == null) {
+            TracingHelper.logError(span, "No credentials found for tenant");
             resultHandler.handle(Future.succeededFuture(Result.from(HTTP_NOT_FOUND, OperationResult::empty)));
         } else {
             final JsonArray matchingCredentials = new JsonArray();
@@ -577,6 +581,7 @@ public final class FileBasedCredentialsService extends AbstractVerticle
                 findCredentialsForDevice(credentialsForAuthId.getValue(), deviceId, matchingCredentials);
             }
             if (matchingCredentials.isEmpty()) {
+                TracingHelper.logError(span, "No credentials found for device");
                 resultHandler.handle(Future.succeededFuture(Result.from(HTTP_NOT_FOUND, OperationResult::empty)));
             } else {
                 final List<CommonSecret> secrets = new ArrayList<>();
@@ -603,7 +608,6 @@ public final class FileBasedCredentialsService extends AbstractVerticle
 
 
     @Override
-    //TODO do something with the span ?
     public void remove(final String tenantId, final String deviceId, final Optional<String> resourceVersion,
             final Span span, final Handler<AsyncResult<Result<Void>>> resultHandler) {
         Objects.requireNonNull(tenantId);
@@ -613,14 +617,15 @@ public final class FileBasedCredentialsService extends AbstractVerticle
 
         log.debug("removing credentials for device [tenant-id: {}, device-id: {}]", tenantId, deviceId);
 
-        resultHandler.handle(Future.succeededFuture(remove(tenantId, deviceId, resourceVersion)));
+        resultHandler.handle(Future.succeededFuture(remove(tenantId, deviceId, resourceVersion, span)));
     }
 
-    private Result<Void> remove(final String tenantId, final String deviceId, final Optional<String> resourceVersion) {
+    private Result<Void> remove(final String tenantId, final String deviceId, final Optional<String> resourceVersion, Span span) {
 
         try {
-            removeAllForDevice(tenantId, deviceId, resourceVersion);
+            removeAllForDevice(tenantId, deviceId, resourceVersion, span);
         } catch (final ClientErrorException e) {
+            TracingHelper.logError(span, e);
             return Result.from(e.getErrorCode());
         }
 

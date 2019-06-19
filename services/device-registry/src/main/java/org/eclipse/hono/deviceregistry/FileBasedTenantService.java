@@ -248,19 +248,19 @@ public final class FileBasedTenantService extends AbstractVerticle implements Te
     }
 
     @Override
-    // TODO : do something with the Span
     public void read(final String tenantId, final Span span, final Handler<AsyncResult<OperationResult<Tenant>>> resultHandler) {
         Objects.requireNonNull(tenantId);
         Objects.requireNonNull(resultHandler);
 
-        resultHandler.handle(Future.succeededFuture(getTenantObjectResult(tenantId)));
+        resultHandler.handle(Future.succeededFuture(getTenantObjectResult(tenantId, span)));
     }
 
-    OperationResult<Tenant> getTenantObjectResult(final String tenantId){
+    OperationResult<Tenant> getTenantObjectResult(final String tenantId, final Span span){
 
         final Versioned<TenantObject> tenant = tenants.get(tenantId);
 
         if (tenant == null) {
+            TracingHelper.logError(span, "Tenant not found");
             return OperationResult.empty(HTTP_NOT_FOUND);
         } else {
             return OperationResult.ok(
@@ -311,7 +311,6 @@ public final class FileBasedTenantService extends AbstractVerticle implements Te
     }
 
     @Override
-    //TODO : Do something with the span
     public void remove(final String tenantId, final Optional<String> resourceVersion, final Span span,
             final Handler<AsyncResult<Result<Void>>> resultHandler) {
 
@@ -319,10 +318,10 @@ public final class FileBasedTenantService extends AbstractVerticle implements Te
         Objects.requireNonNull(resultHandler);
         Objects.requireNonNull(resourceVersion);
 
-        resultHandler.handle(Future.succeededFuture(removeTenant(tenantId, resourceVersion)));
+        resultHandler.handle(Future.succeededFuture(removeTenant(tenantId, resourceVersion, span)));
     }
 
-    Result<Void> removeTenant(final String tenantId, final Optional<String> resourceVersion) {
+    Result<Void> removeTenant(final String tenantId, final Optional<String> resourceVersion, final Span span) {
 
         Objects.requireNonNull(tenantId);
 
@@ -334,18 +333,20 @@ public final class FileBasedTenantService extends AbstractVerticle implements Te
                     dirty = true;
                     return Result.from(HTTP_NO_CONTENT);
                 } else {
+                    TracingHelper.logError(span, "Resource Version mismatch.");
                     return Result.from(HTTP_PRECON_FAILED);
                 }
             } else {
+                TracingHelper.logError(span, "Tenant not found.");
                 return Result.from(HTTP_NOT_FOUND);
             }
         } else {
+            TracingHelper.logError(span, "Modification is disabled for Tenant Service");
             return Result.from(HTTP_FORBIDDEN);
         }
     }
 
     @Override
-    // TODO : do something with the Span
     public void add(final Optional<String> tenantId, final JsonObject tenantSpec,
             final Span span, final Handler<AsyncResult<OperationResult<Id>>> resultHandler) {
 
@@ -354,7 +355,7 @@ public final class FileBasedTenantService extends AbstractVerticle implements Te
         Objects.requireNonNull(resultHandler);
 
         final String tenantIdValue = tenantId.orElseGet(this::generateTenantId);
-        resultHandler.handle(Future.succeededFuture(add(tenantIdValue, tenantSpec)));
+        resultHandler.handle(Future.succeededFuture(add(tenantIdValue, tenantSpec, span)));
     }
 
     /**
@@ -365,12 +366,13 @@ public final class FileBasedTenantService extends AbstractVerticle implements Te
      * @return The outcome of the operation indicating success or failure.
      * @throws NullPointerException if any of the parameters are {@code null}.
      */
-    private OperationResult<Id> add(final String tenantId, final JsonObject tenantSpec) {
+    private OperationResult<Id> add(final String tenantId, final JsonObject tenantSpec, final Span span) {
 
         Objects.requireNonNull(tenantId);
         Objects.requireNonNull(tenantSpec);
 
         if (tenants.containsKey(tenantId)) {
+            TracingHelper.logError(span, "Conflict : tenantId already exists.");
             return OperationResult.empty(HTTP_CONFLICT);
         }
         try {
@@ -383,6 +385,7 @@ public final class FileBasedTenantService extends AbstractVerticle implements Te
 
             if (conflictingTenant != null) {
                 // we are trying to use the same CA as an already existing tenant
+                TracingHelper.logError(span, "Conflict : CA already used by an existing tenant.");
                 return OperationResult.empty(HTTP_CONFLICT);
             } else {
                 tenants.put(tenantId, tenant);
@@ -392,6 +395,7 @@ public final class FileBasedTenantService extends AbstractVerticle implements Te
             }
         } catch (final IllegalArgumentException e) {
             log.debug("error parsing payload of add tenant request", e);
+            TracingHelper.logError(span, e);
             return OperationResult.empty(HTTP_BAD_REQUEST);
         }
     }
@@ -407,14 +411,13 @@ public final class FileBasedTenantService extends AbstractVerticle implements Te
      * @throws NullPointerException if either of the input parameters is {@code null}.
      */
     @Override
-    // TODO : do something with the Span
     public void update(final String tenantId, final JsonObject tenantSpec, final Optional<String> expectedResourceVersion,
             final Span span, final Handler<AsyncResult<OperationResult<Void>>> resultHandler) {
         Objects.requireNonNull(tenantId);
         Objects.requireNonNull(tenantSpec);
         Objects.requireNonNull(resultHandler);
 
-        resultHandler.handle(Future.succeededFuture(update(tenantId, tenantSpec, expectedResourceVersion)));
+        resultHandler.handle(Future.succeededFuture(update(tenantId, tenantSpec, expectedResourceVersion, span)));
     }
 
     /**
@@ -427,7 +430,7 @@ public final class FileBasedTenantService extends AbstractVerticle implements Te
      * @throws NullPointerException if any of the parameters are {@code null}.
      */
     public OperationResult<Void> update(final String tenantId, final JsonObject tenantSpec,
-            final Optional<String> expectedResourceVersion) {
+            final Optional<String> expectedResourceVersion, final Span span) {
 
         Objects.requireNonNull(tenantId);
         Objects.requireNonNull(tenantSpec);
@@ -440,6 +443,7 @@ public final class FileBasedTenantService extends AbstractVerticle implements Te
                     final Versioned<TenantObject> conflictingTenant = getByCa(newTenantData.getTrustedCaSubjectDn());
                     if (conflictingTenant != null && !tenantId.equals(conflictingTenant.getValue().getTenantId())) {
                         // we are trying to use the same CA as another tenant
+                        TracingHelper.logError(span, "Conflict : CA already used by an existing tenant.");
                         return OperationResult.empty(HTTP_CONFLICT);
                     } else {
                         final Versioned<TenantObject> updatedTenant = tenants.get(tenantId).update(expectedResourceVersion, () -> newTenantData);
@@ -451,16 +455,20 @@ public final class FileBasedTenantService extends AbstractVerticle implements Te
                                     null, Optional.empty(),
                                     Optional.of(updatedTenant.getVersion()));
                         } else {
+                            TracingHelper.logError(span, "Resource Version mismatch.");
                             return OperationResult.empty(HTTP_PRECON_FAILED);
                         }
                     }
                 } catch (final IllegalArgumentException e) {
+                    TracingHelper.logError(span, e);
                     return OperationResult.empty(HTTP_BAD_REQUEST);
                 }
             } else {
+                TracingHelper.logError(span, "Tenant not found.");
                 return OperationResult.empty(HTTP_NOT_FOUND);
             }
         } else {
+            TracingHelper.logError(span, "Modification disabled for Tenant Service.");
             return OperationResult.empty(HTTP_FORBIDDEN);
         }
     }

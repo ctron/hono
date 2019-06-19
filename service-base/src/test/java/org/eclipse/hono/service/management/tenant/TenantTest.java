@@ -201,7 +201,6 @@ class TenantTest {
         tenant.setEnabled(true);
         tenant.setAdapters(adapters);
 
-        //TODO : serialize then verifies the result.
         final JsonArray result = JsonObject.mapFrom(tenant).getJsonArray(FIELD_ADAPTERS);
         assertNotNull(result);
         assertEquals("http", result.getJsonObject(0).getString(FIELD_ADAPTERS_TYPE));

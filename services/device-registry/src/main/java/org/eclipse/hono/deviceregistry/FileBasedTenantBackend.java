@@ -65,27 +65,23 @@ public final class FileBasedTenantBackend extends AbstractVerticle implements Te
     // Tenant management API
 
     @Override
-    // TODO : do something with the Span
     public void add(final Optional<String> tenantId, final JsonObject tenantObj,
             final Span span, final Handler<AsyncResult<OperationResult<Id>>> resultHandler) {
         tenantService.add(tenantId, tenantObj, span, resultHandler);
     }
 
     @Override
-    // TODO : do something with the Span
     public void read(final String tenantId, final Span span, final Handler<AsyncResult<OperationResult<Tenant>>> resultHandler) {
         tenantService.read(tenantId, span, resultHandler);
     }
 
     @Override
-    // TODO : do something with the Span
     public void update(final String tenantId, final JsonObject tenantObj, final Optional<String> resourceVersion,
             final Span span, final Handler<AsyncResult<OperationResult<Void>>> resultHandler) {
         tenantService.update(tenantId, tenantObj, resourceVersion, span, resultHandler);
     }
 
     @Override
-    //TODO : do something with the Span
     public void remove(final String tenantId, final Optional<String> resourceVersion, final Span span,
             final Handler<AsyncResult<Result<Void>>> resultHandler) {
         tenantService.remove(tenantId, resourceVersion, span, resultHandler);

@@ -149,8 +149,8 @@ public class CredentialsHttpIT {
     }
 
     /**
-     * Verifies that when a device is created, an associated entry is created in the credential Service. TODO : The
-     * credentials array should be empty.
+     * Verifies that when a device is created, an associated entry is created in the credential Service.
+     * TODO : The credentials array should be empty.
      *
      * @param context The vert.x test context.
      */

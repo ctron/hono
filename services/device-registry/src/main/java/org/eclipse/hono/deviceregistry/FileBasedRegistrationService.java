@@ -14,6 +14,7 @@ package org.eclipse.hono.deviceregistry;
 
 import io.opentracing.Span;
 import io.opentracing.noop.NoopSpan;
+import org.eclipse.hono.tracing.TracingHelper;
 import static org.eclipse.hono.util.Constants.JSON_FIELD_DEVICE_ID;
 
 import io.vertx.core.AbstractVerticle;
@@ -376,7 +377,7 @@ public class FileBasedRegistrationService extends AbstractVerticle
         Objects.requireNonNull(deviceId);
         Objects.requireNonNull(resultHandler);
 
-        resultHandler.handle(Future.succeededFuture(convertResult(deviceId, readDevice(tenantId, deviceId))));
+        resultHandler.handle(Future.succeededFuture(convertResult(deviceId, readDevice(tenantId, deviceId, NoopSpan.INSTANCE))));
     }
 
     private RegistrationResult convertResult(final String deviceId, final OperationResult<Device> result) {
@@ -400,7 +401,6 @@ public class FileBasedRegistrationService extends AbstractVerticle
     }
 
     @Override
-    //TODO: Do something with the Span
     public void readDevice(final String tenantId, final String deviceId, final Span span,
             final Handler<AsyncResult<OperationResult<Device>>> resultHandler) {
 
@@ -408,13 +408,14 @@ public class FileBasedRegistrationService extends AbstractVerticle
         Objects.requireNonNull(deviceId);
         Objects.requireNonNull(resultHandler);
 
-        resultHandler.handle(Future.succeededFuture(readDevice(tenantId, deviceId)));
+        resultHandler.handle(Future.succeededFuture(readDevice(tenantId, deviceId, span)));
     }
 
-    OperationResult<Device> readDevice(final String tenantId, final String deviceId) {
+    OperationResult<Device> readDevice(final String tenantId, final String deviceId, final Span span) {
         final Versioned<Device> device = getRegistrationData(tenantId, deviceId);
 
         if (device == null) {
+            TracingHelper.logError(span, "Device not found.");
             return OperationResult.empty(HTTP_NOT_FOUND);
         }
 
@@ -437,7 +438,6 @@ public class FileBasedRegistrationService extends AbstractVerticle
     }
 
     @Override
-    //TODO : do something with the span
     public void deleteDevice(final String tenantId, final String deviceId, final Optional<String> resourceVersion,
             final Span span, final Handler<AsyncResult<Result<Void>>> resultHandler) {
 
@@ -446,29 +446,33 @@ public class FileBasedRegistrationService extends AbstractVerticle
         Objects.requireNonNull(resourceVersion);
         Objects.requireNonNull(resultHandler);
 
-        resultHandler.handle(Future.succeededFuture(deleteDevice(tenantId, deviceId, resourceVersion)));
+        resultHandler.handle(Future.succeededFuture(deleteDevice(tenantId, deviceId, resourceVersion, span)));
     }
 
     Result<Void> deleteDevice(final String tenantId, final String deviceId,
-            final Optional<String> resourceVersion) {
+            final Optional<String> resourceVersion, final Span span) {
 
         Objects.requireNonNull(tenantId);
         Objects.requireNonNull(deviceId);
 
         if (!getConfig().isModificationEnabled()) {
+            TracingHelper.logError(span, "Modification is disabled for Registration Service");
             return Result.from(HTTP_FORBIDDEN);
         }
 
         final Map<String, Versioned<Device>> devices = identities.get(tenantId);
         if (devices == null) {
+            TracingHelper.logError(span, "No devices found for tenant");
             return Result.from(HTTP_NOT_FOUND);
         }
         final Versioned<Device> device = devices.get(deviceId);
         if (device == null) {
+            TracingHelper.logError(span, "Device not found");
             return Result.from(HTTP_NOT_FOUND);
         }
 
         if (resourceVersion.isPresent() && !resourceVersion.get().equals(device.getVersion())) {
+            TracingHelper.logError(span, "Resource Version mismatch");
             return Result.from(HTTP_PRECON_FAILED);
         }
 
@@ -479,7 +483,6 @@ public class FileBasedRegistrationService extends AbstractVerticle
     }
 
     @Override
-    //TODO: Do something with the Span
     public void createDevice(final String tenantId, final Optional<String> deviceId, final Device device,
            final Span span, final Handler<AsyncResult<OperationResult<Id>>> resultHandler) {
 
@@ -487,7 +490,7 @@ public class FileBasedRegistrationService extends AbstractVerticle
         Objects.requireNonNull(deviceId);
         Objects.requireNonNull(resultHandler);
 
-        resultHandler.handle(Future.succeededFuture(createDevice(tenantId, deviceId, device)));
+        resultHandler.handle(Future.succeededFuture(createDevice(tenantId, deviceId, device, span)));
     }
 
     /**
@@ -499,13 +502,14 @@ public class FileBasedRegistrationService extends AbstractVerticle
      * @return The outcome of the operation indicating success or failure.
      */
     public OperationResult<Id> createDevice(final String tenantId, final Optional<String> deviceId,
-            final Device device) {
+            final Device device, final Span span) {
 
         Objects.requireNonNull(tenantId);
         final String deviceIdValue = deviceId.orElseGet(() -> generateDeviceId(tenantId));
 
         final Map<String, Versioned<Device>> devices = getDevicesForTenant(tenantId);
         if (devices.size() >= getConfig().getMaxDevicesPerTenant()) {
+            TracingHelper.logError(span, "Maximum devices number limit reached for tenant");
             return Result.from(HTTP_FORBIDDEN, OperationResult::empty);
         }
 
@@ -515,13 +519,13 @@ public class FileBasedRegistrationService extends AbstractVerticle
             return OperationResult.ok(HTTP_CREATED,
                     Id.of(deviceIdValue), Optional.empty(), Optional.of(newDevice.getVersion()));
         } else {
+            TracingHelper.logError(span, "Device already exist for tenant");
             return Result.from(HTTP_CONFLICT, OperationResult::empty);
         }
 
     }
 
     @Override
-    //TODO: Do something with the Span
     public void updateDevice(final String tenantId, final String deviceId, final Device device,
             final Optional<String> resourceVersion, final Span span,
             final Handler<AsyncResult<OperationResult<Id>>> resultHandler) {
@@ -531,37 +535,41 @@ public class FileBasedRegistrationService extends AbstractVerticle
         Objects.requireNonNull(resourceVersion);
         Objects.requireNonNull(resultHandler);
 
-        resultHandler.handle(Future.succeededFuture(updateDevice(tenantId, deviceId, device, resourceVersion)));
+        resultHandler.handle(Future.succeededFuture(updateDevice(tenantId, deviceId, device, resourceVersion, span)));
     }
 
     OperationResult<Id> updateDevice(final String tenantId, final String deviceId, final Device device,
-            final Optional<String> resourceVersion) {
+            final Optional<String> resourceVersion, final Span span) {
 
         Objects.requireNonNull(tenantId);
         Objects.requireNonNull(deviceId);
 
         if (getConfig().isModificationEnabled()) {
-            return doUpdateDevice(tenantId, deviceId, device, resourceVersion);
+            return doUpdateDevice(tenantId, deviceId, device, resourceVersion, span);
         } else {
+            TracingHelper.logError(span, "Modification is disabled for Registration Service");
             return Result.from(HTTP_FORBIDDEN, OperationResult::empty);
         }
     }
 
     private OperationResult<Id> doUpdateDevice(final String tenantId, final String deviceId, final Device device,
-            final Optional<String> resourceVersion) {
+            final Optional<String> resourceVersion, final Span span) {
 
         final Map<String, Versioned<Device>> devices = identities.get(tenantId);
         if (devices == null) {
+            TracingHelper.logError(span, "No devices found for tenant");
             return Result.from(HTTP_NOT_FOUND, OperationResult::empty);
         }
 
         final Versioned<Device> currentDevice = devices.get(deviceId);
         if (currentDevice == null) {
+            TracingHelper.logError(span, "Device not found");
             return Result.from(HTTP_NOT_FOUND, OperationResult::empty);
         }
 
         final Versioned<Device> newDevice = currentDevice.update(resourceVersion, () -> device);
         if (newDevice == null) {
+            TracingHelper.logError(span, "Resource Version mismatch");
             return Result.from(HTTP_PRECON_FAILED, OperationResult::empty);
         }
 

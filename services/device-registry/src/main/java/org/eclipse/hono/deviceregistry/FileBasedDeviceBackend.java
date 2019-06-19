@@ -90,22 +90,39 @@ public class FileBasedDeviceBackend implements DeviceBackend {
     }
 
     @Override
-    //TODO: Do something with the Span
     public void readDevice(final String tenantId, final String deviceId, final Span span,
             final Handler<AsyncResult<OperationResult<Device>>> resultHandler) {
         registrationService.readDevice(tenantId, deviceId, span, resultHandler);
     }
 
     @Override
-    //TODO : do something with the span
     public void deleteDevice(final String tenantId, final String deviceId, final Optional<String> resourceVersion,
             final Span span, final Handler<AsyncResult<Result<Void>>> resultHandler) {
-        // TODO: when deleting a device, also delete credentials
-        registrationService.deleteDevice(tenantId, deviceId, resourceVersion, span, resultHandler);
+
+        final Future<Result<Void>> future = Future.future();
+        registrationService.deleteDevice(tenantId, deviceId, resourceVersion, span, future);
+
+        future.compose(r -> {
+            if (r.getStatus() != HttpURLConnection.HTTP_NO_CONTENT) {
+                return Future.succeededFuture(r);
+            }
+
+            // now delete the credentials set
+            final Future<Result<Void>> f = Future.future();
+            credentialsService.remove(
+                    tenantId,
+                    deviceId,
+                    Optional.empty(),
+                    span,
+                    f);
+
+            // pass on the original result
+            return f.map(r);
+        })
+        .setHandler(resultHandler);
     }
 
     @Override
-    //TODO: Do something with the Span
     public void createDevice(final String tenantId, final Optional<String> deviceId, final Device device,
            final Span span, final Handler<AsyncResult<OperationResult<Id>>> resultHandler) {
 
@@ -139,7 +156,6 @@ public class FileBasedDeviceBackend implements DeviceBackend {
     }
 
     @Override
-    //TODO: Do something with the Span
     public void updateDevice(final String tenantId, final String deviceId, final Device device,
             final Optional<String> resourceVersion, final Span span,
             final Handler<AsyncResult<OperationResult<Id>>> resultHandler) {
@@ -174,7 +190,6 @@ public class FileBasedDeviceBackend implements DeviceBackend {
     }
 
     @Override
-    //TODO do something with the span ?
     public void set(final String tenantId, final String deviceId, final Optional<String> resourceVersion,
             final List<CommonSecret> credentials, final Span span, final Handler<AsyncResult<OperationResult<Void>>> resultHandler) {
         //TODO check if device exists
@@ -182,7 +197,6 @@ public class FileBasedDeviceBackend implements DeviceBackend {
     }
 
     @Override
-    //TODO do something with the span ?
     public void get(final String tenantId, final String deviceId, final Span span,
             final Handler<AsyncResult<OperationResult<List<CommonSecret>>>> resultHandler) {
 
@@ -207,10 +221,9 @@ public class FileBasedDeviceBackend implements DeviceBackend {
     }
 
     @Override
-    //TODO do something with the span ?
     public void remove(final String tenantId, final String deviceId, final Optional<String> resourceVersion,
            final Span span, final Handler<AsyncResult<Result<Void>>> resultHandler) {
-        final OperationResult<Device> device = registrationService.readDevice(tenantId, deviceId);
+        final OperationResult<Device> device = registrationService.readDevice(tenantId, deviceId, span);
         if (device.getStatus() == HttpURLConnection.HTTP_OK) {
             credentialsService.remove(tenantId, deviceId, resourceVersion, span, resultHandler);
         } else {
