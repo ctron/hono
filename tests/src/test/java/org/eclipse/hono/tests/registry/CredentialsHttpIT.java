@@ -437,7 +437,7 @@ public class CredentialsHttpIT {
                 .updateCredentials(TENANT, deviceId, Collections.singleton(hashedPasswordSecret),
                         HttpURLConnection.HTTP_NO_CONTENT)
                 .setHandler(context.asyncAssertSuccess(res -> {
-                    context.assertNotNull(res.get(HTTP_HEADER_ETAG));
+                    context.assertNotNull("etag header missing", res.get(HTTP_HEADER_ETAG));
                 }));
     }
 
