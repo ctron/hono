@@ -21,9 +21,7 @@ import java.util.UUID;
 
 import org.eclipse.hono.service.credentials.AbstractCredentialsServiceTest;
 import org.eclipse.hono.service.management.credentials.CommonCredential;
-import org.eclipse.hono.service.management.credentials.CommonSecret;
 import org.eclipse.hono.service.management.credentials.GenericCredential;
-import org.eclipse.hono.service.management.credentials.GenericSecret;
 import org.eclipse.hono.service.management.credentials.PasswordCredential;
 import org.eclipse.hono.service.management.credentials.PasswordSecret;
 import org.eclipse.hono.service.management.credentials.PskCredential;
