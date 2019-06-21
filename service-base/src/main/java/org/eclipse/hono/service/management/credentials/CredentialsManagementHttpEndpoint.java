@@ -13,7 +13,6 @@
 
 package org.eclipse.hono.service.management.credentials;
 
-import io.vertx.core.Handler;
 import io.vertx.core.http.HttpServerResponse;
 import java.net.HttpURLConnection;
 import java.util.Objects;
@@ -104,7 +103,8 @@ public final class CredentialsManagementHttpEndpoint extends AbstractHttpEndpoin
                 .toJson();
 
         sendAction(ctx, requestMsg, getDefaultResponseHandler(ctx));
-}
+    }
+
     private void getCredentialsForDevice(final RoutingContext ctx) {
 
         // mandatory params
@@ -119,8 +119,7 @@ public final class CredentialsManagementHttpEndpoint extends AbstractHttpEndpoin
                 .toJson();
 
         sendAction(ctx, requestMsg, getCredentialsResponseHandler(ctx,
-                status -> status == HttpURLConnection.HTTP_OK,
-                (Handler<HttpServerResponse>) null));
+                status -> status == HttpURLConnection.HTTP_OK));
     }
 
 
@@ -140,15 +139,12 @@ public final class CredentialsManagementHttpEndpoint extends AbstractHttpEndpoin
      * @param ctx The routing context of the request.
      * @param successfulOutcomeFilter A predicate that evaluates to {@code true} for the status code(s) representing a
      *                           successful outcome.
-     * @param customHandler An (optional) handler for post processing the HTTP response, e.g. to set any additional HTTP
-     *                        headers. The handler <em>must not</em> write to response body. May be {@code null}.
      * @return The created handler for processing responses.
      * @throws NullPointerException If routing context or filter is {@code null}.
      */
     protected BiConsumer<Integer, EventBusMessage> getCredentialsResponseHandler(
             final RoutingContext ctx,
-            final Predicate<Integer> successfulOutcomeFilter,
-            final Handler<HttpServerResponse> customHandler) {
+            final Predicate<Integer> successfulOutcomeFilter) {
 
         Objects.requireNonNull(successfulOutcomeFilter);
         final HttpServerResponse response = ctx.response();
@@ -158,12 +154,9 @@ public final class CredentialsManagementHttpEndpoint extends AbstractHttpEndpoin
             if (status >= 400) {
                 HttpUtils.setResponseBody(response, responseMessage.getJsonPayload());
             } else if (successfulOutcomeFilter.test(status)) {
-                final JsonArray secrets = responseMessage.getJsonPayload()
+                final JsonArray credentials = responseMessage.getJsonPayload()
                         .getJsonArray(CredentialsConstants.CREDENTIALS_ENDPOINT);
-                HttpUtils.setResponseBody(response, secrets);
-                if (customHandler != null) {
-                    customHandler.handle(response);
-                }
+                HttpUtils.setResponseBody(response, credentials);
             }
             response.end();
         };

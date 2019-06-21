@@ -81,7 +81,7 @@ public class CredentialsHttpIT {
 
     private String deviceId;
     private String authId;
-    private PasswordCredential hashedPasswordSecret;
+    private PasswordCredential hashedPasswordCredential;
     private PskCredential pskCredentials;
 
     /**
@@ -108,7 +108,7 @@ public class CredentialsHttpIT {
     public void setUp(final TestContext ctx) {
         deviceId = UUID.randomUUID().toString();
         authId = getRandomAuthId(TEST_AUTH_ID);
-        hashedPasswordSecret = AbstractCredentialsServiceTest.createPasswordCredential(authId, ORIG_BCRYPT_PWD);
+        hashedPasswordCredential = AbstractCredentialsServiceTest.createPasswordCredential(authId, ORIG_BCRYPT_PWD);
         pskCredentials = newPskCredentials(authId);
         final Async creation = ctx.async();
         registry.registerDevice(DEFAULT_TENANT, deviceId).setHandler(attempt -> creation.complete());
@@ -148,7 +148,7 @@ public class CredentialsHttpIT {
     public void testAddCredentialsSucceeds(final TestContext context)  {
 
         registry
-                .updateCredentials(TENANT, deviceId, Collections.singleton(hashedPasswordSecret),
+                .updateCredentials(TENANT, deviceId, Collections.singleton(hashedPasswordCredential),
                         HttpURLConnection.HTTP_NO_CONTENT)
                 .setHandler(context.asyncAssertSuccess());
     }
@@ -199,7 +199,7 @@ public class CredentialsHttpIT {
                 .updateCredentials(
                         TENANT,
                         deviceId,
-                        Collections.singleton(hashedPasswordSecret),
+                        Collections.singleton(hashedPasswordCredential),
                         "application/x-www-form-urlencoded",
                         HttpURLConnection.HTTP_BAD_REQUEST)
                 .setHandler(context.asyncAssertSuccess());
@@ -217,13 +217,13 @@ public class CredentialsHttpIT {
 
         registry
                 .updateCredentials(
-                        TENANT, deviceId, Collections.singleton(hashedPasswordSecret),
+                        TENANT, deviceId, Collections.singleton(hashedPasswordCredential),
                         HttpURLConnection.HTTP_NO_CONTENT)
                 .compose(ar -> {
                     final var etag = ar.get(HTTP_HEADER_ETAG);
                     assertNotNull("missing etag header", etag);
                     // now try to update credentials with the same version
-                    return registry.updateCredentialsWithVersion(TENANT, deviceId, Collections.singleton(hashedPasswordSecret),
+                    return registry.updateCredentialsWithVersion(TENANT, deviceId, Collections.singleton(hashedPasswordCredential),
                             etag+10, HttpURLConnection.HTTP_PRECON_FAILED);
                 })
                 .setHandler(context.asyncAssertSuccess());
@@ -300,7 +300,7 @@ public class CredentialsHttpIT {
 
     private void testAddCredentialsWithMissingPayloadParts(final TestContext context, final String fieldMissing) {
 
-        final JsonObject json = JsonObject.mapFrom(hashedPasswordSecret);
+        final JsonObject json = JsonObject.mapFrom(hashedPasswordCredential);
         json.remove(fieldMissing);
         final JsonArray payload = new JsonArray()
                 .add(json);
@@ -320,11 +320,11 @@ public class CredentialsHttpIT {
     public void testUpdateCredentialsSucceeds(final TestContext context) {
 
         final PasswordCredential altered = JsonObject
-                .mapFrom(hashedPasswordSecret)
+                .mapFrom(hashedPasswordCredential)
                 .mapTo(PasswordCredential.class);
         altered.setComment("test");
 
-        registry.updateCredentials(TENANT, deviceId, Collections.singleton(hashedPasswordSecret),
+        registry.updateCredentials(TENANT, deviceId, Collections.singleton(hashedPasswordCredential),
                 HttpURLConnection.HTTP_NO_CONTENT)
                 .compose(ar -> registry.updateCredentials(TENANT, deviceId, Collections.singleton(altered),
                         HttpURLConnection.HTTP_NO_CONTENT))
@@ -345,7 +345,7 @@ public class CredentialsHttpIT {
 
         final PasswordCredential secret = AbstractCredentialsServiceTest.createPasswordCredential(authId, "newPassword");
 
-        registry.addCredentials(TENANT, deviceId, Collections.<CommonCredential> singleton(hashedPasswordSecret))
+        registry.addCredentials(TENANT, deviceId, Collections.<CommonCredential> singleton(hashedPasswordCredential))
                 .compose(ar -> registry.updateCredentials(TENANT, deviceId, secret))
                 .compose(ur -> registry.getCredentials(TENANT, deviceId))
                 .setHandler(context.asyncAssertSuccess(gr -> {
@@ -368,7 +368,7 @@ public class CredentialsHttpIT {
                 .updateCredentialsWithVersion(
                         TENANT,
                         deviceId,
-                        Collections.singleton(hashedPasswordSecret),
+                        Collections.singleton(hashedPasswordCredential),
                         "3",
                         HttpURLConnection.HTTP_PRECON_FAILED)
                 .setHandler(context.asyncAssertSuccess());
@@ -383,13 +383,13 @@ public class CredentialsHttpIT {
     @Test
     public void testGetAddedCredentials(final TestContext context) {
 
-        registry.updateCredentials(TENANT, deviceId, Collections.singleton(hashedPasswordSecret),
+        registry.updateCredentials(TENANT, deviceId, Collections.singleton(hashedPasswordCredential),
                 HttpURLConnection.HTTP_NO_CONTENT)
                 .compose(ar -> registry.getCredentials(TENANT, deviceId))
                 .setHandler(context.asyncAssertSuccess(b -> {
                     context.assertEquals(
                             new JsonArray()
-                                    .add(JsonObject.mapFrom(hashedPasswordSecret)),
+                                    .add(JsonObject.mapFrom(hashedPasswordCredential)),
                             b.toJsonArray());
                 }));
 
@@ -404,7 +404,7 @@ public class CredentialsHttpIT {
     public void testAddedCredentialsContainsEtag(final TestContext context)  {
 
         registry
-                .updateCredentials(TENANT, deviceId, Collections.singleton(hashedPasswordSecret),
+                .updateCredentials(TENANT, deviceId, Collections.singleton(hashedPasswordCredential),
                         HttpURLConnection.HTTP_NO_CONTENT)
                 .setHandler(context.asyncAssertSuccess(res -> {
                     context.assertNotNull("etag header missing", res.get(HTTP_HEADER_ETAG));
@@ -422,7 +422,7 @@ public class CredentialsHttpIT {
     public void testGetAddedCredentialsMultipleTypesSingleRequests(final TestContext context) {
 
         final List<CommonCredential> credentialsListToAdd = new ArrayList<>();
-        credentialsListToAdd.add(hashedPasswordSecret);
+        credentialsListToAdd.add(hashedPasswordCredential);
         credentialsListToAdd.add(pskCredentials);
 
         registry
@@ -434,7 +434,7 @@ public class CredentialsHttpIT {
                 .compose(body -> {
                     context.assertTrue(IntegrationTestSupport.testJsonObjectToBeContained(
                             body.toJsonObject(),
-                            JsonObject.mapFrom(hashedPasswordSecret)));
+                            JsonObject.mapFrom(hashedPasswordCredential)));
                     return registry.getCredentials(TENANT, authId,
                             CredentialsConstants.SECRETS_TYPE_PRESHARED_KEY);
                 })
@@ -507,7 +507,7 @@ public class CredentialsHttpIT {
     @Test
     public void testGetAddedCredentialsButWithWrongType(final TestContext context)  {
 
-        registry.updateCredentials(TENANT, deviceId, Collections.singleton(hashedPasswordSecret),
+        registry.updateCredentials(TENANT, deviceId, Collections.singleton(hashedPasswordCredential),
                 HttpURLConnection.HTTP_NO_CONTENT)
             .compose(ar -> registry.getCredentials(TENANT, authId, "wrong-type", HttpURLConnection.HTTP_NOT_FOUND))
             .setHandler(context.asyncAssertSuccess());
@@ -521,7 +521,7 @@ public class CredentialsHttpIT {
     @Test
     public void testGetAddedCredentialsButWithWrongAuthId(final TestContext context)  {
 
-        registry.updateCredentials(TENANT, deviceId, Collections.singleton(hashedPasswordSecret),
+        registry.updateCredentials(TENANT, deviceId, Collections.singleton(hashedPasswordCredential),
                 HttpURLConnection.HTTP_NO_CONTENT)
             .compose(ar -> registry.getCredentials(
                     TENANT,
