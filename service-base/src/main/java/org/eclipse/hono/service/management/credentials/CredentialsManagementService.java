@@ -17,7 +17,6 @@ import java.util.List;
 import java.util.Optional;
 
 import org.eclipse.hono.service.management.OperationResult;
-import org.eclipse.hono.service.management.Result;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
