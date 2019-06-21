@@ -220,13 +220,13 @@ public abstract class EventBusCredentialsManagementAdapter<T> extends EventBusSe
         getService().get(tenantId, deviceId, span, result);
 
         return result.map(res -> {
-            return res.createResponse(request, secrets -> {
+            return res.createResponse(request, credentials -> {
                 final JsonObject ret = new JsonObject();
-                final JsonArray secretArray = new JsonArray();
-                for (final CommonCredential secret : secrets) {
-                    secretArray.add(JsonObject.mapFrom(secret));
+                final JsonArray credentialsArray = new JsonArray();
+                for (final CommonCredential credential : credentials) {
+                    credentialsArray.add(JsonObject.mapFrom(credential));
                 }
-                ret.put(CredentialsConstants.CREDENTIALS_ENDPOINT, secretArray);
+                ret.put(CredentialsConstants.CREDENTIALS_ENDPOINT, credentialsArray);
                 return ret;
             }).setDeviceId(deviceId);
         });
@@ -239,9 +239,9 @@ public abstract class EventBusCredentialsManagementAdapter<T> extends EventBusSe
      * @throws IllegalStateException if the secret is not valid.
      */
     protected void checkSecret(final CommonCredential credential) {
+        credential.checkValidity();
         if (credential instanceof PasswordCredential) {
             for (final PasswordSecret passwordSecret : ((PasswordCredential) credential).getSecrets()) {
-                passwordSecret.checkValidity();
                 checkHashedPassword(passwordSecret);
                 switch (passwordSecret.getHashFunction()) {
                     case CredentialsConstants.HASH_FUNCTION_BCRYPT:
