@@ -112,6 +112,11 @@ public class SecretsTest {
         testEncodeMany(secrets -> secrets);
     }
 
+    /**
+     * Test encoding a list of secrets.
+     * 
+     * @param provider The payload provider.
+     */
     protected void testEncodeMany(final Function<List<CommonSecret>, Object> provider) {
         final List<CommonSecret> secrets = new ArrayList<>();
 

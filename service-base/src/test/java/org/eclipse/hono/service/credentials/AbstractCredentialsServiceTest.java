@@ -171,6 +171,16 @@ public abstract class AbstractCredentialsServiceTest {
         return s;
     }
 
+    /**
+     * Assert credentials, expect them to be missing.
+     * 
+     * @param ctx The test context to report to.
+     * @param tenantId The tenant to check for.
+     * @param deviceId The device to check for.
+     * @param authId The authentication id to check for.
+     * @param type The credentials type to check for.
+     * @param whenComplete Call when this assertion was successful.
+     */
     protected void assertGetMissing(final VertxTestContext ctx,
             final String tenantId, final String deviceId, final String authId, final String type,
             final ExecutionBlock whenComplete) {
@@ -185,6 +195,16 @@ public abstract class AbstractCredentialsServiceTest {
                 whenComplete);
     }
 
+    /**
+     * Assert credentials, expect them to be present, but empty.
+     * 
+     * @param ctx The test context to report to.
+     * @param tenantId The tenant to check for.
+     * @param deviceId The device to check for.
+     * @param authId The authentication id to check for.
+     * @param type The credentials type to check for.
+     * @param whenComplete Call when this assertion was successful.
+     */
     protected void assertGetEmpty(final VertxTestContext ctx,
             final String tenantId, final String deviceId, final String authId, final String type,
             final ExecutionBlock whenComplete) {
@@ -200,6 +220,18 @@ public abstract class AbstractCredentialsServiceTest {
                 whenComplete);
     }
 
+    /**
+     * Assert credentials.
+     * 
+     * @param ctx The test context to report to.
+     * @param tenantId The tenant to check for.
+     * @param deviceId The device to check for.
+     * @param authId The authentication id to check for.
+     * @param type The credentials type to check for.
+     * @param mangementValidation The validation logic for the management data.
+     * @param adapterValidation The validation logic for the protocol adapter data.
+     * @param whenComplete Call when this assertion was successful.
+     */
     protected void assertGet(final VertxTestContext ctx,
             final String tenantId, final String deviceId, final String authId, final String type,
             final ThrowingConsumer<OperationResult<List<CommonSecret>>> mangementValidation,
@@ -596,6 +628,7 @@ public abstract class AbstractCredentialsServiceTest {
      *
      * @param svc The service to register the credentials with.
      * @param tenantId The tenant that the device belongs to.
+     * @param deviceId The ID of the device.
      * @param secrets The secrets to register.
      * @return A succeeded future if the credentials have been registered successfully.
      */

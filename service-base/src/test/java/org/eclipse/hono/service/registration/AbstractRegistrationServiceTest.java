@@ -586,6 +586,12 @@ public abstract class AbstractRegistrationServiceTest {
                 }));
     }
 
+    /**
+     * Assert devices, expecting them to be "not found".
+     * 
+     * @param devices The map of devices to assert.
+     * @return A future, reporting the assertion status.
+     */
     protected Future<?> assertDevicesNotFound(final Map<String, Device> devices) {
 
         Future<?> current = Future.succeededFuture();
@@ -604,6 +610,14 @@ public abstract class AbstractRegistrationServiceTest {
 
     }
 
+    /**
+     * Assert a set of devices.
+     * <p>
+     * This will read the devices and expect them to be found and match the provided device information.
+     * 
+     * @param devices The devices and device information.
+     * @return A future, reporting the assertion status.
+     */
     protected Future<?> assertDevices(final Map<String, Device> devices) {
 
         Future<?> current = Future.succeededFuture();
@@ -636,6 +650,14 @@ public abstract class AbstractRegistrationServiceTest {
 
     }
 
+    /**
+     * Create a set of devices.
+     * <p>
+     * Devices create operations must report "OK" in order to succeed.
+     * 
+     * @param devices The devices to create.
+     * @return A future, tracking the creation process.
+     */
     protected Future<?> createDevices(final Map<String, Device> devices) {
 
         Future<?> current = Future.succeededFuture();
