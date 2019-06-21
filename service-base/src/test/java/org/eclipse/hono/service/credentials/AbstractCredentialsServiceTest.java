@@ -12,14 +12,15 @@
  *******************************************************************************/
 package org.eclipse.hono.service.credentials;
 
-import io.opentracing.noop.NoopSpan;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
 import static java.net.HttpURLConnection.HTTP_NO_CONTENT;
 import static java.net.HttpURLConnection.HTTP_OK;
+import static java.net.HttpURLConnection.HTTP_PRECON_FAILED;
 import static org.junit.Assert.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.opentracing.noop.NoopSpan;
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.Checkpoint;
@@ -353,7 +354,64 @@ public abstract class AbstractCredentialsServiceTest {
 
     }
 
-    //TODO add a test with resource version ?
+    /**
+     * Test deleting a secret but providing the wrong version.
+     * @param ctx The vert.x test context.
+     */
+    @Test
+    public void testDeleteCredentialWithWrongResourceVersionFails(final VertxTestContext ctx) {
+        final var tenantId = "tenant";
+        final var deviceId = UUID.randomUUID().toString();
+        final var authId = UUID.randomUUID().toString();
+        final var secret = createPasswordSecret(authId, "bar");
+
+        final Checkpoint checkpoint = ctx.checkpoint(3);
+
+        // phase 1 - create device
+
+        final Future<?> phase1 = Future.future();
+
+            getDeviceManagementService().createDevice(tenantId, Optional.of(deviceId), new Device(), NoopSpan.INSTANCE,
+                    ctx.succeeding(s2 -> {
+                        checkpoint.flag();
+                        phase1.complete();
+                    }));
+
+
+        // phase 2 - set credentials
+
+        final Future<?> phase2 = Future.future();
+
+        phase1.setHandler(ctx.succeeding(s1 -> {
+
+                getCredentialsManagementService().set(tenantId, deviceId, Optional.empty(),
+                        Collections.singletonList(secret), NoopSpan.INSTANCE,
+                        ctx.succeeding(s2 -> {
+
+                            checkpoint.flag();
+
+                            ctx.verify(() -> {
+
+                                assertEquals(HTTP_NO_CONTENT, s2.getStatus());
+                                phase2.complete();
+                            });
+                        }));
+
+        }));
+
+        // phase 3 - delete with wrong version
+
+        phase2.setHandler(ctx.succeeding(v -> {
+
+            getCredentialsManagementService().remove(tenantId, deviceId, Optional.of(UUID.randomUUID().toString()), NoopSpan.INSTANCE,
+                    ctx.succeeding(s -> ctx.verify(() -> {
+
+                        assertEquals(HTTP_PRECON_FAILED, s.getStatus());
+                        checkpoint.flag();
+
+                    })));
+        }));
+    }
 
     /**
      * Test updating a new secret.

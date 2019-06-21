@@ -205,13 +205,13 @@ public class CredentialsHttpIT {
     }
 
     /**
-     * Verifies that the service rejects a request to add credentials of a type for which the device already has
-     * existing credentials with a 409.
+     * Verifies that the service rejects a request to update a credentials set if the resource Version value is
+     * outdated.
      * 
      * @param context The vert.x test context.
      */
     @Test
-    public void testAddCredentialsRejectsDuplicateRegistration(final TestContext context) {
+    public void testUpdateCredentialsWithOutdatedResourceVersionFails(final TestContext context) {
 
         registry
                 .updateCredentials(
@@ -221,8 +221,8 @@ public class CredentialsHttpIT {
                     final var etag = ar.get(HTTP_HEADER_ETAG);
                     assertNotNull("missing etag header", etag);
                     // now try to update credentials with the same version
-                    return registry.updateCredentials(TENANT, deviceId,
-                            Collections.singleton(hashedPasswordSecret), HttpURLConnection.HTTP_PRECON_FAILED);
+                    return registry.updateCredentialsWithVersion(TENANT, deviceId, Collections.singleton(hashedPasswordSecret),
+                            etag+10, HttpURLConnection.HTTP_PRECON_FAILED);
                 })
                 .setHandler(context.asyncAssertSuccess());
 
