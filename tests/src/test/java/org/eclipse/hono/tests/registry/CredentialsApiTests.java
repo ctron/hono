@@ -21,7 +21,6 @@ import static org.junit.Assert.assertTrue;
 import java.net.HttpURLConnection;
 import java.time.Instant;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -29,7 +28,6 @@ import java.util.concurrent.TimeUnit;
 import org.eclipse.hono.client.CredentialsClient;
 import org.eclipse.hono.service.credentials.AbstractCredentialsServiceTest;
 import org.eclipse.hono.service.management.credentials.CommonCredential;
-import org.eclipse.hono.service.management.credentials.PasswordSecret;
 import org.eclipse.hono.util.Constants;
 import org.eclipse.hono.util.CredentialsConstants;
 import org.eclipse.hono.util.CredentialsObject;
@@ -240,11 +238,9 @@ abstract class CredentialsApiTests extends DeviceRegistryTestBase {
         final var credential1 = AbstractCredentialsServiceTest.createPasswordCredential(authId, "ClearTextPWD");
         credential1.setAuthId(authId);
 
-        final PasswordSecret secret1 = new PasswordSecret();
-
+        final var secret1 = credential1.getSecrets().get(0);
         secret1.setNotBefore(Instant.parse("2017-05-01T14:00:00Z"));
         secret1.setNotAfter(Instant.parse("2037-06-01T14:00:00Z"));
-        credential1.setSecrets(Collections.singletonList(secret1));
 
         final var credential2 = AbstractCredentialsServiceTest.createPasswordCredential(authId, "hono-password");
         credential2.setAuthId(authId);
