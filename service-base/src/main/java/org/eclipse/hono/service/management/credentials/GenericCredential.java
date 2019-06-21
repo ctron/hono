@@ -41,7 +41,7 @@ public class GenericCredential extends CommonCredential {
     }
 
     @Override
-    protected List<GenericSecret> getSecrets() {
+    public List<GenericSecret> getSecrets() {
         return this.secrets;
     }
 

@@ -566,30 +566,39 @@ public final class FileBasedCredentialsService extends AbstractVerticle
         }
     }
 
-    private static void copyAdditionalField(final GenericCredential secret, final JsonObject secretObject, final String fieldName) {
+    private static void copyAdditionalField(final GenericSecret secret, final JsonObject secretObject,
+            final String fieldName) {
         final var value = secretObject.getString(fieldName);
         if (value != null) {
             secret.getAdditionalProperties().put(fieldName, value);
         }
     }
 
-    private GenericCredential mapCredential(final JsonObject credentialsObject, final JsonObject credentialObject) {
+    private GenericCredential mapCredential(final JsonObject credentialsObject) {
 
         final GenericCredential credential = new GenericCredential();
         credential.setAuthId(credentialsObject.getString(CredentialsConstants.FIELD_AUTH_ID));
         credential.setType(credentialsObject.getString(CredentialsConstants.FIELD_TYPE));
+        credential.setEnabled(credentialsObject.getBoolean(CredentialsConstants.FIELD_ENABLED));
 
-        final GenericSecret secret = new GenericSecret();
+        final JsonArray storedSecrets = credentialsObject.getJsonArray(CredentialsConstants.FIELD_SECRETS);
+        for (final Object storedSecret : storedSecrets) {
+            final JsonObject secretObject = (JsonObject) storedSecret;
 
-        secret.setNotBefore(credentialObject.getInstant(CredentialsConstants.FIELD_SECRETS_NOT_BEFORE));
-        secret.setNotAfter(credentialObject.getInstant(CredentialsConstants.FIELD_SECRETS_NOT_AFTER));
+            final GenericSecret secret = new GenericSecret();
 
-        copyAdditionalField(credential, credentialObject, CredentialsConstants.FIELD_ENABLED);
-        copyAdditionalField(credential, credentialObject, CredentialsConstants.FIELD_SECRETS_HASH_FUNCTION);
-        copyAdditionalField(credential, credentialObject, CredentialsConstants.FIELD_SECRETS_PWD_HASH);
-        copyAdditionalField(credential, credentialObject, CredentialsConstants.FIELD_SECRETS_SALT);
-        copyAdditionalField(credential, credentialObject, CredentialsConstants.FIELD_SECRETS_KEY);
-        copyAdditionalField(credential, credentialObject, CredentialsConstants.FIELD_SECRETS_COMMENT);
+            secret.setNotBefore(secretObject.getInstant(CredentialsConstants.FIELD_SECRETS_NOT_BEFORE));
+            secret.setNotAfter(secretObject.getInstant(CredentialsConstants.FIELD_SECRETS_NOT_AFTER));
+            secret.setEnabled(secretObject.getBoolean(CredentialsConstants.FIELD_ENABLED));
+            secret.setComment(secretObject.getString(CredentialsConstants.FIELD_SECRETS_COMMENT));
+
+            copyAdditionalField(secret, secretObject, CredentialsConstants.FIELD_SECRETS_HASH_FUNCTION);
+            copyAdditionalField(secret, secretObject, CredentialsConstants.FIELD_SECRETS_PWD_HASH);
+            copyAdditionalField(secret, secretObject, CredentialsConstants.FIELD_SECRETS_SALT);
+            copyAdditionalField(secret, secretObject, CredentialsConstants.FIELD_SECRETS_KEY);
+
+            credential.getSecrets().add(secret);
+        }
 
         return credential;
     }
@@ -607,37 +616,37 @@ public final class FileBasedCredentialsService extends AbstractVerticle
             TracingHelper.logError(span, "No credentials found for tenant");
             resultHandler.handle(Future.succeededFuture(OperationResult.ok(HTTP_NOT_FOUND, null, Optional.empty(),
                     Optional.of(getOrCreateResourceVersion(tenantId, deviceId)))));
-        } else {
-            final JsonArray matchingCredentials = new JsonArray();
-            // iterate over all credentials per auth-id in order to find credentials matching the given device
-            for (final JsonArray credentialsForAuthId : credentialsForTenant.values()) {
-                findCredentialsForDevice(credentialsForAuthId, deviceId, matchingCredentials);
-            }
-            if (matchingCredentials.isEmpty()) {
-                TracingHelper.logError(span, "No credentials found for device");
-                resultHandler.handle(Future.succeededFuture(OperationResult.ok(HTTP_NOT_FOUND, null, Optional.empty(),
-                        Optional.of(getOrCreateResourceVersion(tenantId, deviceId)))));
-            } else {
-                final List<CommonCredential> secrets = new ArrayList<>();
-                for (final Object credential : matchingCredentials) {
-                    final JsonObject credentialsObject = (JsonObject) credential;
-                    final JsonArray storedSecrets = credentialsObject.getJsonArray(CredentialsConstants.FIELD_SECRETS);
-                    for (final Object storedSecret : storedSecrets) {
-                        final GenericCredential secret = mapCredential(credentialsObject, (JsonObject) storedSecret);
-                        secrets.add(secret);
-                    }
-
-                };
-
-                resultHandler.handle(Future.succeededFuture(
-                        OperationResult.ok(HTTP_OK,
-                                secrets,
-                                //TODO check cache directive
-                                Optional.empty(),
-                                Optional.of(getOrCreateResourceVersion(tenantId, deviceId)))));
-
-            }
+            return;
         }
+
+        final JsonArray matchingCredentials = new JsonArray();
+        // iterate over all credentials per auth-id in order to find credentials matching the given device
+        for (final JsonArray credentialsForAuthId : credentialsForTenant.values()) {
+            findCredentialsForDevice(credentialsForAuthId, deviceId, matchingCredentials);
+        }
+        if (matchingCredentials.isEmpty()) {
+            TracingHelper.logError(span, "No credentials found for device");
+            resultHandler.handle(Future.succeededFuture(OperationResult.ok(HTTP_NOT_FOUND, null, Optional.empty(),
+                    Optional.of(getOrCreateResourceVersion(tenantId, deviceId)))));
+            return;
+        }
+
+        // convert credentials
+
+        final List<CommonCredential> credentials = new ArrayList<>();
+        for (final Object credential : matchingCredentials) {
+            final JsonObject credentialsObject = (JsonObject) credential;
+            final GenericCredential secret = mapCredential(credentialsObject);
+            credentials.add(secret);
+        }
+
+        resultHandler.handle(Future.succeededFuture(
+                OperationResult.ok(HTTP_OK,
+                        credentials,
+                        // TODO check cache directive
+                        Optional.empty(),
+                        Optional.of(getOrCreateResourceVersion(tenantId, deviceId)))));
+
     }
 
     /**
