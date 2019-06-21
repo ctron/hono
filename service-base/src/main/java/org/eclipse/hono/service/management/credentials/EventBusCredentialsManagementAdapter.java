@@ -111,7 +111,7 @@ public abstract class EventBusCredentialsManagementAdapter<T> extends EventBusSe
                     "missing payload"));
         }
         try {
-            final Future<List<CommonCredential>> secretsFuture = secretsFromPayload(request);
+            final Future<List<CommonCredential>> secretsFuture = credentialsFromPayload(request);
 
             final Span span = newChildSpan(SPAN_NAME_UPDATE_CREDENTIAL, spanContext, tracer, tenantId, deviceId, getClass().getSimpleName());
             final Future<OperationResult<Void>> result = Future.future();
@@ -135,7 +135,7 @@ public abstract class EventBusCredentialsManagementAdapter<T> extends EventBusSe
      * @return The decoded secret. Or {@code null} if the provided JSON object was {@code null}.
      * @throws IllegalStateException if the {@code type} field was not set.
      */
-    protected CommonCredential decodeSecret(final JsonObject object) {
+    protected CommonCredential decodeCredential(final JsonObject object) {
 
         if (object == null) {
             return null;
@@ -180,28 +180,28 @@ public abstract class EventBusCredentialsManagementAdapter<T> extends EventBusSe
      * @return The list of decoded secrets.
      * @throws NullPointerException in the case the {@code objects} parameter is {@code null}.
      */
-    protected List<CommonCredential> decodeSecrets(final JsonArray objects) {
+    protected List<CommonCredential> decodeCredentials(final JsonArray objects) {
         return objects
                 .stream()
                 .filter(JsonObject.class::isInstance)
                 .map(JsonObject.class::cast)
-                .map(this::decodeSecret)
+                .map(this::decodeCredential)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
     }
 
     /**
-     * Extract the secrets from an event bus request.
+     * Extract the credentials from an event bus request.
      * 
      * @param request The request to extract information from.
      * @return A future, returning the secrets.
      * @throws NullPointerException in the case the request is {@code null}.
      */
-    protected Future<List<CommonCredential>> secretsFromPayload(final EventBusMessage request) {
+    protected Future<List<CommonCredential>> credentialsFromPayload(final EventBusMessage request) {
         try {
             return Future.succeededFuture(Optional.ofNullable(request.getJsonPayload())
                     .map(json -> {
-                        return decodeSecrets(json.getJsonArray(CredentialsConstants.CREDENTIALS_ENDPOINT));
+                        return decodeCredentials(json.getJsonArray(CredentialsConstants.CREDENTIALS_ENDPOINT));
                     })
                     .orElseGet(ArrayList::new));
         } catch (final IllegalArgumentException e) {
@@ -240,7 +240,7 @@ public abstract class EventBusCredentialsManagementAdapter<T> extends EventBusSe
      */
     protected void checkSecret(final CommonCredential credential) {
         if (credential instanceof PasswordCredential) {
-            for (PasswordSecret passwordSecret : ((PasswordCredential) credential).getSecrets()) {
+            for (final PasswordSecret passwordSecret : ((PasswordCredential) credential).getSecrets()) {
                 passwordSecret.checkValidity();
                 checkHashedPassword(passwordSecret);
                 switch (passwordSecret.getHashFunction()) {
