@@ -25,7 +25,6 @@ import org.eclipse.hono.auth.BCryptHelper;
 import org.eclipse.hono.client.ClientErrorException;
 import org.eclipse.hono.service.EventBusService;
 import org.eclipse.hono.service.management.OperationResult;
-import org.eclipse.hono.service.management.Result;
 import org.eclipse.hono.util.CredentialsConstants;
 import org.eclipse.hono.util.EventBusMessage;
 
@@ -46,7 +45,6 @@ public abstract class EventBusCredentialsManagementAdapter<T> extends EventBusSe
 
     private static final String SPAN_NAME_GET_CREDENTIAL = "get Credential from management API";
     private static final String SPAN_NAME_UPDATE_CREDENTIAL = "update Credential from management API";
-    private static final String SPAN_NAME_REMOVE_CREDENTIAL = "remove Credential from management API";
 
     private static final int DEFAULT_MAX_BCRYPT_ITERATIONS = 10;
 
@@ -73,8 +71,6 @@ public abstract class EventBusCredentialsManagementAdapter<T> extends EventBusSe
                 return processGetRequest(request);
             case update:
                 return processUpdateRequest(request);
-            case remove:
-                return processRemoveRequest(request);
             default:
                 return processCustomCredentialsMessage(request);
         }
@@ -211,23 +207,6 @@ public abstract class EventBusCredentialsManagementAdapter<T> extends EventBusSe
         } catch (final IllegalArgumentException e) {
             return Future.failedFuture(new ClientErrorException(HttpURLConnection.HTTP_BAD_REQUEST, e));
         }
-    }
-
-
-    private Future<EventBusMessage> processRemoveRequest(final EventBusMessage request) {
-        final String tenantId = request.getTenant();
-        final String deviceId = request.getDeviceId();
-        final Optional<String> resourceVersion = Optional.ofNullable(request.getResourceVersion());
-        final SpanContext spanContext = request.getSpanContext();
-
-        final Span span = newChildSpan(SPAN_NAME_REMOVE_CREDENTIAL, spanContext, tracer, tenantId, deviceId, getClass().getSimpleName());
-        final Future<Result<Void>> result = Future.future();
-
-        getService().remove(tenantId, deviceId, resourceVersion, span, result);
-
-        return result.map(res -> {
-            return res.createResponse(request, id -> null).setDeviceId(deviceId);
-        });
     }
 
     private Future<EventBusMessage> processGetRequest(final EventBusMessage request) {

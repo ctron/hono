@@ -641,7 +641,6 @@ public final class FileBasedCredentialsService extends AbstractVerticle
     }
 
 
-    @Override
     public void remove(final String tenantId, final String deviceId, final Optional<String> resourceVersion,
             final Span span, final Handler<AsyncResult<Result<Void>>> resultHandler) {
         Objects.requireNonNull(tenantId);

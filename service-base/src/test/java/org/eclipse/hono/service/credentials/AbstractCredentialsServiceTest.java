@@ -393,11 +393,11 @@ public abstract class AbstractCredentialsServiceTest {
     }
 
     /**
-     * Test deleting a secret but providing the wrong version.
+     * Test updating a secret but providing the wrong version.
      * @param ctx The vert.x test context.
      */
     @Test
-    public void testDeleteCredentialWithWrongResourceVersionFails(final VertxTestContext ctx) {
+    public void testUpdateCredentialWithWrongResourceVersionFails(final VertxTestContext ctx) {
         final var tenantId = "tenant";
         final var deviceId = UUID.randomUUID().toString();
         final var authId = UUID.randomUUID().toString();
@@ -437,12 +437,14 @@ public abstract class AbstractCredentialsServiceTest {
 
         }));
 
-        // phase 3 - delete with wrong version
+        final var newSecret = createPasswordCredential(authId, "bar");
+        // phase 3 - update with wrong version
 
         phase2.setHandler(ctx.succeeding(v -> {
 
-            getCredentialsManagementService().remove(tenantId, deviceId, Optional.of(UUID.randomUUID().toString()), NoopSpan.INSTANCE,
-                    ctx.succeeding(s -> ctx.verify(() -> {
+            getCredentialsManagementService().set(tenantId, deviceId, Optional.of(UUID.randomUUID().toString()),
+                    Collections.singletonList(secret), NoopSpan.INSTANCE,
+                    ctx.succeeding( s -> ctx.verify(() -> {
 
                         assertEquals(HTTP_PRECON_FAILED, s.getStatus());
                         checkpoint.flag();
@@ -526,48 +528,24 @@ public abstract class AbstractCredentialsServiceTest {
 
         }));
 
-        // phase 4 - delete
+        // Phase 4 verifies that when the device is deleted, the corresponding credentials are deleted as well.
 
         final Future<?> phase4 = Future.future();
 
         phase3.setHandler(ctx.succeeding(v -> {
-
-            getCredentialsManagementService().remove(tenantId, deviceId, Optional.empty(), NoopSpan.INSTANCE,
-                    ctx.succeeding(s -> ctx.verify(() -> {
-
-                        checkpoint.flag();
-
-                        assertEquals(HTTP_NO_CONTENT, s.getStatus());
-
-                        assertGetEmpty(ctx, tenantId, deviceId, authId,
-                                CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD,
-                                () -> {
-                                    checkpoint.flag();
-                                    phase4.complete();
-                                });
-
-                    })));
-
-        }));
-
-        // Phase 5 verifies that when the device is deleted, the corresponding credentials are deleted as well.
-
-        final Future<?> phase5 = Future.future();
-
-        phase4.setHandler(ctx.succeeding(v -> {
             getDeviceManagementService().deleteDevice(tenantId, deviceId, Optional.empty(), NoopSpan.INSTANCE,
                     ctx.succeeding(s -> ctx.verify(() -> {
                         assertGetMissing(ctx, tenantId, deviceId, authId,
                                 CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD, () -> {
                                     checkpoint.flag();
-                                    phase5.complete();
+                                    phase4.complete();
                                 });
                     })));
         }));
 
         // complete
 
-        phase5.setHandler(ctx.succeeding(s -> ctx.completeNow()));
+        phase4.setHandler(ctx.succeeding(s -> ctx.completeNow()));
 
     }
 

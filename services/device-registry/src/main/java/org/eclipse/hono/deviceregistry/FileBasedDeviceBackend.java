@@ -222,17 +222,6 @@ public class FileBasedDeviceBackend implements DeviceBackend {
         }).setHandler(resultHandler);
     }
 
-    @Override
-    public void remove(final String tenantId, final String deviceId, final Optional<String> resourceVersion,
-           final Span span, final Handler<AsyncResult<Result<Void>>> resultHandler) {
-        final OperationResult<Device> device = registrationService.readDevice(tenantId, deviceId, span);
-        if (device.getStatus() == HttpURLConnection.HTTP_OK) {
-            credentialsService.remove(tenantId, deviceId, resourceVersion, span, resultHandler);
-        } else {
-            resultHandler.handle(Future.succeededFuture(OperationResult.from(device.getStatus())));
-        }
-    }
-
     Future<?> saveToFile() {
         return CompositeFuture.all(
                 this.registrationService.saveToFile(),

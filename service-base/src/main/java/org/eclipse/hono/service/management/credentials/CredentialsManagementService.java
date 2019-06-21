@@ -75,27 +75,4 @@ public interface CredentialsManagementService {
      */
     void get(String tenantId, String deviceId, Span span,
             Handler<AsyncResult<OperationResult<List<CommonCredential>>>> resultHandler);
-
-    /**
-     * Removes all credentials for a device.
-     *
-     * @param tenantId The tenant the device belongs to.
-     * @param deviceId The ID under which the device is registered.
-     * @param resultHandler The handler to invoke with the result of the operation.
-     * @param span The active OpenTracing span for this operation. It is not to be closed in this method!
-     *          An implementation should log (error) events on this span and it may set tags and use this span as the
-     *          parent for any spans created in this method.
-     * @param resourceVersion The identifier of the resource version to update.
-     *         <p>
-     *         The <em>status</em> will be
-     *         <ul>
-     *         <li><em>204 No Content</em> if the credentials for the device have been removed.</li>
-     *         <li><em>404 Not Found</em> if no credentials are registered for the device.</li>
-     *         </ul>
-     * @throws NullPointerException if any of the parameters is {@code null}.
-     * @see <a href="https://www.eclipse.org/hono/api/credentials-api/#remove-credentials">
-     *      Credentials API - Remove Credentials</a>
-     */
-    void remove(String tenantId, String deviceId, Optional<String> resourceVersion, Span span,
-            Handler<AsyncResult<Result<Void>>> resultHandler);
 }
