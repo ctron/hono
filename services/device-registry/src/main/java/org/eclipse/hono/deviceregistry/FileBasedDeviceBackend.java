@@ -112,7 +112,6 @@ public class FileBasedDeviceBackend implements DeviceBackend {
             credentialsService.remove(
                     tenantId,
                     deviceId,
-                    Optional.empty(),
                     span,
                     f);
 

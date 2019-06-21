@@ -640,26 +640,25 @@ public final class FileBasedCredentialsService extends AbstractVerticle
         }
     }
 
-
-    public void remove(final String tenantId, final String deviceId, final Optional<String> resourceVersion,
+    /**
+     * Remove all the credentials for the given device ID.
+     * @param tenantId the Id of the tenant which the device belongs to.
+     * @param deviceId the id of the device that is deleted.
+     * @param span The active OpenTracing span for this operation.
+     * @param resultHandler the operation result.
+     */
+    public void remove(final String tenantId, final String deviceId,
             final Span span, final Handler<AsyncResult<Result<Void>>> resultHandler) {
         Objects.requireNonNull(tenantId);
         Objects.requireNonNull(deviceId);
         Objects.requireNonNull(resultHandler);
-        Objects.requireNonNull(resourceVersion);
 
         log.debug("removing credentials for device [tenant-id: {}, device-id: {}]", tenantId, deviceId);
 
-        resultHandler.handle(Future.succeededFuture(remove(tenantId, deviceId, resourceVersion, span)));
+        resultHandler.handle(Future.succeededFuture(remove(tenantId, deviceId, span)));
     }
 
-    private Result<Void> remove(final String tenantId, final String deviceId, final Optional<String> resourceVersion,
-            final Span span) {
-
-        if (!checkResourceVersion(tenantId, deviceId, resourceVersion)) {
-            TracingHelper.logError(span, "Resource version mismatch");
-            return Result.from(HttpURLConnection.HTTP_PRECON_FAILED);
-        }
+    private Result<Void> remove(final String tenantId, final String deviceId, final Span span) {
 
         setResourceVersion(tenantId, deviceId, null);
 
