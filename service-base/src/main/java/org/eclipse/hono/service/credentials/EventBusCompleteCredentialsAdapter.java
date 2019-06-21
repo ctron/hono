@@ -47,6 +47,11 @@ public abstract class EventBusCompleteCredentialsAdapter<T> extends EventBusCred
     @Override
     protected abstract CompleteCredentialsService getService();
 
+    /**
+     * Get the password encoder to use for plain passwords.
+     * 
+     * @return A password encoder, must never return {@code null}.
+     */
     protected abstract HonoPasswordEncoder getPasswordEncoder();
 
     /**

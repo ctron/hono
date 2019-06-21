@@ -96,6 +96,15 @@ public abstract class AbstractBaseApplication implements ApplicationRunner {
         this.healthCheckServer = Objects.requireNonNull(healthCheckServer);
     }
 
+    /**
+     * Allow the application to do a "pre-flight" check, before services are deployed.
+     * <p>
+     * Although the current implementation is empty, classes overriding this method must call the super method, as
+     * future implementations may be different.
+     * 
+     * @throws IllegalStateException May be thrown if the implementor considers the application in state that it cannot
+     *             be started up.
+     */
     protected void preFlightCheck() throws IllegalStateException {
     }
 

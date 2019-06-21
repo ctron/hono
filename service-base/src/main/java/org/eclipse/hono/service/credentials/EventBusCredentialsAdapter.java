@@ -47,6 +47,11 @@ public abstract class EventBusCredentialsAdapter<T> extends EventBusService<T> i
 
     private static final String SPAN_NAME_GET_CREDENTIALS = "get Credentials";
 
+    /**
+     * The service to forward requests to.
+     * 
+     * @return The service to bind to, must never return {@code null}.
+     */
     protected abstract CredentialsService getService();
 
     @Override
@@ -120,6 +125,16 @@ public abstract class EventBusCredentialsAdapter<T> extends EventBusService<T> i
         return finishSpanOnFutureCompletion(span, resultFuture);
     }
 
+    /**
+     * Processes a <em>get Credentials by Device ID</em> request message.
+     * 
+     * @param request The request message.
+     * @param tenantId The tenant id.
+     * @param type The secret type.
+     * @param deviceId The device Id.
+     * @param span The tracing span.
+     * @return The response to send to the client via the event bus.
+     */
     protected Future<EventBusMessage> processGetByDeviceIdRequest(final EventBusMessage request, final String tenantId,
             final String type, final String deviceId, final Span span) {
         return Future.failedFuture(new ClientErrorException(HttpURLConnection.HTTP_NOT_IMPLEMENTED));

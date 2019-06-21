@@ -85,6 +85,11 @@ public abstract class CommonSecret {
         this.comment = comment;
     }
 
+    /**
+     * Creator of {@link ToStringHelper}.
+     * 
+     * @return A new instance, never returns {@code null}.
+     */
     protected ToStringHelper toStringHelper() {
         return MoreObjects
                 .toStringHelper(this)

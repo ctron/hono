@@ -35,6 +35,13 @@ public class Result<T> {
     private final T payload;
     private final Optional<CacheDirective> cacheDirective;
 
+    /**
+     * Create a new instance.
+     * 
+     * @param status The HTTP status code.
+     * @param payload The payload, may be {@code null}.
+     * @param cacheDirective The caching directive, may be {@link Optional#empty()}, but not {@code null}.
+     */
     protected Result(final int status, final T payload, final Optional<CacheDirective> cacheDirective) {
         Objects.requireNonNull(cacheDirective);
 

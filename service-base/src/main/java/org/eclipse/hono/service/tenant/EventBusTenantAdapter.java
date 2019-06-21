@@ -50,6 +50,11 @@ public abstract class EventBusTenantAdapter<T> extends EventBusService<T> implem
 
     private static final String TAG_SUBJECT_DN_NAME = "subject_dn_name";
 
+    /**
+     * The service to forward requests to.
+     * 
+     * @return The service to bind to, must never return {@code null}.
+     */
     protected abstract TenantService getService();
 
     @Override

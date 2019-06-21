@@ -253,6 +253,11 @@ public class FileBasedDeviceBackend implements DeviceBackend {
         credentialsService.clear();
     }
 
+    /**
+     * Creator for {@link ToStringHelper}.
+     * 
+     * @return A new instance for this instance.
+     */
     protected ToStringHelper toStringHelper() {
         return MoreObjects.toStringHelper(this)
                 .add("credentialsService", this.credentialsService)

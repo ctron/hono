@@ -59,6 +59,11 @@ public abstract class EventBusRegistrationAdapter<T> extends EventBusService<T> 
 
     private static final String SPAN_NAME_ASSERT_DEVICE_REGISTRATION = "assert Device Registration";
 
+    /**
+     * The service to forward requests to.
+     * 
+     * @return The service to bind to, must never return {@code null}.
+     */
     protected abstract RegistrationService getService();
 
     @Override

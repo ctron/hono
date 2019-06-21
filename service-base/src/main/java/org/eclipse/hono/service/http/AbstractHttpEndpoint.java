@@ -104,10 +104,11 @@ public abstract class AbstractHttpEndpoint<T> extends AbstractEndpoint implement
      * Check the Content-Type of the request to be 'application/json' and extract the payload if this check was
      * successful.
      * <p>
-     * The payload is parsed to ensure it is valid JSON and is put to the RoutingContext ctx with the
-     * key {@link #KEY_REQUEST_BODY}.
+     * The payload is parsed to ensure it is valid JSON and is put to the RoutingContext ctx with the key
+     * {@link #KEY_REQUEST_BODY}.
      *
      * @param ctx The routing context to retrieve the JSON request body from.
+     * @param payloadExtractor The extractor of the payload from the context.
      */
     protected void extractRequiredJson(final RoutingContext ctx, final Function<RoutingContext, Object> payloadExtractor) {
 

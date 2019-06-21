@@ -50,6 +50,11 @@ public abstract class EventBusCredentialsManagementAdapter<T> extends EventBusSe
 
     private static final int DEFAULT_MAX_BCRYPT_ITERATIONS = 10;
 
+    /**
+     * The service to forward requests to.
+     * 
+     * @return The service to bind to, must never return {@code null}.
+     */
     protected abstract CredentialsManagementService getService();
 
     @Override
@@ -127,7 +132,18 @@ public abstract class EventBusCredentialsManagementAdapter<T> extends EventBusSe
         }
     }
 
+    /**
+     * Decode a secret from a JSON object.
+     * 
+     * @param object The object to device from.
+     * @return The decoded secret. Or {@code null} if the provided JSON object was {@code null}.
+     * @throws IllegalStateException if the {@code type} field was not set.
+     */
     protected CommonSecret decodeSecret(final JsonObject object) {
+
+        if (object == null) {
+            return null;
+        }
 
         final String type = object.getString("type");
         if (type == null || type.isEmpty()) {
@@ -139,6 +155,13 @@ public abstract class EventBusCredentialsManagementAdapter<T> extends EventBusSe
         return secret;
     }
 
+    /**
+     * Decode a secret, based on the provided type.
+     * 
+     * @param type The type of the secret. Will never be {@code null}.
+     * @param object The JSON object to decode. Will never be {@code null}.
+     * @return The decoded secret.
+     */
     protected CommonSecret decodeSecret(final String type, final JsonObject object) {
         switch (type) {
         case CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD:
@@ -152,14 +175,32 @@ public abstract class EventBusCredentialsManagementAdapter<T> extends EventBusSe
         }
     }
 
+    /**
+     * Decode a list of secrets from a JSON array.
+     * <p>
+     * This is a convenience method, decoding a list of secrets from a JSON array.
+     * 
+     * @param objects The JSON array.
+     * @return The list of decoded secrets.
+     * @throws NullPointerException in the case the {@code objects} parameter is {@code null}.
+     */
     protected List<CommonSecret> decodeSecrets(final JsonArray objects) {
         return objects
                 .stream()
+                .filter(JsonObject.class::isInstance)
                 .map(JsonObject.class::cast)
                 .map(this::decodeSecret)
+                .filter(Objects::nonNull)
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Extract the secrets from an event bus request.
+     * 
+     * @param request The request to extract information from.
+     * @return A future, returning the secrets.
+     * @throws NullPointerException in the case the request is {@code null}.
+     */
     protected Future<List<CommonSecret>> secretsFromPayload(final EventBusMessage request) {
         try {
             return Future.succeededFuture(Optional.ofNullable(request.getJsonPayload())
@@ -212,6 +253,12 @@ public abstract class EventBusCredentialsManagementAdapter<T> extends EventBusSe
         });
     }
 
+    /**
+     * Validate a secret.
+     * 
+     * @param secret The secret to validate.
+     * @throws IllegalStateException if the secret is not valid.
+     */
     protected void checkSecret(final CommonSecret secret) {
         secret.checkValidity();
         if (secret instanceof PasswordSecret) {

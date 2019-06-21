@@ -49,6 +49,11 @@ public abstract class EventBusDeviceManagementAdapter<T> extends EventBusService
     private static final String SPAN_NAME_UPDATE_DEVICE = "update Device from management API";
     private static final String SPAN_NAME_REMOVE_DEVICE = "remove Device from management API";
 
+    /**
+     * The service to forward requests to.
+     * 
+     * @return The service to bind to, must never return {@code null}.
+     */
     protected abstract DeviceManagementService getService();
 
     @Override

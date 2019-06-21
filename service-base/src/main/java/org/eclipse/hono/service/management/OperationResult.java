@@ -23,7 +23,7 @@ import org.eclipse.hono.util.EventBusMessage;
 import io.vertx.core.json.JsonObject;
 
 /**
- * An operation response.
+ * An operation response, including a resource version.
  * 
  * @param <T> The type of the payload.
  */
@@ -31,6 +31,14 @@ public final class OperationResult<T> extends Result<T> {
 
     private final Optional<String> resourceVersion;
 
+    /**
+     * Create a new instance.
+     * 
+     * @param status The HTTP status code.
+     * @param payload The payload, may be {@code null}.
+     * @param cacheDirective The caching directive, may be {@link Optional#empty()}, but not {@code null}.
+     * @param resourceVersion The resource version, may be {@link Optional#empty()}, but not {@code null}.
+     */
     protected OperationResult(final int status, final T payload,
             final Optional<CacheDirective> cacheDirective, final Optional<String> resourceVersion) {
         super(status, payload, cacheDirective);
