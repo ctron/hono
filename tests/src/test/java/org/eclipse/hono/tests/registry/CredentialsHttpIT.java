@@ -114,7 +114,7 @@ public class CredentialsHttpIT {
     }
 
     /**
-     * Removes the credentials that have been added by the test.
+     * Removes the device that have been added by the test.
      * 
      * @param ctx The vert.x test context.
      */
@@ -122,7 +122,7 @@ public class CredentialsHttpIT {
     public void removeCredentials(final TestContext ctx) {
         final Async deletion = ctx.async();
         registry
-                .removeAllCredentials(TENANT, deviceId, HttpURLConnection.HTTP_NO_CONTENT)
+                .deregisterDevice(TENANT, deviceId)
                 .setHandler(attempt -> deletion.complete());
         deletion.await();
     }
@@ -367,41 +367,6 @@ public class CredentialsHttpIT {
                         "3",
                         HttpURLConnection.HTTP_PRECON_FAILED)
                 .setHandler(context.asyncAssertSuccess());
-    }
-
-    /**
-     * Verify that a correctly added credentials record can be successfully deleted again by using the device-id.
-     * 
-     * @param context The vert.x test context.
-     */
-    @Test
-    public void testRemoveCredentialsForDeviceSucceeds(final TestContext context) {
-
-        registry
-
-                .updateCredentials(TENANT,
-                        deviceId,
-                        Collections.singleton(hashedPasswordSecret),
-                        HttpURLConnection.HTTP_NO_CONTENT)
-
-                .compose(ar -> {
-                    return registry.removeAllCredentials(TENANT, deviceId, HttpURLConnection.HTTP_NO_CONTENT);
-                })
-
-                .setHandler(context.asyncAssertSuccess());
-    }
-
-    /**
-     * Verifies that a request to delete all credentials for a device fails if no credentials exist
-     * for the device.
-     * 
-     * @param context The vert.x test context.
-     */
-    @Test
-    public void testRemoveCredentialsForDeviceFailsForNonExistingCredentials(final TestContext context) {
-
-        registry.removeAllCredentials(TENANT, "non-existing-device", HttpURLConnection.HTTP_NOT_FOUND)
-            .setHandler(context.asyncAssertSuccess());
     }
 
     /**

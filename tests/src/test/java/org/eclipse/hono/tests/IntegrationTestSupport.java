@@ -535,10 +535,7 @@ public final class IntegrationTestSupport {
         devicesToDelete.forEach((tenantId, devices) -> {
             devices.forEach(deviceId -> {
                 final Async deletion = ctx.async();
-                CompositeFuture.join(
-                        registry.deregisterDevice(tenantId, deviceId),
-                        registry.removeAllCredentials(tenantId, deviceId))
-                    .setHandler(ok -> deletion.complete());
+                registry.deregisterDevice(tenantId, deviceId).setHandler(ok -> deletion.complete());
                 deletion.await(1000);
             });
         });
@@ -564,10 +561,7 @@ public final class IntegrationTestSupport {
             final Checkpoint deviceDeletion = ctx.checkpoint(devicesToDelete.size());
             devicesToDelete.forEach((tenantId, devices) -> {
                 devices.forEach(deviceId -> {
-                    CompositeFuture.join(
-                            registry.deregisterDevice(tenantId, deviceId),
-                            registry.removeAllCredentials(tenantId, deviceId))
-                        .setHandler(ok -> deviceDeletion.flag());
+                    registry.deregisterDevice(tenantId, deviceId).setHandler(ok -> deviceDeletion.flag());
                 });
             });
             devicesToDelete.clear();

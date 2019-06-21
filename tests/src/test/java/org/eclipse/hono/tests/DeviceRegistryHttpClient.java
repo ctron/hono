@@ -652,41 +652,6 @@ public final class DeviceRegistryHttpClient {
         return httpClient.update(uri, payload, contentType, status -> status == expectedStatusCode);
     }
 
-    /**
-     * Removes all credentials from a device.
-     * <p>
-     * This method simply invokes {@link #removeAllCredentials(String, String, int)} with
-     * {@link HttpURLConnection#HTTP_NO_CONTENT} as the expected status code.
-     * 
-     * @param tenantId The tenant that the device belongs to.
-     * @param deviceId The identifier of the device.
-     * @return A future indicating the outcome of the operation. The future will succeed if the credentials have been
-     *         removed successfully. Otherwise the future will fail with a {@link ServiceInvocationException}.
-     * @throws NullPointerException if the tenant is {@code null}.
-     */
-    public Future<Void> removeAllCredentials(final String tenantId, final String deviceId) {
-
-        return removeAllCredentials(tenantId, deviceId, HttpURLConnection.HTTP_NO_CONTENT);
-    }
-
-    /**
-     * Removes all credentials from a device.
-     * 
-     * @param tenantId The tenant that the device belongs to.
-     * @param deviceId The identifier of the device.
-     * @param expectedStatusCode The status code indicating a successful outcome.
-     * @return A future indicating the outcome of the operation. The future will succeed if the response contains the
-     *         expected status code. Otherwise the future will fail with a {@link ServiceInvocationException}.
-     * @throws NullPointerException if the tenant is {@code null}.
-     */
-    public Future<Void> removeAllCredentials(final String tenantId, final String deviceId,
-            final int expectedStatusCode) {
-
-        Objects.requireNonNull(tenantId);
-        final String uri = String.format(TEMPLATE_URI_CREDENTIALS_BY_DEVICE, tenantId, deviceId);
-        return httpClient.delete(uri, status -> status == expectedStatusCode);
-    }
-
     // convenience methods
 
     /**
