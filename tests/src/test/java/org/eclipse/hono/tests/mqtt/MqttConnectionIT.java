@@ -19,7 +19,9 @@ import java.util.UUID;
 import javax.security.auth.x500.X500Principal;
 
 import org.eclipse.hono.service.credentials.AbstractCredentialsServiceTest;
+import org.eclipse.hono.service.management.credentials.PasswordCredential;
 import org.eclipse.hono.service.management.credentials.PasswordSecret;
+import org.eclipse.hono.service.management.credentials.X509CertificateCredential;
 import org.eclipse.hono.service.management.credentials.X509CertificateSecret;
 import org.eclipse.hono.service.management.tenant.Tenant;
 import org.eclipse.hono.tests.IntegrationTestSupport;
@@ -181,7 +183,7 @@ public class MqttConnectionIT extends MqttTestBase {
                     return helper.registry.addTenant(tenantId, JsonObject.mapFrom(tenant));
                 }).compose(ok -> helper.registry.registerDevice(tenantId, deviceId))
                 .compose(ok -> {
-                    final X509CertificateSecret secret = new X509CertificateSecret();
+                    final X509CertificateCredential secret = new X509CertificateCredential();
                     secret.setAuthId(new X500Principal("CN=4711").getName(X500Principal.RFC2253));
                     return helper.registry.addCredentials(tenantId, deviceId, Collections.singleton(secret));
                 })
@@ -255,7 +257,7 @@ public class MqttConnectionIT extends MqttTestBase {
         helper.registry
                 .addTenant(tenantId, JsonObject.mapFrom(tenant))
             .compose(ok -> {
-                    final PasswordSecret secret = AbstractCredentialsServiceTest.createPasswordSecret(deviceId,
+                    final PasswordCredential secret = AbstractCredentialsServiceTest.createPasswordCredential(deviceId,
                             password);
                     return helper.registry.addCredentials(tenantId, deviceId, Collections.singleton(secret));
             })
@@ -283,7 +285,7 @@ public class MqttConnectionIT extends MqttTestBase {
         helper.registry
                 .addTenant(tenantId, JsonObject.mapFrom(tenant))
             .compose(ok -> {
-                    final PasswordSecret secret = AbstractCredentialsServiceTest.createPasswordSecret(deviceId,
+                    final PasswordCredential secret = AbstractCredentialsServiceTest.createPasswordCredential(deviceId,
                             password);
                     return helper.registry.addCredentials(tenantId, deviceId, Collections.singleton(secret));
             })

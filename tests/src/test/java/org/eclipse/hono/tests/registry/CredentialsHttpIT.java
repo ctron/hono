@@ -20,9 +20,13 @@ import java.util.List;
 import java.util.UUID;
 
 import org.eclipse.hono.service.credentials.AbstractCredentialsServiceTest;
+import org.eclipse.hono.service.management.credentials.CommonCredential;
 import org.eclipse.hono.service.management.credentials.CommonSecret;
+import org.eclipse.hono.service.management.credentials.GenericCredential;
 import org.eclipse.hono.service.management.credentials.GenericSecret;
+import org.eclipse.hono.service.management.credentials.PasswordCredential;
 import org.eclipse.hono.service.management.credentials.PasswordSecret;
+import org.eclipse.hono.service.management.credentials.PskCredential;
 import org.eclipse.hono.service.management.credentials.PskSecret;
 import org.eclipse.hono.tests.CrudHttpClient;
 import org.eclipse.hono.tests.DeviceRegistryHttpClient;
@@ -79,8 +83,8 @@ public class CredentialsHttpIT {
 
     private String deviceId;
     private String authId;
-    private PasswordSecret hashedPasswordSecret;
-    private PskSecret pskCredentials;
+    private PasswordCredential hashedPasswordSecret;
+    private PskCredential pskCredentials;
 
     /**
      * Creates the HTTP client for accessing the registry.
@@ -106,7 +110,7 @@ public class CredentialsHttpIT {
     public void setUp(final TestContext ctx) {
         deviceId = UUID.randomUUID().toString();
         authId = getRandomAuthId(TEST_AUTH_ID);
-        hashedPasswordSecret = AbstractCredentialsServiceTest.createPasswordSecret(authId, ORIG_BCRYPT_PWD);
+        hashedPasswordSecret = AbstractCredentialsServiceTest.createPasswordCredential(authId, ORIG_BCRYPT_PWD);
         pskCredentials = newPskCredentials(authId);
         final Async creation = ctx.async();
         registry.registerDevice(DEFAULT_TENANT, deviceId).setHandler(attempt -> creation.complete());
@@ -173,7 +177,7 @@ public class CredentialsHttpIT {
     @Ignore("credentials ext concept")
     public void testAddCredentialsSucceedsForAdditionalProperties(final TestContext context) {
 
-        final PasswordSecret secret = AbstractCredentialsServiceTest.createPasswordSecret(authId, "thePassword");
+        final CommonCredential secret = AbstractCredentialsServiceTest.createPasswordCredential(authId, "thePassword");
         // FIXME: secret.setProperty("client-id", "MQTT-client-2384236854");
 
         registry.addCredentials(TENANT, deviceId, Collections.singleton(secret))
@@ -241,16 +245,19 @@ public class CredentialsHttpIT {
         // GIVEN a hashed password using bcrypt with more than the configured max iterations
         final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(IntegrationTestSupport.MAX_BCRYPT_ITERATIONS + 1);
 
+        final PasswordCredential credential = new PasswordCredential();
+        credential.setAuthId(authId);
+
         final PasswordSecret secret = new PasswordSecret();
-        secret.setAuthId(authId);
         secret.setHashFunction(CredentialsConstants.HASH_FUNCTION_BCRYPT);
         secret.setPasswordHash(encoder.encode("thePassword"));
+        credential.setSecrets(Collections.singletonList(secret));
 
         // WHEN adding the credentials
         registry.updateCredentials(
                 TENANT,
                 deviceId,
-                Collections.singleton(secret),
+                Collections.singleton(credential),
                 // THEN the request fails with 400
                 HttpURLConnection.HTTP_BAD_REQUEST).setHandler(context.asyncAssertSuccess());
     }
@@ -314,9 +321,9 @@ public class CredentialsHttpIT {
     @Test
     public void testUpdateCredentialsSucceeds(final TestContext context) {
 
-        final PasswordSecret altered = JsonObject
+        final PasswordCredential altered = JsonObject
                 .mapFrom(hashedPasswordSecret)
-                .mapTo(PasswordSecret.class);
+                .mapTo(PasswordCredential.class);
         altered.setComment("test");
 
         registry.updateCredentials(TENANT, deviceId, Collections.singleton(hashedPasswordSecret),
@@ -338,9 +345,9 @@ public class CredentialsHttpIT {
     @Ignore // TODO clear passwords
     public void testUpdateCredentialsSucceedsForClearTextPassword(final TestContext context) {
 
-        final PasswordSecret secret = AbstractCredentialsServiceTest.createPasswordSecret(authId, "newPassword");
+        final PasswordCredential secret = AbstractCredentialsServiceTest.createPasswordCredential(authId, "newPassword");
 
-        registry.addCredentials(TENANT, deviceId, Collections.<CommonSecret> singleton(hashedPasswordSecret))
+        registry.addCredentials(TENANT, deviceId, Collections.<CommonCredential> singleton(hashedPasswordSecret))
                 .compose(ar -> registry.updateCredentials(TENANT, deviceId, secret))
                 .compose(ur -> registry.getCredentials(TENANT, deviceId))
                 .setHandler(context.asyncAssertSuccess(gr -> {
@@ -416,7 +423,7 @@ public class CredentialsHttpIT {
     @Ignore
     public void testGetAddedCredentialsMultipleTypesSingleRequests(final TestContext context) {
 
-        final List<CommonSecret> credentialsListToAdd = new ArrayList<>();
+        final List<CommonCredential> credentialsListToAdd = new ArrayList<>();
         credentialsListToAdd.add(hashedPasswordSecret);
         credentialsListToAdd.add(pskCredentials);
 
@@ -454,7 +461,7 @@ public class CredentialsHttpIT {
     @Ignore //TODO change to set properly multiple credentials
     public void testGetAllCredentialsForDeviceSucceeds(final TestContext context) throws InterruptedException {
 
-        final List<CommonSecret> credentialsListToAdd = new ArrayList<>();
+        final List<CommonCredential> credentialsListToAdd = new ArrayList<>();
         credentialsListToAdd.add(newPskCredentials("auth"));
         credentialsListToAdd.add(newPskCredentials("other-auth"));
 
@@ -479,9 +486,9 @@ public class CredentialsHttpIT {
     public void testGetCredentialsForDeviceRegardlessOfType(final TestContext context) throws InterruptedException {
 
         final String pskAuthId = getRandomAuthId(TEST_AUTH_ID);
-        final List<CommonSecret> credentialsToAdd = new ArrayList<>();
+        final List<CommonCredential> credentialsToAdd = new ArrayList<>();
         for (int i = 0; i < 5; i++) {
-            final GenericSecret secret = new GenericSecret();
+            final GenericCredential secret = new GenericCredential();
             secret.setAuthId(pskAuthId);
             secret.setType("type" + i);
             credentialsToAdd.add(secret);
@@ -527,7 +534,7 @@ public class CredentialsHttpIT {
     }
 
     private static void assertResponseBodyContainsAllCredentials(final TestContext context, final JsonObject responseBody,
-            final List<CommonSecret> credentialsList) {
+            final List<CommonCredential> credentialsList) {
 
         // the response must contain all of the payload of the add request, so test that now
         context.assertTrue(responseBody.containsKey(CredentialsConstants.FIELD_CREDENTIALS_TOTAL));
@@ -545,12 +552,16 @@ public class CredentialsHttpIT {
         return authIdPrefix + "." + UUID.randomUUID();
     }
 
-    private static PskSecret newPskCredentials(final String authId) {
+    private static PskCredential newPskCredentials(final String authId) {
+
+        final PskCredential credential = new PskCredential();
+        credential.setAuthId(authId);
 
         final PskSecret secret = new PskSecret();
-        secret.setAuthId(authId);
         secret.setKey("secret".getBytes(StandardCharsets.UTF_8));
-        return secret;
+        credential.setSecrets(Collections.singletonList(secret));
+
+        return credential;
 
     }
 

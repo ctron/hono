@@ -50,6 +50,7 @@ import org.eclipse.californium.scandium.dtls.pskstore.StaticPskStore;
 import org.eclipse.hono.client.MessageConsumer;
 import org.eclipse.hono.client.ServiceInvocationException;
 import org.eclipse.hono.client.StatusCodeMapper;
+import org.eclipse.hono.service.management.credentials.GenericCredential;
 import org.eclipse.hono.service.management.credentials.GenericSecret;
 import org.eclipse.hono.service.management.device.Device;
 import org.eclipse.hono.service.management.tenant.Tenant;
@@ -522,14 +523,14 @@ public abstract class CoapTestBase {
         final Tenant tenant = new Tenant();
 
         // GIVEN a device for which an invalid shared key has been configured
-        final GenericSecret secret = new GenericSecret();
-        secret.setAuthId(deviceId);
-        secret.setType(CredentialsConstants.SECRETS_TYPE_PRESHARED_KEY);
-        secret.getAdditionalProperties().put(CredentialsConstants.FIELD_SECRETS_KEY, "notBase64");
+        final GenericCredential credential = new GenericCredential();
+        credential.setAuthId(deviceId);
+        credential.setType(CredentialsConstants.SECRETS_TYPE_PRESHARED_KEY);
+        credential.getAdditionalProperties().put(CredentialsConstants.FIELD_SECRETS_KEY, "notBase64");
 
         helper.registry.addTenant(tenantId, JsonObject.mapFrom(tenant))
         .compose(ok -> helper.registry.registerDevice(tenantId, deviceId))
-                .compose(ok -> helper.registry.addCredentials(tenantId, deviceId, Collections.singleton(secret)))
+                .compose(ok -> helper.registry.addCredentials(tenantId, deviceId, Collections.singleton(credential)))
         .setHandler(ctx.asyncAssertSuccess(ok -> setup.complete()));
         setup.await();
 

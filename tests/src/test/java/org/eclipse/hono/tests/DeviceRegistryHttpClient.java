@@ -26,9 +26,13 @@ import javax.security.auth.x500.X500Principal;
 
 import org.eclipse.hono.client.ServiceInvocationException;
 import org.eclipse.hono.service.credentials.AbstractCredentialsServiceTest;
+import org.eclipse.hono.service.management.credentials.CommonCredential;
 import org.eclipse.hono.service.management.credentials.CommonSecret;
+import org.eclipse.hono.service.management.credentials.PasswordCredential;
 import org.eclipse.hono.service.management.credentials.PasswordSecret;
+import org.eclipse.hono.service.management.credentials.PskCredential;
 import org.eclipse.hono.service.management.credentials.PskSecret;
+import org.eclipse.hono.service.management.credentials.X509CertificateCredential;
 import org.eclipse.hono.service.management.credentials.X509CertificateSecret;
 import org.eclipse.hono.service.management.device.Device;
 import org.eclipse.hono.service.management.tenant.Tenant;
@@ -405,7 +409,7 @@ public final class DeviceRegistryHttpClient {
      * @throws NullPointerException if the tenant is {@code null}.
      */
     public Future<MultiMap> addCredentials(final String tenantId, final String deviceId,
-            final Collection<CommonSecret> secrets) {
+            final Collection<CommonCredential> secrets) {
         return addCredentials(tenantId, deviceId, secrets, HttpURLConnection.HTTP_NO_CONTENT);
     }
 
@@ -425,7 +429,7 @@ public final class DeviceRegistryHttpClient {
      * @throws NullPointerException if the tenant is {@code null}.
      */
     public Future<MultiMap> addCredentials(final String tenantId, final String deviceId,
-            final Collection<CommonSecret> secrets, final int expectedStatusCode) {
+            final Collection<CommonCredential> secrets, final int expectedStatusCode) {
         return addCredentials(tenantId, deviceId, secrets, CONTENT_TYPE_APPLICATION_JSON, expectedStatusCode);
     }
 
@@ -444,7 +448,7 @@ public final class DeviceRegistryHttpClient {
     public Future<MultiMap> addCredentials(
             final String tenantId,
             final String deviceId,
-            final Collection<CommonSecret> secrets,
+            final Collection<CommonCredential> secrets,
             final String contentType,
             final int expectedStatusCode) {
 
@@ -457,14 +461,14 @@ public final class DeviceRegistryHttpClient {
                     // new list of secrets
 
                     // get a list, through an array - workaround for vert.x json issue
-                    final List<CommonSecret> currentSecrets = new ArrayList<>(
-                            Arrays.asList(Json.decodeValue(body, CommonSecret[].class)));
+                    final List<CommonCredential> currentSecrets = new ArrayList<>(
+                            Arrays.asList(Json.decodeValue(body, CommonCredential[].class)));
                     currentSecrets.addAll(secrets);
 
                     // update
 
                     // encode array, not list - workaround for vert.x json issue
-                    final var payload = Json.encodeToBuffer(currentSecrets.toArray(CommonSecret[]::new));
+                    final var payload = Json.encodeToBuffer(currentSecrets.toArray(CommonCredential[]::new));
                     return httpClient.update(uri, payload, contentType,
                             response -> response == expectedStatusCode);
                 });
@@ -538,7 +542,7 @@ public final class DeviceRegistryHttpClient {
      * @throws NullPointerException if the tenant is {@code null}.
      */
     public Future<MultiMap> updateCredentials(final String tenantId, final String deviceId,
-            final CommonSecret credentialsSpec) {
+            final CommonCredential credentialsSpec) {
         return updateCredentials(tenantId, deviceId, Collections.singleton(credentialsSpec),
                 HttpURLConnection.HTTP_NO_CONTENT);
     }
@@ -559,7 +563,7 @@ public final class DeviceRegistryHttpClient {
     public Future<Void> updateCredentialsWithVersion(
             final String tenantId,
             final String deviceId,
-            final Collection<CommonSecret> credentialsSpec,
+            final Collection<CommonCredential> credentialsSpec,
             final String version,
             final int expectedStatusCode) {
 
@@ -592,7 +596,7 @@ public final class DeviceRegistryHttpClient {
     public Future<MultiMap> updateCredentials(
             final String tenantId,
             final String deviceId,
-            final Collection<CommonSecret> credentialsSpec,
+            final Collection<CommonCredential> credentialsSpec,
             final int expectedStatusCode) {
 
         return updateCredentials(tenantId, deviceId, credentialsSpec, CrudHttpClient.CONTENT_TYPE_JSON,
@@ -614,14 +618,14 @@ public final class DeviceRegistryHttpClient {
     public Future<MultiMap> updateCredentials(
             final String tenantId,
             final String deviceId,
-            final Collection<CommonSecret> credentialsSpec,
+            final Collection<CommonCredential> credentialsSpec,
             final String contentType,
             final int expectedStatusCode) {
 
         Objects.requireNonNull(credentialsSpec);
 
         // encode array not list, workaround for vert.x issue
-        final var payload = Json.encodeToBuffer(credentialsSpec.toArray(CommonSecret[]::new));
+        final var payload = Json.encodeToBuffer(credentialsSpec.toArray(CommonCredential[]::new));
 
         return updateCredentialsRaw(tenantId, deviceId, payload, contentType, expectedStatusCode);
 
@@ -695,7 +699,7 @@ public final class DeviceRegistryHttpClient {
 
         Objects.requireNonNull(tenant);
 
-        final PasswordSecret secret = AbstractCredentialsServiceTest.createPasswordSecret(deviceId, password);
+        final PasswordCredential secret = AbstractCredentialsServiceTest.createPasswordCredential(deviceId, password);
 
         return addTenant(tenantId, JsonObject.mapFrom(tenant))
                 .compose(ok -> registerDevice(tenantId, deviceId, device))
@@ -745,7 +749,7 @@ public final class DeviceRegistryHttpClient {
         Objects.requireNonNull(data);
         Objects.requireNonNull(password);
 
-        final PasswordSecret secret = AbstractCredentialsServiceTest.createPasswordSecret(deviceId, password);
+        final PasswordCredential secret = AbstractCredentialsServiceTest.createPasswordCredential(deviceId, password);
 
         return registerDevice(tenantId, deviceId, data)
                 .compose(ok -> addCredentials(tenantId, deviceId, Collections.singletonList(secret)));
@@ -773,7 +777,7 @@ public final class DeviceRegistryHttpClient {
                 .compose(ok -> registerDevice(tenantId, deviceId))
                 .compose(ok -> {
 
-                    final X509CertificateSecret secret = new X509CertificateSecret();
+                    final X509CertificateCredential secret = new X509CertificateCredential();
                     secret.setAuthId(deviceCert.getSubjectDN().getName());
 
                     return addCredentials(tenantId, deviceId, Collections.singleton(secret));
@@ -829,13 +833,15 @@ public final class DeviceRegistryHttpClient {
         Objects.requireNonNull(deviceData);
         Objects.requireNonNull(key);
 
+        final PskCredential credential = new PskCredential();
+        credential.setAuthId(deviceId);
+
         final PskSecret secret = new PskSecret();
         secret.setKey(key.getBytes(StandardCharsets.UTF_8));
-        secret.setAuthId(deviceId);
 
         return addTenant(tenantId, JsonObject.mapFrom(tenant))
                 .compose(ok -> registerDevice(tenantId, deviceId, deviceData))
-                .compose(ok -> addCredentials(tenantId, deviceId, Collections.singleton(secret)));
+                .compose(ok -> addCredentials(tenantId, deviceId, Collections.singleton(credential)));
 
     }
 
@@ -853,12 +859,14 @@ public final class DeviceRegistryHttpClient {
      */
     public Future<MultiMap> addPskDeviceToTenant(final String tenantId, final String deviceId, final String key) {
 
+        final PskCredential credential = new PskCredential();
+        credential.setAuthId(deviceId);
+
         final PskSecret secret = new PskSecret();
         secret.setKey(key.getBytes(StandardCharsets.UTF_8));
-        secret.setAuthId(deviceId);
 
         return registerDevice(tenantId, deviceId)
-                .compose(ok -> addCredentials(tenantId, deviceId, Collections.singleton(secret)));
+                .compose(ok -> addCredentials(tenantId, deviceId, Collections.singleton(credential)));
     }
 
 }

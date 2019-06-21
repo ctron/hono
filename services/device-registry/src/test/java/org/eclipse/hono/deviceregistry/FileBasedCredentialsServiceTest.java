@@ -32,9 +32,11 @@ import java.util.Optional;
 import org.eclipse.hono.service.management.OperationResult;
 import org.eclipse.hono.service.credentials.AbstractCredentialsServiceTest;
 import org.eclipse.hono.service.credentials.CredentialsService;
-import org.eclipse.hono.service.management.credentials.CommonSecret;
+import org.eclipse.hono.service.management.credentials.CommonCredential;
 import org.eclipse.hono.service.management.credentials.CredentialsManagementService;
+import org.eclipse.hono.service.management.credentials.PasswordCredential;
 import org.eclipse.hono.service.management.credentials.PasswordSecret;
+import org.eclipse.hono.service.management.credentials.PskCredential;
 import org.eclipse.hono.service.management.credentials.PskSecret;
 import org.eclipse.hono.service.management.device.DeviceManagementService;
 import org.eclipse.hono.util.CacheDirective;
@@ -362,24 +364,30 @@ public class FileBasedCredentialsServiceTest extends AbstractCredentialsServiceT
         when(fileSystem.existsBlocking(credentialsConfig.getFilename())).thenReturn(Boolean.TRUE);
 
         // 4700
+        final PasswordCredential passwordCredential = new PasswordCredential();
+        passwordCredential.setAuthId("bumlux");
+
         final PasswordSecret hashedPassword = new PasswordSecret();
-        hashedPassword.setAuthId("bumlux");
         hashedPassword.setPasswordHash("$2a$10$UK9lmSMlYmeXqABkTrDRsu1nlZRnAmGnBdPIWZoDajtjyxX18Dry.");
         hashedPassword.setHashFunction(CredentialsConstants.HASH_FUNCTION_BCRYPT);
+        passwordCredential.setSecrets(Collections.singletonList(hashedPassword));
 
         // 4711
+        final PskCredential pskCredential = new PskCredential();
+        pskCredential.setAuthId("sensor1");
+
         final PskSecret pskSecret = new PskSecret();
-        pskSecret.setAuthId("sensor1");
         pskSecret.setKey("sharedkey".getBytes(StandardCharsets.UTF_8));
+        pskCredential.setSecrets(Collections.singletonList(pskSecret));
 
         setCredentials(getCredentialsManagementService(),
                 Constants.DEFAULT_TENANT, "4700",
-                Collections.<CommonSecret> singletonList(pskSecret))
+                Collections.<CommonCredential> singletonList(pskCredential))
 
                         .compose(ok -> {
                             return setCredentials(getCredentialsManagementService(),
                                     "OTHER_TENANT", "4711",
-                                    Collections.<CommonSecret> singletonList(hashedPassword));
+                                    Collections.<CommonCredential> singletonList(passwordCredential));
                         })
 
                         .compose(ok -> {
@@ -456,14 +464,14 @@ public class FileBasedCredentialsServiceTest extends AbstractCredentialsServiceT
         // GIVEN a registry that has been configured to not allow modification of entries
         credentialsConfig.setModificationEnabled(false);
 
-        final CommonSecret secret = createPasswordSecret("myId", "bar");
+        final CommonCredential secret = createPasswordCredential("myId", "bar");
 
         // containing a set of credentials
         setCredentials(getCredentialsManagementService(), "tenant", "device", Collections.singletonList(secret))
                 .compose(ok -> {
                     final Future<OperationResult<Void>> result = Future.future();
                     // WHEN trying to update the credentials
-                    final PasswordSecret newSecret = createPasswordSecret("myId", "baz");
+                    final PasswordCredential newSecret = createPasswordCredential("myId", "baz");
                     svc.set("tenant", "device",
                             Optional.empty(),
                             Collections.singletonList(newSecret),

@@ -21,13 +21,16 @@ import static org.junit.Assert.assertTrue;
 import java.net.HttpURLConnection;
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import org.eclipse.hono.client.CredentialsClient;
 import org.eclipse.hono.service.credentials.AbstractCredentialsServiceTest;
+import org.eclipse.hono.service.management.credentials.CommonCredential;
 import org.eclipse.hono.service.management.credentials.CommonSecret;
+import org.eclipse.hono.service.management.credentials.PasswordSecret;
 import org.eclipse.hono.util.Constants;
 import org.eclipse.hono.util.CredentialsConstants;
 import org.eclipse.hono.util.CredentialsObject;
@@ -82,7 +85,7 @@ abstract class CredentialsApiTests extends DeviceRegistryTestBase {
 
         final String deviceId = getHelper().getRandomDeviceId(Constants.DEFAULT_TENANT);
         final String authId = UUID.randomUUID().toString();
-        final List<CommonSecret> credentials = getRandomHashedPasswordCredentials(deviceId, authId);
+        final List<CommonCredential> credentials = getRandomHashedPasswordCredentials(deviceId, authId);
 
         getHelper().registry
                 .registerDevice(Constants.DEFAULT_TENANT, deviceId)
@@ -116,7 +119,7 @@ abstract class CredentialsApiTests extends DeviceRegistryTestBase {
         final String deviceId = getHelper().getRandomDeviceId(Constants.DEFAULT_TENANT);
         final String authId = UUID.randomUUID().toString();
 
-        final List<CommonSecret> credentials = getRandomHashedPasswordCredentials(deviceId, authId);
+        final List<CommonCredential> credentials = getRandomHashedPasswordCredentials(deviceId, authId);
 
         // disable the first entry
         credentials.get(0).setEnabled(false);
@@ -152,7 +155,7 @@ abstract class CredentialsApiTests extends DeviceRegistryTestBase {
 
         final String deviceId = getHelper().getRandomDeviceId(Constants.DEFAULT_TENANT);
         final String authId = UUID.randomUUID().toString();
-        final List<CommonSecret> credentials = getRandomHashedPasswordCredentials(deviceId, authId);
+        final List<CommonCredential> credentials = getRandomHashedPasswordCredentials(deviceId, authId);
 
         // FIXME: credentials.setProperty("client-id", "gateway-one");
 
@@ -190,7 +193,7 @@ abstract class CredentialsApiTests extends DeviceRegistryTestBase {
 
         final String deviceId = getHelper().getRandomDeviceId(Constants.DEFAULT_TENANT);
         final String authId = UUID.randomUUID().toString();
-        final List<CommonSecret> credentials = getRandomHashedPasswordCredentials(deviceId, authId);
+        final List<CommonCredential> credentials = getRandomHashedPasswordCredentials(deviceId, authId);
         // FIXME: credentials.setProperty("client-id", "gateway-one");
 
         final JsonObject clientContext = new JsonObject()
@@ -218,7 +221,7 @@ abstract class CredentialsApiTests extends DeviceRegistryTestBase {
 
         final String deviceId = getHelper().getRandomDeviceId(Constants.DEFAULT_TENANT);
         final String authId = UUID.randomUUID().toString();
-        final List<CommonSecret> credentials = getRandomHashedPasswordCredentials(deviceId, authId);
+        final List<CommonCredential> credentials = getRandomHashedPasswordCredentials(deviceId, authId);
 
         final JsonObject clientContext = new JsonObject()
                 .put("client-id", "gateway-one");
@@ -233,17 +236,21 @@ abstract class CredentialsApiTests extends DeviceRegistryTestBase {
         }));
     }
 
-    private List<CommonSecret> getRandomHashedPasswordCredentials(final String deviceId, final String authId) {
+    private List<CommonCredential> getRandomHashedPasswordCredentials(final String deviceId, final String authId) {
 
-        final var secret1 = AbstractCredentialsServiceTest.createPasswordSecret(authId, "ClearTextPWD");
-        secret1.setAuthId(authId);
+        final var credential1 = AbstractCredentialsServiceTest.createPasswordCredential(authId, "ClearTextPWD");
+        credential1.setAuthId(authId);
+
+        final PasswordSecret secret1 = new PasswordSecret();
+
         secret1.setNotBefore(Instant.parse("2017-05-01T14:00:00Z"));
         secret1.setNotAfter(Instant.parse("2037-06-01T14:00:00Z"));
+        credential1.setSecrets(Collections.singletonList(secret1));
 
-        final var secret2 = AbstractCredentialsServiceTest.createPasswordSecret(authId, "hono-password");
-        secret2.setAuthId(authId);
+        final var credential2 = AbstractCredentialsServiceTest.createPasswordCredential(authId, "hono-password");
+        credential2.setAuthId(authId);
 
-        return Arrays.asList(secret1, secret2);
+        return Arrays.asList(credential1, credential2);
 
     }
 

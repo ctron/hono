@@ -115,7 +115,7 @@ public abstract class EventBusCredentialsManagementAdapter<T> extends EventBusSe
                     "missing payload"));
         }
         try {
-            final Future<List<CommonSecret>> secretsFuture = secretsFromPayload(request);
+            final Future<List<CommonCredential>> secretsFuture = secretsFromPayload(request);
 
             final Span span = newChildSpan(SPAN_NAME_UPDATE_CREDENTIAL, spanContext, tracer, tenantId, deviceId, getClass().getSimpleName());
             final Future<OperationResult<Void>> result = Future.future();
@@ -139,7 +139,7 @@ public abstract class EventBusCredentialsManagementAdapter<T> extends EventBusSe
      * @return The decoded secret. Or {@code null} if the provided JSON object was {@code null}.
      * @throws IllegalStateException if the {@code type} field was not set.
      */
-    protected CommonSecret decodeSecret(final JsonObject object) {
+    protected CommonCredential decodeSecret(final JsonObject object) {
 
         if (object == null) {
             return null;
@@ -150,7 +150,7 @@ public abstract class EventBusCredentialsManagementAdapter<T> extends EventBusSe
             throw new IllegalStateException("'type' field must be set");
         }
 
-        final CommonSecret secret = decodeSecret(type, object);
+        final CommonCredential secret = decodeSecret(type, object);
         checkSecret(secret);
         return secret;
     }
@@ -162,16 +162,16 @@ public abstract class EventBusCredentialsManagementAdapter<T> extends EventBusSe
      * @param object The JSON object to decode. Will never be {@code null}.
      * @return The decoded secret.
      */
-    protected CommonSecret decodeSecret(final String type, final JsonObject object) {
+    protected CommonCredential decodeSecret(final String type, final JsonObject object) {
         switch (type) {
         case CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD:
-            return object.mapTo(PasswordSecret.class);
+            return object.mapTo(PasswordCredential.class);
         case CredentialsConstants.SECRETS_TYPE_PRESHARED_KEY:
-            return object.mapTo(PskSecret.class);
+            return object.mapTo(PskCredential.class);
         case CredentialsConstants.SECRETS_TYPE_X509_CERT:
-            return object.mapTo(X509CertificateSecret.class);
+            return object.mapTo(X509CertificateCredential.class);
         default:
-            return object.mapTo(GenericSecret.class);
+            return object.mapTo(GenericCredential.class);
         }
     }
 
@@ -184,7 +184,7 @@ public abstract class EventBusCredentialsManagementAdapter<T> extends EventBusSe
      * @return The list of decoded secrets.
      * @throws NullPointerException in the case the {@code objects} parameter is {@code null}.
      */
-    protected List<CommonSecret> decodeSecrets(final JsonArray objects) {
+    protected List<CommonCredential> decodeSecrets(final JsonArray objects) {
         return objects
                 .stream()
                 .filter(JsonObject.class::isInstance)
@@ -201,7 +201,7 @@ public abstract class EventBusCredentialsManagementAdapter<T> extends EventBusSe
      * @return A future, returning the secrets.
      * @throws NullPointerException in the case the request is {@code null}.
      */
-    protected Future<List<CommonSecret>> secretsFromPayload(final EventBusMessage request) {
+    protected Future<List<CommonCredential>> secretsFromPayload(final EventBusMessage request) {
         try {
             return Future.succeededFuture(Optional.ofNullable(request.getJsonPayload())
                     .map(json -> {
@@ -236,7 +236,7 @@ public abstract class EventBusCredentialsManagementAdapter<T> extends EventBusSe
         final SpanContext spanContext = request.getSpanContext();
 
         final Span span = newChildSpan(SPAN_NAME_GET_CREDENTIAL, spanContext, tracer, tenantId, deviceId, getClass().getSimpleName());
-        final Future<OperationResult<List<CommonSecret>>> result = Future.future();
+        final Future<OperationResult<List<CommonCredential>>> result = Future.future();
 
         getService().get(tenantId, deviceId, span, result);
 
@@ -244,7 +244,7 @@ public abstract class EventBusCredentialsManagementAdapter<T> extends EventBusSe
             return res.createResponse(request, secrets -> {
                 final JsonObject ret = new JsonObject();
                 final JsonArray secretArray = new JsonArray();
-                for (final CommonSecret secret : secrets) {
+                for (final CommonCredential secret : secrets) {
                     secretArray.add(JsonObject.mapFrom(secret));
                 }
                 ret.put(CredentialsConstants.CREDENTIALS_ENDPOINT, secretArray);
@@ -256,23 +256,24 @@ public abstract class EventBusCredentialsManagementAdapter<T> extends EventBusSe
     /**
      * Validate a secret.
      * 
-     * @param secret The secret to validate.
+     * @param credential The secret to validate.
      * @throws IllegalStateException if the secret is not valid.
      */
-    protected void checkSecret(final CommonSecret secret) {
-        secret.checkValidity();
-        if (secret instanceof PasswordSecret) {
-            final PasswordSecret passwordSecret = (PasswordSecret) secret;
-            checkHashedPassword(passwordSecret);
-            switch (passwordSecret.getHashFunction()) {
-            case CredentialsConstants.HASH_FUNCTION_BCRYPT:
-                final String pwdHash = passwordSecret.getPasswordHash();
-                verifyBcryptPasswordHash(pwdHash);
-                break;
-            default:
+    protected void checkSecret(final CommonCredential credential) {
+        if (credential instanceof PasswordCredential) {
+            for (PasswordSecret passwordSecret : ((PasswordCredential) credential).getSecrets()) {
+                passwordSecret.checkValidity();
+                checkHashedPassword(passwordSecret);
+                switch (passwordSecret.getHashFunction()) {
+                    case CredentialsConstants.HASH_FUNCTION_BCRYPT:
+                        final String pwdHash = passwordSecret.getPasswordHash();
+                        verifyBcryptPasswordHash(pwdHash);
+                        break;
+                    default:
+                        // pass
+                }
                 // pass
             }
-            // pass
         }
     }
 

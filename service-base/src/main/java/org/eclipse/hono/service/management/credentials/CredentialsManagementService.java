@@ -53,7 +53,7 @@ public interface CredentialsManagementService {
      * @see <a href="https://www.eclipse.org/hono/api/credentials-api/#update-credentials">
      *      Credentials API - Update Credentials</a>
      */
-    void set(String tenantId, String deviceId, Optional<String> resourceVersion, List<CommonSecret> credentials,
+    void set(String tenantId, String deviceId, Optional<String> resourceVersion, List<CommonCredential> credentials,
             Span span, Handler<AsyncResult<OperationResult<Void>>> resultHandler);
 
     /**
@@ -74,7 +74,7 @@ public interface CredentialsManagementService {
      * @throws NullPointerException if any of the parameters is {@code null}.
      */
     void get(String tenantId, String deviceId, Span span,
-            Handler<AsyncResult<OperationResult<List<CommonSecret>>>> resultHandler);
+            Handler<AsyncResult<OperationResult<List<CommonCredential>>>> resultHandler);
 
     /**
      * Removes all credentials for a device.

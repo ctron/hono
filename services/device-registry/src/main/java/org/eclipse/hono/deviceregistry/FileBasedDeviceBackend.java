@@ -20,6 +20,7 @@ import java.util.Optional;
 import org.eclipse.hono.service.management.Id;
 import org.eclipse.hono.service.management.OperationResult;
 import org.eclipse.hono.service.management.Result;
+import org.eclipse.hono.service.management.credentials.CommonCredential;
 import org.eclipse.hono.service.management.credentials.CommonSecret;
 import org.eclipse.hono.service.management.device.Device;
 import org.eclipse.hono.service.management.device.DeviceBackend;
@@ -191,16 +192,16 @@ public class FileBasedDeviceBackend implements DeviceBackend {
 
     @Override
     public void set(final String tenantId, final String deviceId, final Optional<String> resourceVersion,
-            final List<CommonSecret> credentials, final Span span, final Handler<AsyncResult<OperationResult<Void>>> resultHandler) {
+            final List<CommonCredential> credentials, final Span span, final Handler<AsyncResult<OperationResult<Void>>> resultHandler) {
         //TODO check if device exists
         credentialsService.set(tenantId, deviceId, resourceVersion, credentials, span, resultHandler);
     }
 
     @Override
     public void get(final String tenantId, final String deviceId, final Span span,
-            final Handler<AsyncResult<OperationResult<List<CommonSecret>>>> resultHandler) {
+            final Handler<AsyncResult<OperationResult<List<CommonCredential>>>> resultHandler) {
 
-        final Future<OperationResult<List<CommonSecret>>> f = Future.future();
+        final Future<OperationResult<List<CommonCredential>>> f = Future.future();
         credentialsService.get(tenantId, deviceId, span, f);
         f.compose(r -> {
             if (r.getStatus() == HttpURLConnection.HTTP_NOT_FOUND) {
@@ -209,7 +210,7 @@ public class FileBasedDeviceBackend implements DeviceBackend {
                 return readFuture.map(d -> {
                     if (d.getStatus() == HttpURLConnection.HTTP_OK) {
                         return OperationResult.ok(HttpURLConnection.HTTP_OK,
-                                Collections.<CommonSecret> emptyList(),
+                                Collections.<CommonCredential> emptyList(),
                                 r.getCacheDirective(),
                                 r.getResourceVersion());
                     } else {

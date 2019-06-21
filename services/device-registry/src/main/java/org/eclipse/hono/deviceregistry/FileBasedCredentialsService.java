@@ -32,8 +32,9 @@ import org.eclipse.hono.client.ClientErrorException;
 import org.eclipse.hono.service.credentials.CredentialsService;
 import org.eclipse.hono.service.management.OperationResult;
 import org.eclipse.hono.service.management.Result;
-import org.eclipse.hono.service.management.credentials.CommonSecret;
+import org.eclipse.hono.service.management.credentials.CommonCredential;
 import org.eclipse.hono.service.management.credentials.CredentialsManagementService;
+import org.eclipse.hono.service.management.credentials.GenericCredential;
 import org.eclipse.hono.service.management.credentials.GenericSecret;
 import org.eclipse.hono.tracing.TracingHelper;
 import org.eclipse.hono.util.CacheDirective;
@@ -438,14 +439,14 @@ public final class FileBasedCredentialsService extends AbstractVerticle
 
     @Override
     public void set(final String tenantId, final String deviceId, final Optional<String> resourceVersion,
-            final List<CommonSecret> secrets, final Span span, final Handler<AsyncResult<OperationResult<Void>>> resultHandler) {
+                    final List<CommonCredential> secrets, final Span span, final Handler<AsyncResult<OperationResult<Void>>> resultHandler) {
 
         resultHandler.handle(Future.succeededFuture(set(tenantId, deviceId, resourceVersion, span, secrets)));
 
     }
 
     private OperationResult<Void> set(final String tenantId, final String deviceId,
-            final Optional<String> resourceVersion, final Span span, final List<CommonSecret> secrets) {
+            final Optional<String> resourceVersion, final Span span, final List<CommonCredential> secrets) {
 
         if (!checkResourceVersion(tenantId, deviceId, resourceVersion)) {
             TracingHelper.logError(span, "Resource version mismatch");
@@ -471,7 +472,7 @@ public final class FileBasedCredentialsService extends AbstractVerticle
 
         // now add the new ones
 
-        for (final CommonSecret secret : secrets) {
+        for (final CommonCredential secret : secrets) {
 
             final String authId = secret.getAuthId();
             final JsonObject secretObject = JsonObject.mapFrom(secret);
@@ -565,35 +566,37 @@ public final class FileBasedCredentialsService extends AbstractVerticle
         }
     }
 
-    private static void copyAdditionalField(final GenericSecret secret, final JsonObject secretObject, final String fieldName) {
+    private static void copyAdditionalField(final GenericCredential secret, final JsonObject secretObject, final String fieldName) {
         final var value = secretObject.getString(fieldName);
         if (value != null) {
             secret.getAdditionalProperties().put(fieldName, value);
         }
     }
 
-    private GenericSecret mapSecret(final JsonObject credentialsObject, final JsonObject secretObject) {
+    private GenericCredential mapCredential(final JsonObject credentialsObject, final JsonObject credentialObject) {
+
+        final GenericCredential credential = new GenericCredential();
+        credential.setAuthId(credentialsObject.getString(CredentialsConstants.FIELD_AUTH_ID));
+        credential.setType(credentialsObject.getString(CredentialsConstants.FIELD_TYPE));
 
         final GenericSecret secret = new GenericSecret();
-        secret.setAuthId(credentialsObject.getString(CredentialsConstants.FIELD_AUTH_ID));
-        secret.setType(credentialsObject.getString(CredentialsConstants.FIELD_TYPE));
 
-        secret.setNotBefore(secretObject.getInstant(CredentialsConstants.FIELD_SECRETS_NOT_BEFORE));
-        secret.setNotAfter(secretObject.getInstant(CredentialsConstants.FIELD_SECRETS_NOT_AFTER));
+        secret.setNotBefore(credentialObject.getInstant(CredentialsConstants.FIELD_SECRETS_NOT_BEFORE));
+        secret.setNotAfter(credentialObject.getInstant(CredentialsConstants.FIELD_SECRETS_NOT_AFTER));
 
-        copyAdditionalField(secret, secretObject, CredentialsConstants.FIELD_ENABLED);
-        copyAdditionalField(secret, secretObject, CredentialsConstants.FIELD_SECRETS_HASH_FUNCTION);
-        copyAdditionalField(secret, secretObject, CredentialsConstants.FIELD_SECRETS_PWD_HASH);
-        copyAdditionalField(secret, secretObject, CredentialsConstants.FIELD_SECRETS_SALT);
-        copyAdditionalField(secret, secretObject, CredentialsConstants.FIELD_SECRETS_KEY);
-        copyAdditionalField(secret, secretObject, CredentialsConstants.FIELD_SECRETS_COMMENT);
+        copyAdditionalField(credential, credentialObject, CredentialsConstants.FIELD_ENABLED);
+        copyAdditionalField(credential, credentialObject, CredentialsConstants.FIELD_SECRETS_HASH_FUNCTION);
+        copyAdditionalField(credential, credentialObject, CredentialsConstants.FIELD_SECRETS_PWD_HASH);
+        copyAdditionalField(credential, credentialObject, CredentialsConstants.FIELD_SECRETS_SALT);
+        copyAdditionalField(credential, credentialObject, CredentialsConstants.FIELD_SECRETS_KEY);
+        copyAdditionalField(credential, credentialObject, CredentialsConstants.FIELD_SECRETS_COMMENT);
 
-        return secret;
+        return credential;
     }
 
     @Override
     public void get(final String tenantId, final String deviceId, final Span span,
-            final Handler<AsyncResult<OperationResult<List<CommonSecret>>>> resultHandler) {
+            final Handler<AsyncResult<OperationResult<List<CommonCredential>>>> resultHandler) {
 
         Objects.requireNonNull(tenantId);
         Objects.requireNonNull(deviceId);
@@ -615,12 +618,12 @@ public final class FileBasedCredentialsService extends AbstractVerticle
                 resultHandler.handle(Future.succeededFuture(OperationResult.ok(HTTP_NOT_FOUND, null, Optional.empty(),
                         Optional.of(getOrCreateResourceVersion(tenantId, deviceId)))));
             } else {
-                final List<CommonSecret> secrets = new ArrayList<>();
+                final List<CommonCredential> secrets = new ArrayList<>();
                 for (final Object credential : matchingCredentials) {
                     final JsonObject credentialsObject = (JsonObject) credential;
                     final JsonArray storedSecrets = credentialsObject.getJsonArray(CredentialsConstants.FIELD_SECRETS);
                     for (final Object storedSecret : storedSecrets) {
-                        final GenericSecret secret = mapSecret(credentialsObject, (JsonObject) storedSecret);
+                        final GenericCredential secret = mapCredential(credentialsObject, (JsonObject) storedSecret);
                         secrets.add(secret);
                     }
 

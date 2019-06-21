@@ -29,8 +29,9 @@ import io.vertx.junit5.VertxTestContext.ExecutionBlock;
 
 import org.eclipse.hono.client.ClientErrorException;
 import org.eclipse.hono.service.management.OperationResult;
-import org.eclipse.hono.service.management.credentials.CommonSecret;
+import org.eclipse.hono.service.management.credentials.CommonCredential;
 import org.eclipse.hono.service.management.credentials.CredentialsManagementService;
+import org.eclipse.hono.service.management.credentials.PasswordCredential;
 import org.eclipse.hono.service.management.credentials.PasswordSecret;
 import org.eclipse.hono.service.management.device.Device;
 import org.eclipse.hono.service.management.device.DeviceManagementService;
@@ -161,14 +162,19 @@ public abstract class AbstractCredentialsServiceTest {
      * @param password The password to use.
      * @return The fully populated secret.
      */
-    public static PasswordSecret createPasswordSecret(final String authId, final String password) {
+    public static PasswordCredential createPasswordCredential(final String authId, final String password) {
+        final PasswordCredential p = new PasswordCredential();
+        p.setAuthId(authId);
+
         final PasswordSecret s = new PasswordSecret();
-        s.setAuthId(authId);
         s.setHashFunction(CredentialsConstants.HASH_FUNCTION_BCRYPT);
         final String salt = BCrypt.gensalt();
         s.setSalt(salt);
         s.setPasswordHash(BCrypt.hashpw(password, salt));
-        return s;
+
+        p.setSecrets(Collections.singletonList(s));
+
+        return p;
     }
 
     /**
@@ -234,7 +240,7 @@ public abstract class AbstractCredentialsServiceTest {
      */
     protected void assertGet(final VertxTestContext ctx,
             final String tenantId, final String deviceId, final String authId, final String type,
-            final ThrowingConsumer<OperationResult<List<CommonSecret>>> mangementValidation,
+            final ThrowingConsumer<OperationResult<List<CommonCredential>>> mangementValidation,
             final ThrowingConsumer<CredentialsResult<JsonObject>> adapterValidation,
             final ExecutionBlock whenComplete) {
 
@@ -274,7 +280,7 @@ public abstract class AbstractCredentialsServiceTest {
         final var tenantId = "tenant";
         final var deviceId = UUID.randomUUID().toString();
         final var authId = UUID.randomUUID().toString();
-        final var secret = createPasswordSecret(authId, "bar");
+        final var secret = createPasswordCredential(authId, "bar");
 
         assertGetMissing(ctx, tenantId, deviceId, authId, CredentialsConstants.SECRETS_TYPE_HASHED_PASSWORD, () -> {
 
@@ -331,7 +337,7 @@ public abstract class AbstractCredentialsServiceTest {
         final var tenantId = "tenant";
         final var deviceId = UUID.randomUUID().toString();
         final var authId = UUID.randomUUID().toString();
-        final var secret = createPasswordSecret(authId, "bar");
+        final var secret = createPasswordCredential(authId, "bar");
 
         final Future<?> phase1 = Future.future();
 
@@ -364,7 +370,7 @@ public abstract class AbstractCredentialsServiceTest {
 
         phase1.setHandler(ctx.succeeding(v -> {
 
-            final var newSecret = createPasswordSecret(authId, "baz");
+            final var newSecret = createPasswordCredential(authId, "baz");
 
             getCredentialsManagementService().set(tenantId, deviceId, Optional.empty(),
                     Collections.singletonList(newSecret), NoopSpan.INSTANCE,
@@ -395,7 +401,7 @@ public abstract class AbstractCredentialsServiceTest {
         final var tenantId = "tenant";
         final var deviceId = UUID.randomUUID().toString();
         final var authId = UUID.randomUUID().toString();
-        final var secret = createPasswordSecret(authId, "bar");
+        final var secret = createPasswordCredential(authId, "bar");
 
         final Checkpoint checkpoint = ctx.checkpoint(3);
 
@@ -456,7 +462,7 @@ public abstract class AbstractCredentialsServiceTest {
         final var tenantId = "tenant";
         final var deviceId = UUID.randomUUID().toString();
         final var authId = UUID.randomUUID().toString();
-        final var secret = createPasswordSecret(authId, "bar");
+        final var secret = createPasswordCredential(authId, "bar");
 
         final Checkpoint checkpoint = ctx.checkpoint(7);
 
@@ -577,11 +583,11 @@ public abstract class AbstractCredentialsServiceTest {
         final var deviceId = UUID.randomUUID().toString();
         final var authId = UUID.randomUUID().toString();
 
-        final var secret1 = createPasswordSecret(authId, "bar");
-        final var secret2 = createPasswordSecret(authId, "baz");
+        final var secret1 = createPasswordCredential(authId, "bar");
+        final var secret2 = createPasswordCredential(authId, "baz");
         secret2.setEnabled(false);
 
-        final List<CommonSecret> credentials = Arrays.asList(secret1, secret2);
+        final List<CommonCredential> credentials = Arrays.asList(secret1, secret2);
 
         // create device
 
@@ -636,7 +642,7 @@ public abstract class AbstractCredentialsServiceTest {
             final CredentialsManagementService svc,
             final String tenantId,
             final String deviceId,
-            final List<CommonSecret> secrets) {
+            final List<CommonCredential> secrets) {
 
         final Future<OperationResult<Void>> result = Future.future();
         svc.set(tenantId, deviceId, Optional.empty(), secrets, NoopSpan.INSTANCE, result);
