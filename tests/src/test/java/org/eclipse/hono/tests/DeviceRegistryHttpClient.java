@@ -27,7 +27,6 @@ import javax.security.auth.x500.X500Principal;
 import org.eclipse.hono.client.ServiceInvocationException;
 import org.eclipse.hono.service.credentials.AbstractCredentialsServiceTest;
 import org.eclipse.hono.service.management.credentials.CommonCredential;
-import org.eclipse.hono.service.management.credentials.CommonSecret;
 import org.eclipse.hono.service.management.credentials.PasswordCredential;
 import org.eclipse.hono.service.management.credentials.PskCredential;
 import org.eclipse.hono.service.management.credentials.PskSecret;
@@ -573,7 +572,7 @@ public final class DeviceRegistryHttpClient {
                 .add(HttpHeaders.CONTENT_TYPE, CONTENT_TYPE_JSON);
 
         // encode array not list, workaround for vert.x issue
-        final var payload = Json.encodeToBuffer(credentialsSpec.toArray(CommonSecret[]::new));
+        final var payload = Json.encodeToBuffer(credentialsSpec.toArray(CommonCredential[]::new));
 
         return httpClient
                 .update(uri, payload, headers, status -> status == expectedStatusCode)
