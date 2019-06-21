@@ -23,7 +23,7 @@ import java.util.List;
 public class PasswordCredential extends CommonCredential {
 
     @JsonProperty
-    List<PasswordSecret> secrets;
+    private List<PasswordSecret> secrets;
 
     public List<PasswordSecret> getSecrets() {
         return secrets;

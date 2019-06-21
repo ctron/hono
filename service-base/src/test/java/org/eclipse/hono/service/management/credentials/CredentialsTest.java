@@ -56,6 +56,7 @@ public class CredentialsTest {
 
         final JsonObject jsonCredential = JsonObject.mapFrom(credential);
         assertNotNull(jsonCredential);
+        assertEquals("hashed-password", jsonCredential.getString(CredentialsConstants.FIELD_TYPE));
         assertEquals(1, jsonCredential.getJsonArray(CredentialsConstants.FIELD_SECRETS).size());
 
         final JsonObject jsonSecret = jsonCredential.getJsonArray(CredentialsConstants.FIELD_SECRETS).getJsonObject(0);
@@ -63,11 +64,9 @@ public class CredentialsTest {
         assertEquals("foo", jsonCredential.getString(CredentialsConstants.FIELD_AUTH_ID));
         assertEquals("setec astronomy", jsonCredential.getString("comment"));
 
-        assertEquals("hashed-password", jsonSecret.getString(CredentialsConstants.FIELD_TYPE));
         assertEquals("abc", jsonSecret.getString(CredentialsConstants.FIELD_SECRETS_SALT));
         assertEquals("2a5d81942494986ce6e23aadfa18cd426a1d7ab90629a0814d244c4cd82cc81f",
                 jsonSecret.getString(CredentialsConstants.FIELD_SECRETS_PWD_HASH));
-        assertEquals("hashed-password", jsonSecret.getString(CredentialsConstants.FIELD_TYPE));
     }
 
     /**

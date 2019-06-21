@@ -14,6 +14,8 @@ package org.eclipse.hono.service.management.credentials;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -23,8 +25,9 @@ import java.util.List;
 public class X509CertificateCredential extends CommonCredential {
 
     @JsonProperty
-    List<X509CertificateSecret> secrets;
+    private List<X509CertificateSecret> secrets = new ArrayList<>();
 
+    @Override
     public List<X509CertificateSecret> getSecrets() {
         return secrets;
     }

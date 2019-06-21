@@ -13,14 +13,16 @@
 
 package org.eclipse.hono.service.management.credentials;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 
 /**
- * A generic secret.
+ * A generic credential.
  */
 public class GenericCredential extends CommonCredential {
 
@@ -28,12 +30,23 @@ public class GenericCredential extends CommonCredential {
 
     private Map<String, Object> additionalProperties = new HashMap<>();
 
+    private List<GenericSecret> secrets = new ArrayList<>();
+
     public void setType(final String type) {
         this.type = type;
     }
 
     public String getType() {
         return type;
+    }
+
+    @Override
+    protected List<GenericSecret> getSecrets() {
+        return this.secrets;
+    }
+
+    public void setSecrets(final List<GenericSecret> secrets) {
+        this.secrets = secrets;
     }
 
     @JsonAnySetter

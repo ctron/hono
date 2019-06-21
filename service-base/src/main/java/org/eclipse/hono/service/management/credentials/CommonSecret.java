@@ -12,7 +12,6 @@
  *******************************************************************************/
 package org.eclipse.hono.service.management.credentials;
 
-import static org.eclipse.hono.util.CredentialsConstants.FIELD_AUTH_ID;
 import static org.eclipse.hono.util.CredentialsConstants.FIELD_SECRETS_NOT_AFTER;
 import static org.eclipse.hono.util.CredentialsConstants.FIELD_SECRETS_NOT_BEFORE;
 
@@ -20,8 +19,6 @@ import java.time.Instant;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import com.fasterxml.jackson.databind.annotation.JsonTypeIdResolver;
 import com.google.common.base.MoreObjects;
 import com.google.common.base.MoreObjects.ToStringHelper;
 
@@ -29,12 +26,8 @@ import com.google.common.base.MoreObjects.ToStringHelper;
  * Secret Information.
  */
 @JsonInclude(value = JsonInclude.Include.NON_NULL)
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
-@JsonTypeIdResolver(SecretTypeResolver.class)
 public abstract class CommonSecret {
 
-    @JsonProperty(FIELD_AUTH_ID)
-    private String authId;
     @JsonProperty
     private Boolean enabled;
 
@@ -44,14 +37,6 @@ public abstract class CommonSecret {
     private Instant notAfter;
     @JsonProperty
     private String comment;
-
-    public String getAuthId() {
-        return authId;
-    }
-
-    public void setAuthId(final String authId) {
-        this.authId = authId;
-    }
 
     public Boolean getEnabled() {
         return enabled;
@@ -93,7 +78,6 @@ public abstract class CommonSecret {
     protected ToStringHelper toStringHelper() {
         return MoreObjects
                 .toStringHelper(this)
-                .add("authId", this.authId)
                 .add("enabled", this.enabled)
                 .add("notBefore", this.notBefore)
                 .add("notAfter", this.notAfter)
@@ -106,14 +90,11 @@ public abstract class CommonSecret {
     }
 
     /**
-     * Check if secret is valid.
+     * Check if the secret is valid.
      * 
      * @throws IllegalStateException if the secret is not valid.
      */
     public void checkValidity() {
-        if (this.authId == null || this.authId.isEmpty()) {
-            throw new IllegalStateException("missing auth ID");
-        }
         if (this.notBefore != null && this.notAfter != null) {
             if (this.notBefore.isAfter(this.notAfter)) {
                 throw new IllegalStateException("'not-before' must be before 'not-after'");
