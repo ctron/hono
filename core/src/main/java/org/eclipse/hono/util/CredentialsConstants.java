@@ -140,6 +140,7 @@ public final class CredentialsConstants extends RequestResponseApiConstants {
         /**
          * The AMQP subject property value to use for invoking the <em>remove Credentials</em> operation.
          */
+        @Deprecated
         remove,
         /**
          * The name that all unknown operations are mapped to.
