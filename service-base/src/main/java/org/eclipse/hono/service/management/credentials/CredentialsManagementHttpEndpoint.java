@@ -81,11 +81,6 @@ public final class CredentialsManagementHttpEndpoint extends AbstractHttpEndpoin
         router.put(pathWithTenantAndDeviceId).handler(this::extractRequiredJsonArrayPayload);
         router.put(pathWithTenantAndDeviceId).handler(this::extractIfMatchVersionParam);
         router.put(pathWithTenantAndDeviceId).handler(this::updateCredentials);
-
-        // remove all credentials for a device
-        router.delete(pathWithTenantAndDeviceId).handler(this::extractIfMatchVersionParam);
-        router.delete(pathWithTenantAndDeviceId).handler(this::removeCredentialsForDevice);
-
     }
 
     private void updateCredentials(final RoutingContext ctx) {
@@ -110,31 +105,6 @@ public final class CredentialsManagementHttpEndpoint extends AbstractHttpEndpoin
 
         sendAction(ctx, requestMsg, getDefaultResponseHandler(ctx));
 }
-
-    private void removeCredentialsForDevice(final RoutingContext ctx) {
-
-        final String tenantId = getTenantParam(ctx);
-        final String deviceId = getDeviceIdParam(ctx);
-        final String resourceVersion = ctx.get(KEY_RESOURCE_VERSION);
-
-        logger.debug("removeCredentialsForDevice: [tenant: {}, device-id: {}]", tenantId, deviceId);
-
-        final JsonObject payload = new JsonObject();
-        payload.put(CredentialsConstants.FIELD_PAYLOAD_DEVICE_ID, deviceId);
-        payload.put(CredentialsConstants.FIELD_TYPE, CredentialsConstants.SPECIFIER_WILDCARD);
-
-        final JsonObject requestMsg = EventBusMessage.forOperation(CredentialsConstants.CredentialsAction.remove.toString())
-                .setTenant(tenantId)
-                .setDeviceId(deviceId)
-                .setJsonPayload(payload)
-                .setResourceVersion(resourceVersion)
-                .toJson();
-
-        sendAction(ctx, requestMsg, getDefaultResponseHandler(ctx,
-                status -> status == HttpURLConnection.HTTP_NO_CONTENT,
-                (Handler<HttpServerResponse>) null));
-    }
-
     private void getCredentialsForDevice(final RoutingContext ctx) {
 
         // mandatory params
