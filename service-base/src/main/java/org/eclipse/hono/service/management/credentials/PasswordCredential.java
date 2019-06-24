@@ -25,6 +25,7 @@ public class PasswordCredential extends CommonCredential {
     @JsonProperty
     private List<PasswordSecret> secrets;
 
+    @Override
     public List<PasswordSecret> getSecrets() {
         return secrets;
     }

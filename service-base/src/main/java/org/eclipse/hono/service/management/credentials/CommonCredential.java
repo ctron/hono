@@ -14,6 +14,7 @@ package org.eclipse.hono.service.management.credentials;
 
 import static org.eclipse.hono.util.CredentialsConstants.FIELD_AUTH_ID;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
@@ -28,6 +29,7 @@ import java.util.Map;
 @JsonInclude(value = JsonInclude.Include.NON_NULL)
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
 @JsonTypeIdResolver(CredentialTypeResolver.class)
+@JsonIgnoreProperties(ignoreUnknown = true)
 public abstract class CommonCredential {
 
     @JsonProperty(FIELD_AUTH_ID)

@@ -17,6 +17,7 @@ import static org.eclipse.hono.util.CredentialsConstants.FIELD_SECRETS_NOT_BEFOR
 
 import java.time.Instant;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.MoreObjects;
@@ -26,6 +27,7 @@ import com.google.common.base.MoreObjects.ToStringHelper;
  * Secret Information.
  */
 @JsonInclude(value = JsonInclude.Include.NON_NULL)
+@JsonIgnoreProperties(ignoreUnknown = true)
 public abstract class CommonSecret {
 
     @JsonProperty

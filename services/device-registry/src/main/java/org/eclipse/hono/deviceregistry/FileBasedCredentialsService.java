@@ -512,11 +512,7 @@ public final class FileBasedCredentialsService extends AbstractVerticle
                 secretsJson = new JsonArray();
                 credentialsJson.put(CredentialsConstants.FIELD_SECRETS, secretsJson);
             }
-
-            final JsonObject secretJson = secretObject.copy();
-            secretJson.put(CredentialsConstants.FIELD_ENABLED, secret.getEnabled());
-            secretJson.remove(CredentialsConstants.FIELD_TYPE);
-            secretsJson.add(secretJson);
+            secretsJson.addAll(secretObject.getJsonArray(CredentialsConstants.FIELD_SECRETS));
 
             credentialsForTenant.put(authId, json);
         }
@@ -636,8 +632,8 @@ public final class FileBasedCredentialsService extends AbstractVerticle
         final List<CommonCredential> credentials = new ArrayList<>();
         for (final Object credential : matchingCredentials) {
             final JsonObject credentialsObject = (JsonObject) credential;
-            final GenericCredential secret = mapCredential(credentialsObject);
-            credentials.add(secret);
+            final CommonCredential cred = credentialsObject.mapTo(CommonCredential.class);
+            credentials.add(cred);
         }
 
         resultHandler.handle(Future.succeededFuture(
