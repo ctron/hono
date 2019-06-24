@@ -33,6 +33,8 @@ import org.eclipse.hono.service.management.credentials.CommonCredential;
 import org.eclipse.hono.service.management.credentials.CredentialsManagementService;
 import org.eclipse.hono.service.management.credentials.PasswordCredential;
 import org.eclipse.hono.service.management.credentials.PasswordSecret;
+import org.eclipse.hono.service.management.credentials.PskCredential;
+import org.eclipse.hono.service.management.credentials.PskSecret;
 import org.eclipse.hono.service.management.device.Device;
 import org.eclipse.hono.service.management.device.DeviceManagementService;
 import org.eclipse.hono.util.CacheDirective;
@@ -156,7 +158,26 @@ public abstract class AbstractCredentialsServiceTest {
     }
 
     /**
-     * Creates a password based secret.
+     * Creates a PSK type based credential containing a psk secret.
+     *
+     * @param authId The authentication to use.
+     * @param psk The psk to use.
+     * @return The fully populated secret.
+     */
+    public static PskCredential createPSKCredential(final String authId, final String psk) {
+        final PskCredential p = new PskCredential();
+        p.setAuthId(authId);
+
+        final PskSecret s = new PskSecret();
+        s.setKey(psk.getBytes());
+
+        p.setSecrets(Collections.singletonList(s));
+
+        return p;
+    }
+
+    /**
+     * Creates a password type based credential containing a hashed password secret.
      * 
      * @param authId The authentication to use.
      * @param password The password to use.
@@ -557,15 +578,15 @@ public abstract class AbstractCredentialsServiceTest {
     @Test
     public void testDisableCredentials(final VertxTestContext ctx) {
 
-        final var tenantId = UUID.randomUUID().toString();
-        final var deviceId = UUID.randomUUID().toString();
-        final var authId = UUID.randomUUID().toString();
+        final String tenantId = UUID.randomUUID().toString();
+        final String deviceId = UUID.randomUUID().toString();
+        final String authId = UUID.randomUUID().toString();
 
-        final var secret1 = createPasswordCredential(authId, "bar");
-        final var secret2 = createPasswordCredential(authId, "baz");
-        secret2.setEnabled(false);
+        final CommonCredential credential = createPasswordCredential(authId, "bar");
+        final CommonCredential disabledCredential = createPSKCredential(authId, "baz");
+        disabledCredential.setEnabled(false);
 
-        final List<CommonCredential> credentials = Arrays.asList(secret1, secret2);
+        final List<CommonCredential> credentials = Arrays.asList(credential, disabledCredential);
 
         // create device
 
