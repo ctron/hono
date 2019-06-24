@@ -322,7 +322,7 @@ public class CredentialsHttpIT {
         final PasswordCredential altered = JsonObject
                 .mapFrom(hashedPasswordCredential)
                 .mapTo(PasswordCredential.class);
-        altered.setComment("test");
+        altered.getSecrets().get(0).setComment("test");
 
         registry.updateCredentials(TENANT, deviceId, Collections.singleton(hashedPasswordCredential),
                 HttpURLConnection.HTTP_NO_CONTENT)
@@ -330,7 +330,8 @@ public class CredentialsHttpIT {
                         HttpURLConnection.HTTP_NO_CONTENT))
             .compose(ur -> registry.getCredentials(TENANT, deviceId))
             .setHandler(context.asyncAssertSuccess(gr -> {
-                context.assertEquals("test", gr.toJsonArray().getJsonObject(0).getString("comment"));
+                final JsonObject retrievedSecret = gr.toJsonArray().getJsonObject(0).getJsonArray("secrets").getJsonObject(0);
+                context.assertEquals("test", retrievedSecret.getString("comment"));
             }));
     }
 
