@@ -27,6 +27,8 @@ import io.vertx.junit5.Checkpoint;
 import io.vertx.junit5.VertxTestContext;
 import io.vertx.junit5.VertxTestContext.ExecutionBlock;
 
+import org.eclipse.hono.auth.EncodedPassword;
+import org.eclipse.hono.auth.SpringBasedHonoPasswordEncoder;
 import org.eclipse.hono.client.ClientErrorException;
 import org.eclipse.hono.service.management.OperationResult;
 import org.eclipse.hono.service.management.credentials.CommonCredential;
@@ -43,10 +45,10 @@ import org.eclipse.hono.util.CredentialsObject;
 import org.eclipse.hono.util.CredentialsResult;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.ThrowingConsumer;
-import org.springframework.security.crypto.bcrypt.BCrypt;
 
 import java.net.HttpURLConnection;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -187,11 +189,15 @@ public abstract class AbstractCredentialsServiceTest {
         final PasswordCredential p = new PasswordCredential();
         p.setAuthId(authId);
 
+        final SpringBasedHonoPasswordEncoder encoder = new SpringBasedHonoPasswordEncoder();
+        final EncodedPassword encodedPwd = EncodedPassword.fromHonoSecret(encoder.encode(password));
+
         final PasswordSecret s = new PasswordSecret();
         s.setHashFunction(CredentialsConstants.HASH_FUNCTION_BCRYPT);
-        final String salt = BCrypt.gensalt();
-        s.setSalt(salt);
-        s.setPasswordHash(BCrypt.hashpw(password, salt));
+        if (encodedPwd.salt != null) {
+            s.setSalt(Base64.getEncoder().encodeToString(encodedPwd.salt));
+        }
+        s.setPasswordHash(encodedPwd.password);
 
         p.setSecrets(Collections.singletonList(s));
 
