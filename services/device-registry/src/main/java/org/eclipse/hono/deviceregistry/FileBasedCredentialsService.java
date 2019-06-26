@@ -34,8 +34,6 @@ import org.eclipse.hono.service.management.OperationResult;
 import org.eclipse.hono.service.management.Result;
 import org.eclipse.hono.service.management.credentials.CommonCredential;
 import org.eclipse.hono.service.management.credentials.CredentialsManagementService;
-import org.eclipse.hono.service.management.credentials.GenericCredential;
-import org.eclipse.hono.service.management.credentials.GenericSecret;
 import org.eclipse.hono.tracing.TracingHelper;
 import org.eclipse.hono.util.CacheDirective;
 import org.eclipse.hono.util.Constants;
@@ -560,43 +558,6 @@ public final class FileBasedCredentialsService extends AbstractVerticle
                 this.dirty = true;
             }
         }
-    }
-
-    private static void copyAdditionalField(final GenericSecret secret, final JsonObject secretObject,
-            final String fieldName) {
-        final var value = secretObject.getString(fieldName);
-        if (value != null) {
-            secret.getAdditionalProperties().put(fieldName, value);
-        }
-    }
-
-    private GenericCredential mapCredential(final JsonObject credentialsObject) {
-
-        final GenericCredential credential = new GenericCredential();
-        credential.setAuthId(credentialsObject.getString(CredentialsConstants.FIELD_AUTH_ID));
-        credential.setType(credentialsObject.getString(CredentialsConstants.FIELD_TYPE));
-        credential.setEnabled(credentialsObject.getBoolean(CredentialsConstants.FIELD_ENABLED));
-
-        final JsonArray storedSecrets = credentialsObject.getJsonArray(CredentialsConstants.FIELD_SECRETS);
-        for (final Object storedSecret : storedSecrets) {
-            final JsonObject secretObject = (JsonObject) storedSecret;
-
-            final GenericSecret secret = new GenericSecret();
-
-            secret.setNotBefore(secretObject.getInstant(CredentialsConstants.FIELD_SECRETS_NOT_BEFORE));
-            secret.setNotAfter(secretObject.getInstant(CredentialsConstants.FIELD_SECRETS_NOT_AFTER));
-            secret.setEnabled(secretObject.getBoolean(CredentialsConstants.FIELD_ENABLED));
-            secret.setComment(secretObject.getString(CredentialsConstants.FIELD_SECRETS_COMMENT));
-
-            copyAdditionalField(secret, secretObject, CredentialsConstants.FIELD_SECRETS_HASH_FUNCTION);
-            copyAdditionalField(secret, secretObject, CredentialsConstants.FIELD_SECRETS_PWD_HASH);
-            copyAdditionalField(secret, secretObject, CredentialsConstants.FIELD_SECRETS_SALT);
-            copyAdditionalField(secret, secretObject, CredentialsConstants.FIELD_SECRETS_KEY);
-
-            credential.getSecrets().add(secret);
-        }
-
-        return credential;
     }
 
     @Override
