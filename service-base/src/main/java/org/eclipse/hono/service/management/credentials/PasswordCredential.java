@@ -14,6 +14,8 @@ package org.eclipse.hono.service.management.credentials;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+
+import java.util.LinkedList;
 import java.util.List;
 
 /**
@@ -23,7 +25,7 @@ import java.util.List;
 public class PasswordCredential extends CommonCredential {
 
     @JsonProperty
-    private List<PasswordSecret> secrets;
+    private List<PasswordSecret> secrets = new LinkedList<>();
 
     @Override
     public List<PasswordSecret> getSecrets() {

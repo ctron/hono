@@ -17,6 +17,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import org.eclipse.hono.util.TenantConstants;
@@ -31,14 +32,14 @@ public class Tenant {
 
     @JsonProperty("ext")
     @JsonInclude(Include.NON_EMPTY)
-    private Map<String, Object> extensions;
+    private Map<String, Object> extensions = new HashMap<>();
 
     @JsonInclude(Include.NON_EMPTY)
-    private Map<String, Object> defaults;
+    private Map<String, Object> defaults = new HashMap<>();
 
     @JsonProperty(TenantConstants.FIELD_ADAPTERS)
     @JsonInclude(Include.NON_EMPTY)
-    private List<Adapter> adapters;
+    private List<Adapter> adapters = new LinkedList<>();
 
     @JsonInclude(Include.NON_DEFAULT)
     private ResourceLimits limits;

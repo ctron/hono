@@ -41,7 +41,7 @@ public abstract class CommonCredential {
 
     @JsonProperty("ext")
     @JsonInclude(value = JsonInclude.Include.NON_EMPTY)
-    private Map<String, Object> extensions;
+    private Map<String, Object> extensions = new HashMap<>();
 
     /**
      * Get a list of secrets for this credential.

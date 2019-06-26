@@ -13,8 +13,8 @@
 
 package org.eclipse.hono.service.management.credentials;
 
-import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -30,7 +30,7 @@ public class GenericCredential extends CommonCredential {
 
     private Map<String, Object> additionalProperties = new HashMap<>();
 
-    private List<GenericSecret> secrets = new ArrayList<>();
+    private List<GenericSecret> secrets = new LinkedList<>();
 
     public void setType(final String type) {
         this.type = type;

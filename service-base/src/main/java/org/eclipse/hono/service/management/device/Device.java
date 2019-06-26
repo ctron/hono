@@ -15,6 +15,7 @@ package org.eclipse.hono.service.management.device;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -33,13 +34,13 @@ public class Device {
 
     @JsonProperty("ext")
     @JsonInclude(value = Include.NON_EMPTY)
-    private Map<String, Object> extensions;
+    private Map<String, Object> extensions = new HashMap<>();
 
     @JsonInclude(value = Include.NON_EMPTY)
-    private Map<String, Object> defaults;
+    private Map<String, Object> defaults = new HashMap<>();
 
     @JsonInclude(value = Include.NON_EMPTY)
-    private List<String> via;
+    private List<String> via = new LinkedList<>();
 
     /**
      * Create new instance.
