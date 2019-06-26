@@ -17,9 +17,11 @@ import static java.net.HttpURLConnection.HTTP_CREATED;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
 import static java.net.HttpURLConnection.HTTP_OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
@@ -256,7 +258,8 @@ public abstract class AbstractRegistrationServiceTest {
                         assertNotNull(getResult.result().getPayload().getExtensions().get("new-prop"));
                         assertNotEquals(getResult.result().getPayload(), secondGetResult.getPayload());
                         assertNotNull(secondGetResult.getPayload());
-                        assertNull(secondGetResult.getPayload().getExtensions());
+                        assertNotNull(secondGetResult.getPayload().getExtensions());
+                        assertTrue(secondGetResult.getPayload().getExtensions().isEmpty());
                         ctx.completeNow();
                     });
                 }));
@@ -640,7 +643,8 @@ public abstract class AbstractRegistrationServiceTest {
                         } else {
                             assertEquals(HTTP_OK, r.getStatus());
                             assertNotNull(r.getPayload());
-                            assertEquals(device.getVia(), r.getPayload().getJsonArray("via"));
+                            final var actualVias = r.getPayload().getJsonArray("via", new JsonArray());
+                            assertIterableEquals(device.getVia(), actualVias);
                         }
 
                     }));

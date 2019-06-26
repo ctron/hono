@@ -383,6 +383,11 @@ public final class FileBasedCredentialsService extends AbstractVerticle
                 continue;
             }
 
+            if (Boolean.FALSE.equals(authIdCredential.getBoolean(CredentialsConstants.FIELD_ENABLED, true))) {
+                // do not report disabled
+                continue;
+            }
+
             if (clientContext != null) {
                 final AtomicBoolean match = new AtomicBoolean(true);
                 clientContext.forEach(field -> {
@@ -402,9 +407,9 @@ public final class FileBasedCredentialsService extends AbstractVerticle
             // copy
 
             final var authIdCredentialCopy = authIdCredential.copy();
+            final var secrets = authIdCredentialCopy.getJsonArray(CredentialsConstants.FIELD_SECRETS);
 
-            for (final Iterator<Object> i = authIdCredentialCopy.getJsonArray(CredentialsConstants.FIELD_SECRETS)
-                    .iterator(); i.hasNext();) {
+            for (final Iterator<Object> i = secrets.iterator(); i.hasNext();) {
 
                 final Object o = i.next();
                 if (!(o instanceof JsonObject)) {
@@ -417,6 +422,11 @@ public final class FileBasedCredentialsService extends AbstractVerticle
                     i.remove();
                     continue;
                 }
+            }
+
+            if (secrets.isEmpty()) {
+                // no more secrets left
+                continue;
             }
 
             // return the first entry that matches
@@ -444,7 +454,7 @@ public final class FileBasedCredentialsService extends AbstractVerticle
     }
 
     private OperationResult<Void> set(final String tenantId, final String deviceId,
-            final Optional<String> resourceVersion, final Span span, final List<CommonCredential> secrets) {
+            final Optional<String> resourceVersion, final Span span, final List<CommonCredential> credentials) {
 
         if (!checkResourceVersion(tenantId, deviceId, resourceVersion)) {
             TracingHelper.logError(span, "Resource version mismatch");
@@ -470,11 +480,11 @@ public final class FileBasedCredentialsService extends AbstractVerticle
 
         // now add the new ones
 
-        for (final CommonCredential secret : secrets) {
+        for (final CommonCredential credential : credentials) {
 
-            final String authId = secret.getAuthId();
-            final JsonObject secretObject = JsonObject.mapFrom(secret);
-            final String type = secretObject.getString(CredentialsConstants.FIELD_TYPE);
+            final String authId = credential.getAuthId();
+            final JsonObject credentialObject = JsonObject.mapFrom(credential);
+            final String type = credentialObject.getString(CredentialsConstants.FIELD_TYPE);
 
             final var json = createOrGetAuthIdCredentials(authId, credentialsForTenant);
 
@@ -491,6 +501,7 @@ public final class FileBasedCredentialsService extends AbstractVerticle
                 credentialsJson.put(CredentialsConstants.FIELD_AUTH_ID, authId);
                 credentialsJson.put(CredentialsConstants.FIELD_PAYLOAD_DEVICE_ID, deviceId);
                 credentialsJson.put(CredentialsConstants.FIELD_TYPE, type);
+                credentialsJson.put(CredentialsConstants.FIELD_ENABLED, credential.getEnabled());
                 json.add(credentialsJson);
             }
 
@@ -510,7 +521,7 @@ public final class FileBasedCredentialsService extends AbstractVerticle
                 secretsJson = new JsonArray();
                 credentialsJson.put(CredentialsConstants.FIELD_SECRETS, secretsJson);
             }
-            secretsJson.addAll(secretObject.getJsonArray(CredentialsConstants.FIELD_SECRETS));
+            secretsJson.addAll(credentialObject.getJsonArray(CredentialsConstants.FIELD_SECRETS));
 
             credentialsForTenant.put(authId, json);
         }

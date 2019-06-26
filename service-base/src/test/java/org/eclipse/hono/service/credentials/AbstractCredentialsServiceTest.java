@@ -464,7 +464,6 @@ public abstract class AbstractCredentialsServiceTest {
 
         }));
 
-        final var newSecret = createPasswordCredential(authId, "bar");
         // phase 3 - update with wrong version
 
         phase2.setHandler(ctx.succeeding(v -> {
@@ -611,7 +610,7 @@ public abstract class AbstractCredentialsServiceTest {
                             ctx.succeeding(s -> phase2.complete()));
         }));
 
-        // validate credentials
+        // validate credentials - enabled
 
         final Future<?> phase3 = Future.future();
 
@@ -631,7 +630,23 @@ public abstract class AbstractCredentialsServiceTest {
             })));
         }));
 
-        phase3.setHandler(ctx.succeeding(s -> ctx.completeNow()));
+        // validate credentials - disabled
+
+        final Future<?> phase4 = Future.future();
+
+        phase3.setHandler(ctx.succeeding(n -> {
+            getCredentialsService().get(tenantId, CredentialsConstants.SECRETS_TYPE_PRESHARED_KEY,
+                    authId, ctx.succeeding(s -> ctx.verify(() -> {
+
+                        assertEquals(HttpURLConnection.HTTP_NOT_FOUND, s.getStatus());
+
+                        phase4.complete();
+                    })));
+        }));
+
+        // finally complete
+
+        phase4.setHandler(ctx.succeeding(s -> ctx.completeNow()));
     }
 
     /**
