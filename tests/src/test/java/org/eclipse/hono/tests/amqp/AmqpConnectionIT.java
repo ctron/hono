@@ -14,6 +14,7 @@
 package org.eclipse.hono.tests.amqp;
 
 import java.security.GeneralSecurityException;
+import java.security.KeyPair;
 import java.util.UUID;
 
 import javax.security.sasl.SaslException;
@@ -220,13 +221,14 @@ public class AmqpConnectionIT extends AmqpAdapterTestBase {
 
         final String tenantId = helper.getRandomTenantId();
         final String deviceId = helper.getRandomDeviceId(tenantId);
+        final KeyPair keyPair = helper.newEcKeyPair();
 
         final SelfSignedCertificate deviceCert = SelfSignedCertificate.create(UUID.randomUUID().toString());
 
         // GIVEN a tenant configured with a trust anchor
         helper.getCertificate(deviceCert.certificatePath())
                 .compose(cert -> {
-                    final var tenant = Tenants.createTenantForTrustAnchor(cert);
+                    final var tenant = Tenants.createTenantForTrustAnchor(cert, keyPair.getPublic());
                     return helper.registry.addDeviceForTenant(tenantId, tenant, deviceId, cert);
                 })
                 .compose(ok -> {

@@ -261,7 +261,7 @@ public abstract class EventBusTenantManagementAdapter<T> extends EventBusService
         } else if (encodedKey != null && encodedCert == null) {
             // validate public-key
             final String algorithmName = Optional
-                    .ofNullable((String) trustedCa.getValue(TenantConstants.FIELD_ADAPTERS_TYPE)).orElse("RSA");
+                    .ofNullable((String) trustedCa.getValue(TenantConstants.FIELD_PAYLOAD_KEY_ALGORITHM)).orElse("RSA");
             return isEncodedPublicKey(encodedKey, algorithmName);
         } else {
             // Either the trusted CA configuration:

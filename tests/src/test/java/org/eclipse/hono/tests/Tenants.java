@@ -13,6 +13,7 @@
 
 package org.eclipse.hono.tests;
 
+import java.security.PublicKey;
 import java.security.cert.X509Certificate;
 import java.util.LinkedList;
 
@@ -32,16 +33,27 @@ public final class Tenants {
 
     /**
      * Create a new tenant, based on a trust anchor.
-     * 
+     *
      * @param cert The trust anchor.
      * @return The new tenant. Never returns {@code null}.
      */
     public static Tenant createTenantForTrustAnchor(final X509Certificate cert) {
+        return createTenantForTrustAnchor(cert, cert.getPublicKey());
+    }
+
+    /**
+     * Create a new tenant, based on a trust anchor.
+     *
+     * @param cert The trust anchor.
+     * @param publicKey The public key for the anchor.
+     * @return The new tenant. Never returns {@code null}.
+     */
+    public static Tenant createTenantForTrustAnchor(final X509Certificate cert, final PublicKey publicKey) {
         final var tenant = new Tenant();
         final var trustedCa = new TrustedCertificateAuthority();
         trustedCa.setSubjectDn(cert.getSubjectX500Principal().getName(X500Principal.RFC2253));
-        trustedCa.setPublicKey(cert.getPublicKey().getEncoded());
-        trustedCa.setKeyAlgorithm(cert.getPublicKey().getAlgorithm());
+        trustedCa.setPublicKey(publicKey.getEncoded());
+        trustedCa.setKeyAlgorithm(publicKey.getAlgorithm());
         tenant.setTrustedCertificateAuthority(trustedCa);
         return tenant;
     }

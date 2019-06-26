@@ -473,9 +473,9 @@ public abstract class HttpTestBase {
                     final TrustedCertificateAuthority trustedCertificateAuthority = new TrustedCertificateAuthority();
                     trustedCertificateAuthority
                             .setSubjectDn(cert.getIssuerX500Principal().getName(X500Principal.RFC2253));
-                    trustedCertificateAuthority.setCertificate(keyPair.getPublic().getEncoded());
+                    trustedCertificateAuthority.setPublicKey(keyPair.getPublic().getEncoded());
+                    trustedCertificateAuthority.setKeyAlgorithm(keyPair.getPublic().getAlgorithm());
                     tenant.setTrustedCertificateAuthority(trustedCertificateAuthority);
-                    // TODO: why "type=EC"?
 
                     return helper.registry.addDeviceForTenant(tenantId, tenant, deviceId, cert);
                 })
