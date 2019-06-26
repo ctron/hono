@@ -22,6 +22,7 @@ import org.eclipse.hono.service.AbstractApplication;
 import org.eclipse.hono.service.HealthCheckProvider;
 import org.eclipse.hono.service.auth.AuthenticationService;
 import org.eclipse.hono.service.credentials.CompleteBaseCredentialsService;
+import org.eclipse.hono.service.deviceconnection.DeviceConnectionService;
 import org.eclipse.hono.service.registration.CompleteBaseRegistrationService;
 import org.eclipse.hono.service.tenant.CompleteBaseTenantService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,6 +49,7 @@ public class Application extends AbstractApplication {
     private CompleteBaseCredentialsService<?> credentialsService;
     private CompleteBaseRegistrationService<?> registrationService;
     private CompleteBaseTenantService<?> tenantService;
+    private DeviceConnectionService deviceConnectionService;
 
 
     /**
@@ -84,6 +86,17 @@ public class Application extends AbstractApplication {
     }
 
     /**
+     * Sets the device connection service implementation this server is based on.
+     *
+     * @param deviceConnectionService The deviceConnectionService to set.
+     * @throws NullPointerException if service is {@code null}.
+     */
+    @Autowired
+    public final void setDeviceConnectionService(final DeviceConnectionService deviceConnectionService) {
+        this.deviceConnectionService = Objects.requireNonNull(deviceConnectionService);
+    }
+
+    /**
      * Sets the authentication service implementation this server is based on.
      *
      * @param authenticationService The authenticationService to set.
@@ -102,7 +115,8 @@ public class Application extends AbstractApplication {
                 deployAuthenticationService(), // we only need 1 authentication service
                 deployTenantService(),
                 deployRegistrationService(),
-                deployCredentialsService()).setHandler(ar -> {
+                deployCredentialsService(),
+                deployDeviceConnectionService()).setHandler(ar -> {
             if (ar.succeeded()) {
                 result.complete();
             } else {
@@ -144,6 +158,13 @@ public class Application extends AbstractApplication {
         return result;
     }
 
+    private Future<String> deployDeviceConnectionService() {
+        final Future<String> result = Future.future();
+        log.info("Starting device connection service {}", deviceConnectionService);
+        getVertx().deployVerticle(deviceConnectionService, result);
+        return result;
+    }
+
     /**
      * Registers any additional health checks that the service implementation components provide.
      * 
@@ -162,6 +183,9 @@ public class Application extends AbstractApplication {
         }
         if (HealthCheckProvider.class.isInstance(tenantService)) {
             registerHealthchecks((HealthCheckProvider) tenantService);
+        }
+        if (HealthCheckProvider.class.isInstance(deviceConnectionService)) {
+            registerHealthchecks((HealthCheckProvider) deviceConnectionService);
         }
         return Future.succeededFuture();
     }
