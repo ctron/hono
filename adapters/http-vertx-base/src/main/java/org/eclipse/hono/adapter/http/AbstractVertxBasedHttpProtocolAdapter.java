@@ -341,7 +341,7 @@ public abstract class AbstractVertxBasedHttpProtocolAdapter<T extends HttpProtoc
      * This method returns {@code null} by default.
      * <p>
      * Subclasses may override this method in order to return an appropriate handler.
-     * 
+     *
      * @return The handler or {@code null}.
      */
     protected TenantTraceSamplingHandler getTenantTraceSamplingHandler() {
@@ -708,13 +708,13 @@ public abstract class AbstractVertxBasedHttpProtocolAdapter<T extends HttpProtoc
                 return CompositeFuture.all(
                         sender.send(downstreamMessage, currentSpan.context()),
                         responseReady)
-                        .map(s -> (Void) null);
+                        .mapEmpty();
             } else {
                 // unsettled
                 return CompositeFuture.all(
                         sender.sendAndWaitForOutcome(downstreamMessage, currentSpan.context()),
                         responseReady)
-                        .map(s -> (Void) null);
+                        .mapEmpty();
             }
         })
         .recover(t -> {
@@ -737,7 +737,7 @@ public abstract class AbstractVertxBasedHttpProtocolAdapter<T extends HttpProtoc
                 ctx.response().end(); // close the response here, ensuring that the TracingHandler bodyEndHandler gets called
             } else {
                 final CommandContext commandContext = ctx.get(CommandContext.KEY_COMMAND_CONTEXT);
-                setResponsePayload(ctx.response(), commandContext, currentSpan);
+                setResponsePayload(ctx, commandContext, currentSpan);
                 ctx.addBodyEndHandler(ok -> {
                     log.trace("successfully processed [{}] message for device [tenantId: {}, deviceId: {}]",
                             endpoint, tenant, deviceId);
@@ -868,7 +868,7 @@ public abstract class AbstractVertxBasedHttpProtocolAdapter<T extends HttpProtoc
      * a response could be sent.
      * <p>
      * The handler will close the message consumer and increment the metric for expired TTDs.
-     * 
+     *
      * @param ctx The context to retrieve cookies and the HTTP response from.
      * @param messageConsumer The message consumer to receive a command. If {@code null}, no handler is added.
      * @param tenantId The tenant that the device belongs to.
@@ -896,11 +896,11 @@ public abstract class AbstractVertxBasedHttpProtocolAdapter<T extends HttpProtoc
         }
     }
 
-    private void setResponsePayload(final HttpServerResponse response, final CommandContext commandContext, final Span currentSpan) {
+    private void setResponsePayload(final RoutingContext ctx, final CommandContext commandContext, final Span currentSpan) {
         if (commandContext == null) {
-            setEmptyResponsePayload(response, currentSpan);
+            setEmptyResponsePayload(ctx, currentSpan);
         } else {
-            setNonEmptyResponsePayload(response, commandContext, currentSpan);
+            setNonEmptyResponsePayload(ctx, commandContext, currentSpan);
         }
     }
 
@@ -909,11 +909,11 @@ public abstract class AbstractVertxBasedHttpProtocolAdapter<T extends HttpProtoc
      * <p>
      * The default implementation simply sets a status of {@link HttpURLConnection#HTTP_ACCEPTED}.
      *
-     * @param response The response to update.
+     * @param ctx The routing context.
      * @param currentSpan The current tracing span.
      */
-    protected void setEmptyResponsePayload(final HttpServerResponse response, final Span currentSpan) {
-        response.setStatusCode(HttpURLConnection.HTTP_ACCEPTED);
+    protected void setEmptyResponsePayload(final RoutingContext ctx, final Span currentSpan) {
+        ctx.response().setStatusCode(HttpURLConnection.HTTP_ACCEPTED);
     }
 
     /**
@@ -921,12 +921,14 @@ public abstract class AbstractVertxBasedHttpProtocolAdapter<T extends HttpProtoc
      * <p>
      * The default implementation sets the command headers and the status to {@link HttpURLConnection#HTTP_OK}.
      *
-     * @param response The response to update.
+     * @param ctx The routing context.
      * @param commandContext The command context, will not be {@code null}.
      * @param currentSpan The current tracing span.
      */
-    protected void setNonEmptyResponsePayload(final HttpServerResponse response, final CommandContext commandContext,
+    protected void setNonEmptyResponsePayload(final RoutingContext ctx, final CommandContext commandContext,
             final Span currentSpan) {
+
+        final HttpServerResponse response = ctx.response();
 
         final Command command = commandContext.getCommand();
         response.putHeader(Constants.HEADER_COMMAND, command.getName());

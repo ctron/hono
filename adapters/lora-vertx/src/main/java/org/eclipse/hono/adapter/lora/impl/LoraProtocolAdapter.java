@@ -29,6 +29,7 @@ import org.eclipse.hono.adapter.lora.LoraConstants;
 import org.eclipse.hono.adapter.lora.LoraMessageType;
 import org.eclipse.hono.adapter.lora.LoraProtocolAdapterProperties;
 import org.eclipse.hono.adapter.lora.providers.LoraProvider;
+import org.eclipse.hono.adapter.lora.providers.LoraProvider.DownlinkHandler;
 import org.eclipse.hono.adapter.lora.providers.LoraProviderMalformedPayloadException;
 import org.eclipse.hono.adapter.lora.providers.LoraUtils;
 import org.eclipse.hono.auth.Device;
@@ -64,7 +65,6 @@ import io.opentracing.tag.Tags;
 import io.vertx.core.Future;
 import io.vertx.core.MultiMap;
 import io.vertx.core.buffer.Buffer;
-import io.vertx.core.buffer.impl.BufferImpl;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpVersion;
 import io.vertx.core.json.DecodeException;
@@ -75,9 +75,9 @@ import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.handler.ChainAuthHandler;
 
-
 /**
- * A Vert.x based Hono protocol adapter for receiving HTTP push messages from and sending commands to LoRa backends.
+ * A Vert.x based Hono protocol adapter for receiving HTTP push messages from and sending commands
+ * to LoRa backends.
  */
 public final class LoraProtocolAdapter extends AbstractVertxBasedHttpProtocolAdapter<LoraProtocolAdapterProperties> {
 
@@ -110,7 +110,8 @@ public final class LoraProtocolAdapter extends AbstractVertxBasedHttpProtocolAda
     /**
      * Sets the provider to use for authenticating devices based on a username and password.
      * <p>
-     * If not set explicitly using this method, a {@code UsernamePasswordAuthProvider} will be created during startup.
+     * If not set explicitly using this method, a {@code UsernamePasswordAuthProvider} will be created
+     * during startup.
      *
      * @param provider The provider to use.
      * @throws NullPointerException if provider is {@code null}.
@@ -122,7 +123,8 @@ public final class LoraProtocolAdapter extends AbstractVertxBasedHttpProtocolAda
     /**
      * Sets the provider to use for authenticating devices based on a client certificate.
      * <p>
-     * If not set explicitly using this method, a {@code SubjectDnAuthProvider} will be created during startup.
+     * If not set explicitly using this method, a {@code SubjectDnAuthProvider} will be created during
+     * startup.
      *
      * @param provider The provider to use.
      * @throws NullPointerException if provider is {@code null}.
@@ -141,16 +143,19 @@ public final class LoraProtocolAdapter extends AbstractVertxBasedHttpProtocolAda
         setupAuthorization(router);
 
         for (final LoraProvider current : loraProviders) {
-            router.route(HttpMethod.OPTIONS, current.pathPrefix()).handler(this::handleOptionsRoute);
+            router.route(HttpMethod.OPTIONS, current.pathPrefix())
+                    .handler(this::handleOptionsRoute);
 
-            router.route(current.acceptedHttpMethod(), current.pathPrefix()).consumes(current.acceptedContentType())
+            router.route(current.acceptedHttpMethod(), current.pathPrefix())
+                    .consumes(current.acceptedContentType())
                     .handler(ctx -> this.handleProviderRoute(ctx, current));
 
-            router.route(current.acceptedHttpMethod(), current.pathPrefix()).handler(ctx -> {
-                TracingHelper.logError(getCurrentSpan(ctx), "Incoming request does not contain proper content type");
-                LOG.debug("Incoming request does not contain proper content type. Will return 400.");
-                handle400(ctx, ERROR_MSG_MISSING_OR_UNSUPPORTED_CONTENT_TYPE);
-            });
+            router.route(current.acceptedHttpMethod(), current.pathPrefix())
+                    .handler(ctx -> {
+                        TracingHelper.logError(getCurrentSpan(ctx), "Incoming request does not contain proper content type");
+                        LOG.debug("Incoming request does not contain proper content type. Will return 400.");
+                        handle400(ctx, ERROR_MSG_MISSING_OR_UNSUPPORTED_CONTENT_TYPE);
+                    });
         }
     }
 
@@ -162,8 +167,7 @@ public final class LoraProtocolAdapter extends AbstractVertxBasedHttpProtocolAda
 
         final Object normalizedProperties = ctx.get(LoraConstants.NORMALIZED_PROPERTIES);
         if (normalizedProperties instanceof Map) {
-            for (final Map.Entry<String, Object> entry:
-                 ((Map<String, Object>) normalizedProperties).entrySet()) {
+            for (final Map.Entry<String, Object> entry : ((Map<String, Object>) normalizedProperties).entrySet()) {
                 MessageHelper.addProperty(downstreamMessage, entry.getKey(), entry.getValue());
             }
         }
@@ -198,6 +202,7 @@ public final class LoraProtocolAdapter extends AbstractVertxBasedHttpProtocolAda
         if (ctx.user() instanceof Device) {
             final Device gatewayDevice = (Device) ctx.user();
             final JsonObject loraMessage = ctx.getBodyAsJson();
+            LOG.debug("Received message '{}'", loraMessage);
             currentSpan.setTag(MessageHelper.APP_PROPERTY_TENANT_ID, gatewayDevice.getTenantId());
 
             LoraMessageType type = LoraMessageType.UNKNOWN;
@@ -208,22 +213,8 @@ public final class LoraProtocolAdapter extends AbstractVertxBasedHttpProtocolAda
                 currentSpan.setTag(MessageHelper.APP_PROPERTY_DEVICE_ID, deviceId);
 
                 if (LoraMessageType.UPLINK.equals(type)) {
-                    final String payload = provider.extractPayload(loraMessage);
-                    if (payload == null){
-                        throw new LoraProviderMalformedPayloadException("Payload == null", new NullPointerException("payload"));
-                    }
-                    final Buffer payloadInBuffer = new BufferImpl().appendString(payload);
-
-                    final Map<String, Object> normalizedData = provider.extractNormalizedData(loraMessage);
-                    ctx.put(LoraConstants.NORMALIZED_PROPERTIES, normalizedData);
-
-                    final JsonObject additionalData = provider.extractAdditionalData(loraMessage);
-                    ctx.put(LoraConstants.ADDITIONAL_DATA, additionalData);
-
-                    final String contentType = LoraConstants.CONTENT_TYPE_LORA_BASE +  provider.getProviderName() + LoraConstants.CONTENT_TYPE_LORA_POST_FIX;
-
-                    doUpload(ctx, gatewayDevice, deviceId, payloadInBuffer, contentType);
-                } else {
+                    handleUplinkRequest(ctx, provider, gatewayDevice, loraMessage, deviceId);
+               } else {
                     LOG.debug("Received message '{}' of type [{}] for device [{}], will discard message.", loraMessage,
                             type, deviceId);
                     currentSpan.log(
@@ -244,6 +235,50 @@ public final class LoraProtocolAdapter extends AbstractVertxBasedHttpProtocolAda
         }
     }
 
+    private void handleUplinkRequest(final RoutingContext ctx, final LoraProvider provider, final Device gatewayDevice, final JsonObject loraMessage, final String deviceId) {
+
+        final String payload = provider.extractPayload(loraMessage);
+        if (payload == null) {
+            throw new LoraProviderMalformedPayloadException("Payload == null", new NullPointerException("payload"));
+        }
+
+        final Map<String, Object> normalizedData = provider.extractNormalizedData(loraMessage);
+        ctx.put(LoraConstants.NORMALIZED_PROPERTIES, normalizedData);
+
+        final JsonObject additionalData = provider.extractAdditionalData(loraMessage);
+        ctx.put(LoraConstants.ADDITIONAL_DATA, additionalData);
+
+        final String contentType = LoraConstants.CONTENT_TYPE_LORA_BASE + provider.getProviderName() + LoraConstants.CONTENT_TYPE_LORA_POST_FIX;
+
+        LOG.trace("Got push message for tenant '{}' and device '{}'", gatewayDevice.getTenantId(), deviceId);
+
+        if (deviceId == null || payload == null) {
+            LOG.debug("Got payload without mandatory fields: {}", ctx.getBodyAsJson());
+            if (deviceId == null) {
+                TracingHelper.logError(getCurrentSpan(ctx), "Got message without deviceId");
+            }
+            if (payload == null) {
+                TracingHelper.logError(getCurrentSpan(ctx), "Got message without valid payload");
+            }
+            handle400(ctx, JSON_MISSING_REQUIRED_FIELDS);
+            return;
+        }
+
+        final Optional<LoraProvider.DownlinkHandler> downlinkHandler;
+        try {
+            downlinkHandler = Objects.requireNonNull(provider.extractDownlinkHandler(loraMessage));
+        } catch ( IllegalArgumentException e) {
+            throw new LoraProviderMalformedPayloadException("Malformed downlink URL", e);
+        }
+
+        if ( downlinkHandler.isPresent() ) {
+            ctx.put("downlink_handler", downlinkHandler.get());
+        }
+
+        uploadTelemetryMessage(ctx, gatewayDevice.getTenantId(), deviceId, Buffer.buffer(payload), contentType);
+
+    }
+
     private Span getCurrentSpan(final RoutingContext ctx) {
         return (ctx.get(TracingHandler.CURRENT_SPAN) instanceof Span) ? ctx.get(TracingHandler.CURRENT_SPAN)
                 : NoopSpan.INSTANCE;
@@ -260,24 +295,6 @@ public final class LoraProtocolAdapter extends AbstractVertxBasedHttpProtocolAda
             LOG.debug("Supplied credentials are not an instance of the user. Returning 401");
             TracingHelper.logError(getCurrentSpan(ctx), "Supplied credentials are not an instance of the user");
             handle401(ctx);
-        }
-    }
-
-    private void doUpload(final RoutingContext ctx, final Device device, final String deviceId,
-                          final Buffer payload, final String contentType) {
-        LOG.trace("Got push message for tenant '{}' and device '{}'", device.getTenantId(), deviceId);
-        if (deviceId != null && payload != null) {
-            uploadTelemetryMessage(ctx, device.getTenantId(), deviceId, payload,
-                    contentType);
-        } else {
-            LOG.debug("Got payload without mandatory fields: {}", ctx.getBodyAsJson());
-            if (deviceId == null) {
-                TracingHelper.logError(getCurrentSpan(ctx), "Got message without deviceId");
-            }
-            if (payload == null) {
-                TracingHelper.logError(getCurrentSpan(ctx), "Got message without valid payload");
-            }
-            handle400(ctx, JSON_MISSING_REQUIRED_FIELDS);
         }
     }
 
@@ -558,6 +575,25 @@ public final class LoraProtocolAdapter extends AbstractVertxBasedHttpProtocolAda
             LOG.debug("Successfully retrieved the gateway Id: {}", gatewayId);
             return Future.succeededFuture(gatewayId);
         }
+    }
+
+    @Override
+    protected void setNonEmptyResponsePayload(final RoutingContext ctx,  final CommandContext commandContext, final Span currentSpan) {
+        setEmptyResponsePayload(ctx, currentSpan);
+
+        final Object downlinkValue = ctx.get("downlink_handler");
+        if ( !(downlinkValue instanceof DownlinkHandler) ) {
+            return;
+        }
+
+        final DownlinkHandler downlink = (DownlinkHandler) downlinkValue;
+
+        final Command command = commandContext.getCommand();
+        if (!isValidLoraCommand(command) ) {
+            return;
+        }
+
+        downlink.sendDownlinkCommand(command);
     }
 
     private HttpResponse<Buffer> getHttpResponseWithCode(final int statusCode, final String message) {

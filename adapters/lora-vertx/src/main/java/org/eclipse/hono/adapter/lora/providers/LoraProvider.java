@@ -13,6 +13,9 @@
 
 package org.eclipse.hono.adapter.lora.providers;
 
+import java.util.Map;
+import java.util.Optional;
+
 import org.eclipse.hono.adapter.lora.LoraMessageType;
 import org.eclipse.hono.client.Command;
 import org.eclipse.hono.service.http.HttpUtils;
@@ -21,8 +24,6 @@ import org.eclipse.hono.util.CredentialsObject;
 import io.vertx.core.Future;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
-
-import java.util.Map;
 
 /**
  * A LoraWAN provider which can send and receive messages from and to LoRa devices.
@@ -46,7 +47,7 @@ public interface LoraProvider {
 
     /**
      * Extracts the type from the incoming message of the LoRa Provider.
-     * 
+     *
      * @param loraMessage from which the type should be extracted.
      * @return LoraMessageType the type of this message
      */
@@ -56,7 +57,7 @@ public interface LoraProvider {
 
     /**
      * The content type this provider will accept.
-     * 
+     *
      * @return MIME Content Type. E.g. "application/json"
      */
     default String acceptedContentType() {
@@ -65,7 +66,7 @@ public interface LoraProvider {
 
     /**
      * The HTTP method this provider will accept incoming data.
-     * 
+     *
      * @return MIME Content Type. E.g. "application/json"
      */
     default HttpMethod acceptedHttpMethod() {
@@ -74,7 +75,7 @@ public interface LoraProvider {
 
     /**
      * Extracts the device id from an incoming message of the LoRa Provider.
-     * 
+     *
      * @param loraMessage from which the device id should be extracted.
      * @return Device ID of the concerned device
      * @throws LoraProviderMalformedPayloadException if device Id cannot be extracted.
@@ -83,7 +84,7 @@ public interface LoraProvider {
 
     /**
      * Extracts the payload from an incoming message of the LoRa Provider.
-     * 
+     *
      * @param loraMessage from which the payload should be extracted.
      * @return Payload
      * @throws LoraProviderMalformedPayloadException if payload cannot be extracted.
@@ -122,5 +123,38 @@ public interface LoraProvider {
     default Future<Void> sendDownlinkCommand(final JsonObject gatewayDevice, final CredentialsObject gatewayCredential,
             final String targetDeviceId, final Command loraCommand) {
         return Future.failedFuture(new UnsupportedOperationException());
+    }
+
+    /**
+     * Extract an optional downlink handler from the uplink message.
+     * <p>
+     * The returned handler must not allocate any resources, as it is up
+     * to the caller if the handler will be used or not.
+     *
+     * @param loraMessage from which the handler should be extracted.
+     * @return The download handler, extracted from the upload message.
+     *         May be {@link Optional#empty()}, but must never be {@code null}.
+     *         The instance is specific to this uplink message, and must not be
+     *         kept beyond processing this single message.
+     * @throws IllegalArgumentException if the URL is present, but not a valid URL.
+     */
+    default Optional<DownlinkHandler> extractDownlinkHandler(final JsonObject loraMessage) {
+        return Optional.empty();
+    }
+
+    /**
+     * A handler for processing downlink messages.
+     */
+    interface DownlinkHandler {
+
+        /**
+         * Send a downlink message.
+         * <p>
+         * The method may only be executed once for each instance.
+         *
+         * @param command The command to send, must not be {@code null}.
+         * @return A future, tracking the outcome of the operation.
+         */
+        Future<?> sendDownlinkCommand(Command command);
     }
 }

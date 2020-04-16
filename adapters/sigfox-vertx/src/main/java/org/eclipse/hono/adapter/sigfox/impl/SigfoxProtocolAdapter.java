@@ -49,7 +49,6 @@ import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpMethod;
-import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
@@ -283,26 +282,26 @@ public final class SigfoxProtocolAdapter
     }
 
     @Override
-    protected void setEmptyResponsePayload(final HttpServerResponse response, final Span currentSpan) {
+    protected void setEmptyResponsePayload(final RoutingContext ctx, final Span currentSpan) {
         LOG.debug("Setting empty response for ACK");
 
-        response.setStatusCode(HttpURLConnection.HTTP_NO_CONTENT);
+        ctx.response().setStatusCode(HttpURLConnection.HTTP_NO_CONTENT);
         currentSpan.log("responding with: no content");
     }
 
     @Override
-    protected void setNonEmptyResponsePayload(final HttpServerResponse response, final CommandContext commandContext,
+    protected void setNonEmptyResponsePayload(final RoutingContext ctx, final CommandContext commandContext,
             final Span currentSpan) {
 
         currentSpan.log("responding with: payload");
 
         final Command command = commandContext.getCommand();
-        response.setStatusCode(HttpURLConnection.HTTP_OK);
+        ctx.response().setStatusCode(HttpURLConnection.HTTP_OK);
         final Buffer payload = convertToResponsePayload(command);
 
         LOG.debug("Setting response for ACK: {}", payload);
 
-        HttpUtils.setResponseBody(response, payload, HttpUtils.CONTENT_TYPE_JSON);
+        HttpUtils.setResponseBody(ctx.response(), payload, HttpUtils.CONTENT_TYPE_JSON);
 
     }
 
