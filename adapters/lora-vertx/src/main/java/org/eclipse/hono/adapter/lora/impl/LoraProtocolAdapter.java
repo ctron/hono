@@ -178,6 +178,7 @@ public final class LoraProtocolAdapter extends AbstractVertxBasedHttpProtocolAda
         if (ctx.user() instanceof Device) {
             final Device gatewayDevice = (Device) ctx.user();
             final JsonObject loraMessage = ctx.getBodyAsJson();
+            log.debug("Payload: '{}'", loraMessage);
             currentSpan.setTag(MessageHelper.APP_PROPERTY_TENANT_ID, gatewayDevice.getTenantId());
 
             LoraMessageType type = LoraMessageType.UNKNOWN;
